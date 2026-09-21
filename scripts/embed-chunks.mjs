@@ -13,8 +13,12 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUP
 });
 const openai = new OpenAI();
 
-// 임베딩 대상 텍스트 = chunk_text (developer_config.article_embedding_source)
-let query = admin.from("knowledge_chunks").select("chunk_id, chunk_text, is_active").order("chunk_id");
+// 임베딩 대상 텍스트: 제목 + 본문 + "언제 쓰는지(use_when)" + 주제 태그.
+// (본문만 쓰는 것보다 실험에서 검색 정확도가 높았음: 2026-09-21. 원래 설정 article_embedding_source=chunk_text에서 변경)
+const embeddingText = (c) =>
+  `${c.chunk_title}\n${c.chunk_text}\n이럴 때: ${c.use_when ?? ""}\n주제: ${(c.issue_tags ?? []).join(", ")}`;
+
+let query = admin.from("knowledge_chunks").select("chunk_id, chunk_title, chunk_text, use_when, issue_tags").order("chunk_id");
 if (!redoAll) query = query.is("embedding", null);
 const { data: rows, error } = await query;
 if (error) { console.error("chunk 조회 실패:", error.message); process.exit(1); }
@@ -26,7 +30,7 @@ for (let i = 0; i < rows.length; i += 32) {
   const batch = rows.slice(i, i + 32);
   const res = await openai.embeddings.create({
     model: EMBEDDING_MODEL,
-    input: batch.map((r) => r.chunk_text),
+    input: batch.map(embeddingText),
     encoding_format: "float",
   });
   tokens += res.usage.total_tokens;

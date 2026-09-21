@@ -72,6 +72,8 @@ Non-negotiable rules (source: `system_prompt` and `safety_rules` tables, SAFE-00
 - AI cost: max 3,000 KRW per user per month; per-day message limits; crisis responses never blocked by limits.
 - Dessert-type quiz scoring: highest domain score wins; ties by domain order relate → worth → control → happy → meaning; within the domain, F vs E sum; tie → F. Only scores and type are stored, never per-question answers.
 - **Current MVP scope: only the AI chat** (logo, chat screen, input, answers, new chat). Not yet: quiz, payments, subscriptions, booking, reports, memory, login screens.
+- AI models (2026-09-21): embeddings `text-embedding-3-small` (1536-d); safety classifier and answer generation start with `gpt-5.6-luna`, kept configurable (env) so `gpt-5.6-terra` can replace it after the safety evaluation. OpenAI monthly cost cap is enforced by prepaid credits (auto-recharge off).
+- Retrieval: embedded text per chunk = title + text + use_when + issue tags (better than text alone). Initial `min_similarity` ≈ 0.33 (tune with logs); similarity alone cannot reject off-topic questions, so combine with the classifier's topic/domain output.
 - The MVP is for internal testing behind an access code until consent screens and legal review are done.
 
 ## 6. Coding conventions

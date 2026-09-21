@@ -1,0 +1,16 @@
+# 비밀 정보는 절대 저장소에 올리지 않는다
+.env
+.env.*
+!.env.example
+
+# 시스템/빌드
+.DS_Store
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# 로컬 도구 설정
+.claude/settings.local.json

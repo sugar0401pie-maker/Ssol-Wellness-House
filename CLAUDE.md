@@ -62,6 +62,7 @@ Non-negotiable rules (source: `system_prompt` and `safety_rules` tables, SAFE-00
 - Knowledge tables (from Excel) are readable only with the server key. User tables use Row Level Security (own rows only); chat writes are server-only.
 - Knowledge source of truth is the Excel file. Regenerate SQL with `perl scripts/build_import_sql.pl <xlsx> supabase/import`; do not hand-edit generated SQL.
 - Prompts live in files/DB rows, not inline strings.
+- **The Supabase project is shared with the owner's quiz/payment prototype** (tables and functions prefixed `ssol_`, e.g. `ssol_orders`, `ssol_chat_passes`, `ssol_quiz_results`, `ssol_reports`). Never modify, drop or grant on `ssol_*` objects. Our tables are unprefixed. New tables in this project do **not** get `service_role` privileges automatically — every migration must include explicit GRANTs. Auth (`auth.users`) is shared, so anonymous sign-in and our `on_auth_user_created` trigger affect both apps.
 
 ## 5. Decisions already made
 

@@ -13,6 +13,8 @@ const fail = (name, detail = "") => {
   console.log(`  ❌ ${name}${detail ? ` — ${detail}` : ""}`);
 };
 const check = (cond, name, detail) => (cond ? ok(name) : fail(name, detail));
+// 42501 = 권한 없음 / 보안 규칙 위반. "테이블 없음(PGRST205)" 같은 오류는 보안 증거가 아니므로 통과로 세지 않음
+const isBlocked = (error) => !!error && (error.code === "42501" || /permission denied|row-level security/i.test(error.message ?? ""));
 
 console.log("\n[1] 환경변수 (이름만 확인, 값은 출력하지 않음)");
 check(!!url, "NEXT_PUBLIC_SUPABASE_URL 입력됨");
@@ -46,6 +48,12 @@ for (const [table, n] of Object.entries(expected)) {
   check(!error && count === 15, "임상 chunk 표시(clinical_sensitive) 15개", error ? error.message : `실제 ${count}개`);
 }
 
+console.log("\n[2b] 사용자 테이블 존재 확인 (서버 키)");
+for (const t of ["profiles", "wellness_profiles", "chat_sessions", "chat_messages", "user_memory"]) {
+  const { error } = await admin.from(t).select("*", { count: "exact", head: true });
+  check(!error, `${t} 테이블 사용 가능`, error?.message || "응답 오류(테이블이 없거나 권한 없음)");
+}
+
 console.log("\n[3] 익명 로그인");
 let userId = null;
 const { data: signIn, error: signInErr } = await anon.auth.signInAnonymously();
@@ -64,16 +72,16 @@ if (userId) {
   const knowledgeTables = ["knowledge_chunks", "safety_rules", "system_prompt_sections", "service_knowledge", "programs"];
   for (const t of knowledgeTables) {
     const { data, error } = await anon.from(t).select("*").limit(1);
-    check(!!error || (data?.length ?? 0) === 0, `브라우저 키로 ${t} 읽기 차단`, "읽혔습니다!");
+    check(isBlocked(error) && !data?.length, `브라우저 키로 ${t} 읽기 차단`, error ? `차단이 아닌 다른 오류: ${error.message}` : "읽혔습니다!");
   }
 
   const { error: sessErr } = await anon.from("chat_sessions").insert({ user_id: userId });
-  check(!!sessErr, "브라우저에서 chat_sessions 직접 저장 차단 (서버만 가능)", "저장되었습니다!");
+  check(isBlocked(sessErr), "브라우저에서 chat_sessions 직접 저장 차단 (서버만 가능)", sessErr ? `차단이 아닌 다른 오류: ${sessErr.message}` : "저장되었습니다!");
 
   const { error: rpcAnonErr } = await anon.rpc("match_knowledge_chunks", {
     query_embedding: Array(1536).fill(0), match_count: 1, min_similarity: 0, scope: "all",
   });
-  check(!!rpcAnonErr, "브라우저에서 검색 함수 호출 차단", "호출되었습니다!");
+  check(isBlocked(rpcAnonErr), "브라우저에서 검색 함수 호출 차단", rpcAnonErr ? `차단이 아닌 다른 오류: ${rpcAnonErr.message}` : "호출되었습니다!");
 
   console.log("\n[5] 검색 함수 (서버 키)");
   const zero = Array(1536).fill(0.01);

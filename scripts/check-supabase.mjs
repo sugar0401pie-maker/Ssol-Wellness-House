@@ -48,10 +48,24 @@ for (const [table, n] of Object.entries(expected)) {
   check(!error && count === 15, "임상 chunk 표시(clinical_sensitive) 15개", error ? error.message : `실제 ${count}개`);
 }
 
-console.log("\n[2b] 사용자 테이블 존재 확인 (서버 키)");
-for (const t of ["profiles", "wellness_profiles", "chat_sessions", "chat_messages", "user_memory"]) {
-  const { error } = await admin.from(t).select("*", { count: "exact", head: true });
-  check(!error, `${t} 테이블 사용 가능`, error?.message || "응답 오류(테이블이 없거나 권한 없음)");
+console.log("\n[2b] 사용자 테이블 존재·구조 확인 (서버 키)");
+// HEAD 요청은 없는 테이블에도 오류가 나지 않을 수 있어서, 반드시 GET으로 확인합니다.
+const expectedColumns = {
+  profiles: ["user_id", "display_name", "birth_year", "locale", "adult_confirmed_at", "kr_resident_confirmed_at"],
+  wellness_profiles: ["user_id", "dessert_type", "theme_scores", "source", "tested_at"],
+  chat_sessions: ["session_id", "user_id", "safety_flag", "topic_tag", "started_at", "last_message_at"],
+  chat_messages: ["message_id", "session_id", "user_id", "role", "content", "route", "retrieved_chunk_ids", "framework_id", "feedback", "created_at"],
+  user_memory: ["user_id", "summary", "updated_at"],
+  knowledge_chunks: ["chunk_id", "article_id", "chunk_text", "embedding", "do_not_apply_when", "is_active", "clinical_sensitive"],
+};
+const apiDoc = await fetch(`${url}/rest/v1/`, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } })
+  .then((r) => r.json()).catch(() => ({}));
+for (const [t, cols] of Object.entries(expectedColumns)) {
+  const { error } = await admin.from(t).select("*").limit(1);
+  check(!error, `${t} 테이블 사용 가능`, error ? `${error.code} ${error.message}` : "");
+  const have = Object.keys(apiDoc.definitions?.[t]?.properties ?? {});
+  const missing = cols.filter((c) => !have.includes(c));
+  check(missing.length === 0, `${t} 컬럼 구조가 설계와 일치`, `없는 컬럼: ${missing.join(", ")}`);
 }
 
 console.log("\n[3] 익명 로그인");
@@ -77,6 +91,11 @@ if (userId) {
 
   const { error: sessErr } = await anon.from("chat_sessions").insert({ user_id: userId });
   check(isBlocked(sessErr), "브라우저에서 chat_sessions 직접 저장 차단 (서버만 가능)", sessErr ? `차단이 아닌 다른 오류: ${sessErr.message}` : "저장되었습니다!");
+
+  const { error: msgErr } = await anon.from("chat_messages").insert({
+    session_id: crypto.randomUUID(), user_id: userId, role: "user", content: "x",
+  });
+  check(isBlocked(msgErr), "브라우저에서 chat_messages 직접 저장 차단 (서버만 가능)", msgErr ? `차단이 아닌 다른 오류: ${msgErr.message}` : "저장되었습니다!");
 
   const { error: rpcAnonErr } = await anon.rpc("match_knowledge_chunks", {
     query_embedding: Array(1536).fill(0), match_count: 1, min_similarity: 0, scope: "all",

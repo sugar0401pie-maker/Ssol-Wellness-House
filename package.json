@@ -7,11 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs"
+    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
+    "check:openai": "node --env-file=.env.local scripts/check-openai.mjs",
+    "embed:chunks": "node --env-file=.env.local scripts/embed-chunks.mjs",
+    "search:test": "node --env-file=.env.local scripts/search-test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
     "next": "16.3.5",
+    "openai": "^7.20.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1"

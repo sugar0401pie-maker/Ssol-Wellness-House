@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { ensureAnonymousSession } from "@/lib/supabase/browser";
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
 
@@ -22,7 +23,9 @@ export default function ChatApp() {
   function send() {
     const text = input.trim();
     if (!text) return;
-    // C1 단계: AI는 아직 연결되지 않았습니다. (C5에서 /api/chat으로 교체)
+    // 첫 메시지 때 익명 로그인 세션을 준비합니다. (C5에서 /api/chat 호출 앞에서 사용)
+    void ensureAnonymousSession();
+    // C2 단계: AI는 아직 연결되지 않았습니다. (C5에서 /api/chat으로 교체)
     setMessages((prev) => [
       ...prev,
       { id: nextId.current++, role: "user", content: text },

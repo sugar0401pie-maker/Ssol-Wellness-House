@@ -4,6 +4,7 @@ import type { SafetyRule } from "@/lib/safety/rules";
 import type { RouteId } from "@/lib/safety/types";
 import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
 import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
+import { searchWellnessPractices } from "@/lib/rag/practicesSearch";
 import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
 import { buildSystemPrompt, type PersonaHint } from "@/lib/rag/prompt.ts";
 import { generateReply } from "@/lib/ai/chatModel";
@@ -153,11 +154,19 @@ export async function generateAnswer(params: {
     }
   }
 
+  // 실천방법 DB(owner 제공, 375개)에서 상황에 맞는 후보를 가져온다. "무엇을 해볼지" 제안이
+  // 실제로 의미 있는 route(wellness/life_decision/clinical_distress)에서만, 그리고 성향 질문
+  // 모드(캐릭터 해석)에서는 성격이 다른 대화라 쓰지 않는다.
+  const wantsPractices =
+    !params.isPersonaQuestion &&
+    (params.route === "wellness" || params.route === "life_decision" || params.route === "clinical_distress");
+
   // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
   // 검색이나 안전 판단에는 쓰지 않는다.
-  const [{ data: memoryRow }, { data: sessionMeta }] = await Promise.all([
+  const [{ data: memoryRow }, { data: sessionMeta }, practiceResults] = await Promise.all([
     admin.from("user_memory").select("summary").eq("user_id", params.userId).maybeSingle(),
     admin.from("chat_sessions").select("clinical_boundary_stated_at").eq("session_id", params.sessionId).maybeSingle(),
+    wantsPractices ? searchWellnessPractices(params.message, params.recentMessages) : Promise.resolve([]),
   ]);
 
   const usedClinicalChunk = knowledgeChunks.some((c) => c.clinical_sensitive);
@@ -171,6 +180,7 @@ export async function generateAnswer(params: {
     clinicalBoundaryAlreadyStated,
     knowledgeChunks: knowledgeChunks.length ? knowledgeChunks : undefined,
     serviceResults: serviceResults.length ? serviceResults : undefined,
+    practiceResults: practiceResults.length ? practiceResults : undefined,
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,

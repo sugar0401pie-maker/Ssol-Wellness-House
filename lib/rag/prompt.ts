@@ -16,6 +16,7 @@ type ChunkLike = {
   clinical_sensitive: boolean;
 };
 type ServiceLike = { id: string; title: string; text: string; doNot?: string | null };
+type PracticeLike = { id: string; domain: string; category: string; tier: string; title: string; detail: string };
 export type FrameworkHint = { purpose: string; steps: string[] };
 export type PersonaHint = {
   label: string;
@@ -56,6 +57,10 @@ function formatService(s: ServiceLike): string {
   return lines.join("\n");
 }
 
+function formatPractice(p: PracticeLike): string {
+  return `- [${p.category}/${p.tier}] ${p.title} — ${p.detail}`;
+}
+
 export function buildSystemPrompt(params: {
   sections: SectionLike[];
   matchedRules: RuleLike[];
@@ -64,6 +69,7 @@ export function buildSystemPrompt(params: {
   clinicalBoundaryAlreadyStated?: boolean;
   knowledgeChunks?: ChunkLike[];
   serviceResults?: ServiceLike[];
+  practiceResults?: PracticeLike[];
   frameworkHint?: FrameworkHint | null;
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
@@ -158,6 +164,18 @@ export function buildSystemPrompt(params: {
       [
         "아래는 SSOL의 공식 서비스·브랜드 설명입니다. 이 문구의 취지를 벗어나지 말고, 특히 '주의' 표시는 반드시 지키세요.",
         ...params.serviceResults.map(formatService),
+      ].join("\n"),
+    );
+  }
+
+  if (params.practiceResults?.length) {
+    // owner가 만든 실천방법 DB(375개, domain x category x tier)에서 상황에 맞게 골라온 후보.
+    // "지금 해볼 수 있는 것"을 제안할 때(자기돌봄, 3턴 이후 요약·제안 등) 이 목록을 우선 참고해서
+    // 상식적인 즉흥 제안 대신 실제 서비스가 정리한 구체적 실천 항목을 쓰도록 한다.
+    parts.push(
+      [
+        "아래는 SSOL이 정리한 구체적인 실천 방법 후보 목록입니다. 자기돌봄이나 지금 해볼 수 있는 것을 제안할 때, 상황에 맞는 게 있으면 이 안에서 1~2개를 우선 골라 자연스러운 말투로 녹여 쓰세요(목록 형식이나 원문 그대로 옮기지 말 것). 맞는 게 없으면 상식 수준에서 제안해도 되지만, 이 목록에 있는데 무시하지는 마세요. 이건 치료나 처방이 아니라 일상적인 실천 아이디어일 뿐입니다.",
+        ...params.practiceResults.map(formatPractice),
       ].join("\n"),
     );
   }

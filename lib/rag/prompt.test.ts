@@ -160,6 +160,27 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(p, /웰니스 유형/);
   });
 
+  test("실천방법 후보가 있으면 우선 참고하되 그대로 베끼지 말라는 지침과 함께 들어간다", () => {
+    // 2026-09-22: owner가 제공한 실천방법 DB(wellness_practices, 375개) 반영.
+    const p = buildSystemPrompt({
+      sections: SECTIONS,
+      matchedRules: [],
+      route: "wellness",
+      usedClinicalChunk: false,
+      practiceResults: [
+        { id: "SELF-BODY-L1-01", domain: "나 자신", category: "몸으로 움직이기", tier: "가볍게 시작", title: "10분 산책하기", detail: "집 앞을 10~15분만 걸어도 기분 전환에 도움이 된다." },
+      ],
+    });
+    assert.match(p, /10분 산책하기/);
+    assert.match(p, /그대로 옮기지 말 것/);
+    assert.match(p, /치료나 처방이 아니라/);
+  });
+
+  test("실천방법 후보가 없으면 관련 블록이 들어가지 않는다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    assert.doesNotMatch(p, /실천 방법 후보/);
+  });
+
   test("service_info를 제외한 route는 해결책보다 감정을 먼저 다루라는 지침이 들어간다", () => {
     const wellness = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
     const service = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "service_info", usedClinicalChunk: false });

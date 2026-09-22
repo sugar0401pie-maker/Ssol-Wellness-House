@@ -1,4 +1,5 @@
 import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { SafetyRule } from "@/lib/safety/rules";
 import type { RouteId } from "@/lib/safety/types";
 import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
@@ -21,6 +22,7 @@ export async function generateAnswer(params: {
   message: string;
   recentMessages: { role: "user" | "assistant"; content: string }[];
   safetyRules: SafetyRule[];
+  userId: string;
 }): Promise<{
   reply: string;
   retrievedChunkIds: string[];
@@ -47,6 +49,14 @@ export async function generateAnswer(params: {
     }
   }
 
+  // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
+  // 검색이나 안전 판단에는 쓰지 않는다.
+  const { data: memoryRow } = await createAdminClient()
+    .from("user_memory")
+    .select("summary")
+    .eq("user_id", params.userId)
+    .maybeSingle();
+
   const usedClinicalChunk = knowledgeChunks.some((c) => c.clinical_sensitive);
   const system = buildSystemPrompt({
     sections,
@@ -56,6 +66,7 @@ export async function generateAnswer(params: {
     knowledgeChunks: knowledgeChunks.length ? knowledgeChunks : undefined,
     serviceResults: serviceResults.length ? serviceResults : undefined,
     frameworkHint,
+    userMemory: memoryRow?.summary,
   });
 
   const conversation = [...params.recentMessages, { role: "user" as const, content: params.message }];

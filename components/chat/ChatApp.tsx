@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ensureAnonymousSession } from "@/lib/supabase/browser";
+import { revealText } from "@/lib/ui/typewriter";
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
 
@@ -14,16 +15,30 @@ export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [memoryPrompt, setMemoryPrompt] = useState<"idle" | "asking" | "saving">("idle");
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
+  const cancelReveal = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, sending]);
 
+  useEffect(() => () => cancelReveal.current?.(), []); // 화면을 벗어나면 진행 중이던 연출 정리
+
   function appendMessage(role: Message["role"], content: string) {
     setMessages((prev) => [...prev, { id: nextId.current++, role, content }]);
+  }
+
+  // 완성된(이미 안전 검사를 통과한) 답변을 타이핑되듯 보여준다.
+  function revealAssistantMessage(fullText: string) {
+    const id = nextId.current++;
+    setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
+    cancelReveal.current?.();
+    cancelReveal.current = revealText(fullText, (partial) => {
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: partial } : m)));
+    });
   }
 
   async function send() {
@@ -52,29 +67,51 @@ export default function ChatApp() {
         return;
       }
 
-      const data = (await res.json()) as {
-        sessionId: string;
-        route: string;
-        reply: string | null;
-        done: boolean;
-        note?: string;
-      };
+      const data = (await res.json()) as { sessionId: string; route: string; reply: string | null; note?: string };
       sessionId.current = data.sessionId;
-
-      // route 1(crisis)·2(violence)는 실제 고정 응답이 온다. 그 외(route 3~7)는 C5에서 답변 생성이
-      // 붙기 전까지 어떤 route로 판정됐는지만 보여준다 (개발 확인용, 실제 서비스 문구 아님).
-      appendMessage("assistant", data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`);
+      setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
+      revealAssistantMessage(data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`);
+      return;
     } catch {
       appendMessage("assistant", "네트워크 문제로 응답을 받지 못했어요. 다시 시도해주세요.");
-    } finally {
-      setSending(false);
     }
+    setSending(false);
   }
 
-  function newChat() {
+  function resetChat() {
     setMessages([]);
     setInput("");
     sessionId.current = null;
+    setMemoryPrompt("idle");
+  }
+
+  function requestNewChat() {
+    // 나눈 대화가 없으면 굳이 물어보지 않는다.
+    if (!messages.length) {
+      resetChat();
+      return;
+    }
+    setMemoryPrompt("asking");
+  }
+
+  async function confirmNewChat(remember: boolean) {
+    const currentSessionId = sessionId.current;
+    if (remember && currentSessionId) {
+      setMemoryPrompt("saving");
+      try {
+        const token = await ensureAnonymousSession();
+        if (token) {
+          await fetch("/api/memory", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ sessionId: currentSessionId }),
+          });
+        }
+      } catch {
+        // 기억 저장은 부가 기능이라, 실패해도 새 대화 시작을 막지 않는다.
+      }
+    }
+    resetChat();
   }
 
   return (
@@ -90,7 +127,7 @@ export default function ChatApp() {
         />
         <button
           type="button"
-          onClick={newChat}
+          onClick={requestNewChat}
           className="rounded-full border border-navy px-3 py-1.5 text-sm font-medium text-navy active:bg-navy-soft"
         >
           새 대화
@@ -150,6 +187,43 @@ export default function ChatApp() {
           (24시간)
         </p>
       </footer>
+
+      {memoryPrompt !== "idle" && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
+            <p className="text-[15px] font-medium leading-6 text-foreground">이번 대화를 기억해 둘까요?</p>
+            <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
+              다음에 대화할 때 참고할 수 있어요. 위기·폭력 관련 내용은 저장하지 않아요.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => confirmNewChat(true)}
+                disabled={memoryPrompt === "saving"}
+                className="h-10 rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-60"
+              >
+                {memoryPrompt === "saving" ? "저장하는 중…" : "기억하기"}
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmNewChat(false)}
+                disabled={memoryPrompt === "saving"}
+                className="h-10 rounded-xl border border-line text-sm font-medium text-foreground disabled:opacity-60"
+              >
+                기억하지 않기
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemoryPrompt("idle")}
+                disabled={memoryPrompt === "saving"}
+                className="mt-1 text-[13px] text-slate-500 underline disabled:opacity-60"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -15,6 +15,9 @@ export async function generateReply(
   const response = await client.responses.create({
     model: MODEL,
     input: [{ role: "system", content: system }, ...messages],
+    // 답변을 300~500자로 짧게 두라는 프롬프트 지시를 넘기는 경우가 있어(체감 대기시간에 영향),
+    // 토큰 상한을 걸어둔다. 한국어는 토큰당 글자 수가 낮은 편이라 여유 있게 잡았다.
+    max_output_tokens: 500,
   });
 
   const text = response.output_text?.trim();

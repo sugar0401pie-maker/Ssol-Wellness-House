@@ -155,6 +155,7 @@ export async function POST(req: NextRequest) {
     message,
     recentMessages,
     safetyRules,
+    userId,
   });
 
   await admin.from("chat_messages").insert({

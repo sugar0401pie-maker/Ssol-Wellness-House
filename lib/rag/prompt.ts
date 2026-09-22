@@ -49,6 +49,7 @@ export function buildSystemPrompt(params: {
   knowledgeChunks?: ChunkLike[];
   serviceResults?: ServiceLike[];
   frameworkHint?: FrameworkHint | null;
+  userMemory?: string | null;
 }): string {
   const parts: string[] = [];
 
@@ -62,6 +63,12 @@ export function buildSystemPrompt(params: {
         "이번 대화에서 특히 반드시 지켜야 할 안전 규칙:",
         ...params.matchedRules.map((r) => `- (${r.rule_id} ${r.category}) ${r.rule_text}`),
       ].join("\n"),
+    );
+  }
+
+  if (params.userMemory) {
+    parts.push(
+      `이 사용자와의 이전 대화 메모(참고용, 확정된 사실이 아님 — 유형 단정이나 진단 근거로 쓰지 말 것):\n${params.userMemory}`,
     );
   }
 

@@ -70,6 +70,23 @@ describe("buildSystemPrompt", () => {
     assert.match(p, /단정하지 말고/);
   });
 
+  test("사용자 메모가 있으면 '확정된 사실 아님' 경고와 함께 포함된다", () => {
+    const p = buildSystemPrompt({
+      sections: SECTIONS,
+      matchedRules: [],
+      route: "wellness",
+      usedClinicalChunk: false,
+      userMemory: "최근 이직 고민을 자주 이야기함.",
+    });
+    assert.match(p, /최근 이직 고민을 자주 이야기함/);
+    assert.match(p, /확정된 사실이 아님/);
+  });
+
+  test("사용자 메모가 없으면 메모 블록이 아예 들어가지 않는다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    assert.doesNotMatch(p, /이전 대화 메모/);
+  });
+
   test("매칭된 안전 규칙 원문이 그대로 포함된다", () => {
     const p = buildSystemPrompt({
       sections: SECTIONS,

@@ -16,8 +16,14 @@ type ChunkLike = {
   clinical_sensitive: boolean;
 };
 type ServiceLike = { id: string; title: string; text: string; doNot?: string | null };
-export type FrameworkHint = { framework_name: string; steps: string[] };
+export type FrameworkHint = { purpose: string; steps: string[] };
 export type PersonaHint = { label: string; axis: string };
+
+// frameworks.steps는 "WANT: 정말 원하는가" 처럼 영문 약어가 붙어 있다. 사용자에게 영어 약어가
+// 그대로 노출되지 않도록 앞부분(영문+콜론)만 떼어내고 한국어 설명만 남긴다.
+function stripEnglishLabel(step: string): string {
+  return step.replace(/^[A-Za-z][A-Za-z/\-\s]*:\s*/, "");
+}
 
 function evidenceCaution(level: string): string | null {
   return /Low|Needs|Mixed|Secondary/i.test(level)
@@ -52,6 +58,7 @@ export function buildSystemPrompt(params: {
   frameworkHint?: FrameworkHint | null;
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
+  turnCount?: number;
 }): string {
   const parts: string[] = [];
 
@@ -103,8 +110,9 @@ export function buildSystemPrompt(params: {
   if (params.frameworkHint) {
     parts.push(
       [
-        `참고 프레임워크: ${params.frameworkHint.framework_name}`,
-        ...params.frameworkHint.steps.map((s) => `  ${s}`),
+        `참고 프레임워크(${params.frameworkHint.purpose}):`,
+        ...params.frameworkHint.steps.map((s) => `  - ${stripEnglishLabel(s)}`),
+        "이 프레임워크의 영문 약어나 이름을 사용자에게 그대로 노출하지 말고, 자연스러운 한국어 표현으로 녹여서 쓰세요.",
       ].join("\n"),
     );
   }
@@ -126,12 +134,26 @@ export function buildSystemPrompt(params: {
 
   if (params.route === "wellness" || params.route === "life_decision") {
     parts.push(
-      "사용자의 말에 괴롭힘·따돌림·폭언처럼 안전과 관련될 수 있지만 신체적 위험 여부가 명확하지 않은 표현이 있다면, 위로나 조언을 하기 전에 먼저 신체적인 위협이나 폭력이 있었는지, 아니면 정신적으로 힘든 상황인지를 부드럽게 확인하는 질문을 하세요. 위험 신호가 확인되면 그 부분을 우선하고, 아니라면 이어서 감정을 다루세요.",
+      "사용자의 말에 괴롭힘·따돌림·폭언처럼 안전과 관련될 수 있지만 신체적 위험 여부가 명확하지 않은 표현이 있다면, 위로나 조언을 하기 전에 먼저 신체적인 위협이나 폭력이 있었는지, 아니면 정신적으로 힘든 상황인지를 부드럽게 확인하는 질문을 하세요. '정신적 폭력'이나 '언어폭력'처럼 신체적 위해가 없다고 이미 밝혀진 경우에는 다시 묻지 말고 감정을 다루는 단계로 넘어가세요.",
+    );
+  }
+
+  parts.push(
+    "이 메시지는 안전 라우터를 거쳐 자살·자해나 신체적 위험이 있다고 판단되지 않았습니다. 극단적인 선택이나 자살 여부를 먼저 가정해서 묻지 마세요. 사용자가 실제로 그런 신호를 보이면 그때 자연스럽게 안전을 확인하면 되고, '그냥', '힘들다' 같은 일상적인 표현을 위기 신호로 과대 해석하지 마세요.",
+  );
+
+  if ((params.turnCount ?? 0) >= 3) {
+    parts.push(
+      "이미 이 대화에서 여러 차례 질문했습니다. 더 이상 새로운 확인 질문만 반복하지 말고, 지금까지 들은 내용을 바탕으로 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 것을 2~3가지 구체적으로 제안하세요. 마지막에는 새 질문 하나 대신, 추가로 궁금하거나 다르게 다루고 싶은 부분이 있는지 물어보며 마무리하세요.",
     );
   }
 
   parts.push(
     "위 내용을 필요한 만큼만 활용해 Reflect(사용자 경험 반영) → Connect(관련 지식을 필요한 만큼만 연결) → Clarify(핵심 구분) → Ask(한 번에 질문 하나만) 순서로 답하세요. 한국어로, 300~500자 내외로 간결하게 답하세요.",
+  );
+
+  parts.push(
+    "형식: **볼드**나 * 목록 같은 마크다운 기호를 쓰지 말고 일반 텍스트로만 답하세요. 강조하고 싶으면 문장으로 표현하세요. 내용이 3줄을 넘거나 다른 주제·단계로 넘어갈 때는 빈 줄로 문단을 나눠서 모바일 화면에서 읽기 쉽게 하세요.",
   );
 
   return parts.join("\n\n");

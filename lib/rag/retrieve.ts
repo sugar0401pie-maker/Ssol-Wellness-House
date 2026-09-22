@@ -121,16 +121,18 @@ export async function retrieveKnowledgeChunks(
     .slice(0, finalCount);
 }
 
-export type FrameworkHint = { framework_id: string; framework_name: string; steps: string[] };
+export type FrameworkHint = { framework_id: string; purpose: string; steps: string[] };
 
 // route 5(인생 결정)에서, 검색된 chunk의 글(article)에 연결된 프레임워크가 있으면 함께 안내한다.
 // frameworks는 11행뿐이라 별도 검색 없이 전체를 훑는다.
+// framework_name은 "WANT-CAN-NEED-ENOUGH"처럼 영문 약어라 사용자에게 노출하지 않고,
+// 대신 한국어로 된 purpose를 쓴다 (영문 약어 제거는 lib/rag/prompt.ts에서 한 번 더 처리).
 export async function findFrameworkHint(articleIds: string[]): Promise<FrameworkHint | null> {
   if (!articleIds.length) return null;
   const admin = createAdminClient();
-  const { data } = await admin.from("frameworks").select("framework_id,framework_name,steps,linked_article_ids");
+  const { data } = await admin.from("frameworks").select("framework_id,purpose,steps,linked_article_ids");
   const match = (data ?? []).find((f) => (f.linked_article_ids ?? []).some((a: string) => articleIds.includes(a)));
   if (!match) return null;
   const steps = Array.isArray(match.steps) ? match.steps.map((s: unknown) => String(s)) : [];
-  return { framework_id: match.framework_id, framework_name: match.framework_name, steps };
+  return { framework_id: match.framework_id, purpose: match.purpose, steps };
 }

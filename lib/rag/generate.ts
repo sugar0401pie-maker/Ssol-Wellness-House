@@ -100,6 +100,9 @@ export async function generateAnswer(params: {
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
+    // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에
+    // 요약·제안으로 넘어가야 하는지 판단하는 데 쓴다.
+    turnCount: params.recentMessages.filter((m) => m.role === "assistant").length,
   });
 
   const conversation = [...params.recentMessages, { role: "user" as const, content: params.message }];

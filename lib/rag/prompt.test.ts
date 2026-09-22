@@ -120,6 +120,44 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(serviceInfo, /신체적인 위협이나 폭력이 있었는지/);
   });
 
+  test("마크다운 기호를 쓰지 말라는 지침과 문단 구분 지침이 들어간다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    assert.match(p, /마크다운 기호를 쓰지 말고/);
+    assert.match(p, /빈 줄로 문단을 나눠서/);
+  });
+
+  test("자살·위험을 먼저 가정해서 묻지 말라는 지침이 모든 route에 들어간다", () => {
+    const wellness = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    const clinical = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "clinical_distress", usedClinicalChunk: true });
+    assert.match(wellness, /극단적인 선택이나 자살 여부를 먼저 가정해서 묻지 마세요/);
+    assert.match(clinical, /극단적인 선택이나 자살 여부를 먼저 가정해서 묻지 마세요/);
+  });
+
+  test("직전 대화가 3턴 미만이면 요약·제안 지침이 들어가지 않는다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
+    assert.doesNotMatch(p, /지금 상황은 이런 것 같아요/);
+  });
+
+  test("직전 대화가 3턴 이상이면 요약하고 지금 해볼 수 있는 것을 제안하라는 지침이 들어간다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 3 });
+    assert.match(p, /지금 상황은 이런 것 같아요/);
+    assert.match(p, /2~3가지 구체적으로 제안/);
+  });
+
+  test("프레임워크의 영문 약어(WANT: 등)는 그대로 노출되지 않고, 한국어 설명만 남는다", () => {
+    const p = buildSystemPrompt({
+      sections: SECTIONS,
+      matchedRules: [],
+      route: "life_decision",
+      usedClinicalChunk: false,
+      frameworkHint: { purpose: "현재 상황에서 적절한 노력 수준 탐색", steps: ["WANT: 정말 원하는가", "CAN: 지금 감당 가능한가"] },
+    });
+    assert.match(p, /정말 원하는가/);
+    assert.match(p, /지금 감당 가능한가/);
+    assert.doesNotMatch(p, /WANT:/);
+    assert.doesNotMatch(p, /CAN:/);
+  });
+
   test("매칭된 안전 규칙 원문이 그대로 포함된다", () => {
     const p = buildSystemPrompt({
       sections: SECTIONS,

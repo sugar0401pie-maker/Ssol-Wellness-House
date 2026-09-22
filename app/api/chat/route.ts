@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { determineRoute } from "@/lib/safety/route";
+import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES } from "@/lib/safety/crisisResponses";
+import { generateAnswer } from "@/lib/rag/generate";
 import type { RouteId } from "@/lib/safety/types";
 
-// C4 단계의 임시 버전: 안전 라우팅 + 위기/폭력 고정 응답까지만 동작한다.
-// route 3~7(진단·인생결정·일상웰니스 등)의 실제 검색·AI 답변 생성은 C5에서 이 파일에 이어붙인다.
-// 사용량 제한(하루 N회, 월 상한)은 아직 넣지 않았다 — C5에서 함께 넣을 예정.
+// C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성이 모두 연결된 버전.
+// 아직 없는 것: 사용량 제한(하루 N회, 월 상한). 실제 모델별 비용을 시뮬레이션한 뒤 값을 정하고
+// 넣을 예정이다 — 위기(route 1·2) 응답은 그 제한이 생겨도 항상 예외로 둔다.
 export const runtime = "nodejs";
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -118,13 +120,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sessionId, route: decision.route, reply: fixed, done: true, ...routingMeta });
   }
 
-  // route 3~7: 검색·답변 생성은 다음 단계(C5)에서 연결된다. 지금은 판정 결과만 돌려준다.
+  // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
+  const { rules: safetyRules } = await getSafetyData();
+  const result = await generateAnswer({
+    route: decision.route,
+    matchedRuleIds: decision.matchedRuleIds,
+    message,
+    recentMessages,
+    safetyRules,
+  });
+
+  await admin.from("chat_messages").insert({
+    session_id: sessionId,
+    user_id: userId,
+    role: "assistant",
+    content: result.reply,
+    route: decision.route,
+    retrieved_chunk_ids: result.retrievedChunkIds.length ? result.retrievedChunkIds : null,
+    framework_id: result.frameworkId,
+  });
+
+  const usageTotals = result.usage.reduce(
+    (acc, u) => ({ inputTokens: acc.inputTokens + u.inputTokens, outputTokens: acc.outputTokens + u.outputTokens }),
+    { inputTokens: 0, outputTokens: 0 },
+  );
+
   return NextResponse.json({
     sessionId,
     route: decision.route,
-    reply: null,
-    done: false,
-    note: "안전 판정 완료. 답변 생성은 다음 단계(C5)에서 연결됩니다.",
+    reply: result.reply,
+    done: true,
     ...routingMeta,
+    // 사용량 정보(민감정보 아님) — 비용 시뮬레이션(scripts/cost-simulation.mjs)이 이 값을 읽는다.
+    usage: {
+      classifierInputTokens: decision.classifierUsage?.inputTokens ?? 0,
+      classifierOutputTokens: decision.classifierUsage?.outputTokens ?? 0,
+      generationInputTokens: usageTotals.inputTokens,
+      generationOutputTokens: usageTotals.outputTokens,
+      regenerated: result.regenerated,
+    },
   });
 }

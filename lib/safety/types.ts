@@ -34,4 +34,6 @@ export type RouteDecision = {
   classifierUnavailable: boolean;
   // 분류기의 판단 근거(로그·감사 전용). 사용자에게 보여주지 않는다.
   reasoning?: string;
+  // 분류기 호출의 토큰 사용량 (비용 시뮬레이션용). 즉시 판정(키워드)이거나 호출 실패 시에는 없다.
+  classifierUsage?: { inputTokens: number; outputTokens: number };
 };

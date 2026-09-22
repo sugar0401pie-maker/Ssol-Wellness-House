@@ -1,0 +1,96 @@
+import "server-only";
+import type { SafetyRule } from "@/lib/safety/rules";
+import type { RouteId } from "@/lib/safety/types";
+import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
+import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
+import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
+import { buildSystemPrompt } from "@/lib/rag/prompt.ts";
+import { generateReply } from "@/lib/ai/chatModel";
+import { checkOutput } from "@/lib/safety/outputCheck";
+
+// 출력 검사를 두 번 다 통과하지 못했을 때만 쓰는 마지막 안전망. 이 문장 자체는 규칙을 어길 수
+// 없도록 고정 문구로 두었다 (진단·약물 지시·효과 보장이 전혀 없음).
+const SAFE_FALLBACK_REPLY =
+  "지금 이 부분은 조심스럽게 정리해서 답해드리고 싶어요. 제가 직접 진단하거나 약물을 안내해 드릴 수는 없지만, 정신건강의학과 등 전문가와 상담하시면 더 정확한 도움을 받으실 수 있어요. 지금 가장 걱정되는 부분이 무엇인지 조금 더 이야기해주실 수 있을까요?";
+
+export type GenerationUsage = { inputTokens: number; outputTokens: number };
+
+export async function generateAnswer(params: {
+  route: RouteId;
+  matchedRuleIds: string[];
+  message: string;
+  recentMessages: { role: "user" | "assistant"; content: string }[];
+  safetyRules: SafetyRule[];
+}): Promise<{
+  reply: string;
+  retrievedChunkIds: string[];
+  frameworkId: string | null;
+  usage: GenerationUsage[];
+  regenerated: boolean;
+}> {
+  const sections = await getSystemPromptSections();
+  const matchedRules = params.safetyRules
+    .filter((r) => params.matchedRuleIds.includes(r.rule_id))
+    .map((r) => ({ rule_id: r.rule_id, category: r.category, rule_text: r.rule_text }));
+
+  let knowledgeChunks: Awaited<ReturnType<typeof retrieveKnowledgeChunks>> = [];
+  let serviceResults: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
+  let frameworkHint: Awaited<ReturnType<typeof findFrameworkHint>> = null;
+
+  if (params.route === "service_info") {
+    serviceResults = await searchServiceKnowledge(params.message);
+  } else {
+    const scope = params.route === "clinical_diagnosis" || params.route === "clinical_distress" ? "clinical" : "general";
+    knowledgeChunks = await retrieveKnowledgeChunks(params.message, params.recentMessages, scope, params.safetyRules);
+    if (params.route === "life_decision" && knowledgeChunks.length) {
+      frameworkHint = await findFrameworkHint(knowledgeChunks.map((c) => c.article_id));
+    }
+  }
+
+  const usedClinicalChunk = knowledgeChunks.some((c) => c.clinical_sensitive);
+  const system = buildSystemPrompt({
+    sections,
+    matchedRules,
+    route: params.route,
+    usedClinicalChunk,
+    knowledgeChunks: knowledgeChunks.length ? knowledgeChunks : undefined,
+    serviceResults: serviceResults.length ? serviceResults : undefined,
+    frameworkHint,
+  });
+
+  const conversation = [...params.recentMessages, { role: "user" as const, content: params.message }];
+  const usage: GenerationUsage[] = [];
+  let reply: string;
+  let regenerated = false;
+
+  try {
+    const first = await generateReply(system, conversation);
+    usage.push({ inputTokens: first.usage.inputTokens, outputTokens: first.usage.outputTokens });
+    const check1 = checkOutput(first.text, { usedClinicalChunk });
+
+    if (check1.ok) {
+      reply = first.text;
+    } else {
+      regenerated = true;
+      const retrySystem = `${system}\n\n[내부 검수 실패 — 다시 작성] 방금 만든 답변이 아래 규칙을 어겼습니다. 같은 실수를 반복하지 말고 다시 작성하세요:\n${check1.violations.map((v) => `- ${v}`).join("\n")}`;
+      const second = await generateReply(retrySystem, conversation);
+      usage.push({ inputTokens: second.usage.inputTokens, outputTokens: second.usage.outputTokens });
+      const check2 = checkOutput(second.text, { usedClinicalChunk });
+      reply = check2.ok ? second.text : SAFE_FALLBACK_REPLY;
+      if (!check2.ok) {
+        console.warn("출력 검사 2회 연속 실패, 안전한 대체 문구 사용:", check2.violations);
+      }
+    }
+  } catch (e) {
+    console.error("답변 생성 실패:", e instanceof Error ? e.message : e);
+    reply = SAFE_FALLBACK_REPLY;
+  }
+
+  return {
+    reply,
+    retrievedChunkIds: knowledgeChunks.map((c) => c.chunk_id),
+    frameworkId: frameworkHint?.framework_id ?? null,
+    usage,
+    regenerated,
+  };
+}

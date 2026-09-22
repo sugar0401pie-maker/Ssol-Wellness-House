@@ -37,7 +37,14 @@ const ROUTES_TABLE: ResponseRoute[] = [
 ];
 
 function classifierSays(partial: Partial<ClassifierResult> & { route: ClassifierResult["route"] }): ClassifierResult {
-  return { confidence: "high", possibleCrisis: false, possibleViolence: false, reasoning: "test", ...partial };
+  return {
+    confidence: "high",
+    possibleCrisis: false,
+    possibleViolence: false,
+    reasoning: "test",
+    usage: { inputTokens: 0, outputTokens: 0 },
+    ...partial,
+  };
 }
 
 describe("키워드 검사", () => {

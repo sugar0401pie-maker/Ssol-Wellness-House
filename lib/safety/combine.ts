@@ -61,5 +61,6 @@ export function combineWithClassifier(
     confidence: classifier.confidence,
     classifierUnavailable: false,
     reasoning: classifier.reasoning,
+    classifierUsage: classifier.usage,
   };
 }

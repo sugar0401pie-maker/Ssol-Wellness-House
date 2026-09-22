@@ -15,6 +15,7 @@ export type ClassifierResult = {
   possibleCrisis: boolean;
   possibleViolence: boolean;
   reasoning: string; // 로그 전용. 사용자에게 그대로 보여주지 않는다.
+  usage: { inputTokens: number; outputTokens: number };
 };
 
 const ROUTE_SCHEMA = {
@@ -102,6 +103,10 @@ export async function classifyMessage(
       possibleCrisis: parsed.possible_crisis,
       possibleViolence: parsed.possible_violence,
       reasoning: parsed.reasoning,
+      usage: {
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+      },
     };
   } catch (e) {
     throw new ClassifierUnavailableError(e instanceof Error ? e.message : String(e));

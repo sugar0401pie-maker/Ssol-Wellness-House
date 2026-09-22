@@ -126,11 +126,12 @@ describe("buildSystemPrompt", () => {
     assert.match(p, /빈 줄로 문단을 나눠서/);
   });
 
-  test("자살·위험을 먼저 가정해서 묻지 말라는 지침이 모든 route에 들어간다", () => {
+  test("자살·극단적 선택을 먼저 꺼내거나 가정하지 말라는 지침이 모든 route에 들어간다", () => {
     const wellness = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
     const clinical = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "clinical_distress", usedClinicalChunk: true });
-    assert.match(wellness, /극단적인 선택이나 자살 여부를 먼저 가정해서 묻지 마세요/);
-    assert.match(clinical, /극단적인 선택이나 자살 여부를 먼저 가정해서 묻지 마세요/);
+    assert.match(wellness, /먼저 꺼내거나 확인하는 질문을 하지 마세요/);
+    assert.match(clinical, /먼저 꺼내거나 확인하는 질문을 하지 마세요/);
+    assert.match(wellness, /사용자가 말한 수준에서 받아들이세요/);
   });
 
   test("직전 대화가 3턴 미만이면 요약·제안 지침이 들어가지 않는다", () => {

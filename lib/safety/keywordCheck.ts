@@ -15,11 +15,20 @@ const RULE_ROUTE: Partial<Record<string, RouteId>> = {
   "SAFE-012": "clinical_distress",
 };
 
-// 단독으로는 무관한 문장에서도 걸리는 표현. 예: "여행 계획을 구체적으로 세웠어요".
-// 이런 표현만 있을 때는 즉시 위기 응답으로 보내지 않고, 분류기가 문맥을 보고 판단하게 한다.
-// (2026-09-22 결정: safety_rules 원본 데이터는 그대로 두고, 이 파일에서만 예외 처리)
-const WEAK_TRIGGERS: Record<string, string[]> = {
+// 단독으로는 무관한 문장에서도 걸리는 표현. 예: "여행 계획을 구체적으로 세웠어요", "오늘 좀
+// 무기력하네요"(일상적인 표현일 뿐), "회의를 중단할지"(약물 중단과 무관), "차 진단이 필요해요"
+// (자동차 얘기). 이런 표현만 있을 때는 route를 강제로 올리지 않고 분류기가 문맥으로 판단하게 한다.
+// combine.ts가 weak=true인 매치는 moreSevere에 넣지 않는다.
+// (safety_rules 원본 데이터는 그대로 두고, 이 파일에서만 예외 처리)
+// 2026-09-22 실사용 중 발견: "무기력"/"진단"/"치료"/"중단"/"용량"/"부작용" 같은 흔한 단어
+// 하나만으로 일상 대화가 전부 의료 경계(clinical_diagnosis/clinical_distress)로 강제 이동하던 버그.
+// export해서 classify.ts의 route 안내문에서도 같은 기준을 쓴다(약한 단어를 예시로 노출하면
+// 분류기 스스로도 그 단어만 보고 오판하기 때문 — 2026-09-22 발견).
+export const WEAK_TRIGGERS: Record<string, string[]> = {
   "SAFE-013": ["구체적 계획"],
+  "SAFE-007": ["진단", "치료"],
+  "SAFE-008": ["중단", "용량", "부작용"],
+  "SAFE-009": ["무기력"],
 };
 
 export type KeywordHit = { ruleId: string; route: RouteId; trigger: string; weak: boolean };

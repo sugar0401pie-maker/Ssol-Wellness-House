@@ -17,7 +17,15 @@ type ChunkLike = {
 };
 type ServiceLike = { id: string; title: string; text: string; doNot?: string | null };
 export type FrameworkHint = { purpose: string; steps: string[] };
-export type PersonaHint = { label: string; axis: string };
+export type PersonaHint = {
+  label: string;
+  axis: string;
+  tagline?: string;
+  blurb?: string;
+  traits?: string[];
+  scoresSummary?: string;
+};
+export type PersonaMode = "subtle" | "characterization";
 
 // frameworks.steps는 "WANT: 정말 원하는가" 처럼 영문 약어가 붙어 있다. 사용자에게 영어 약어가
 // 그대로 노출되지 않도록 앞부분(영문+콜론)만 떼어내고 한국어 설명만 남긴다.
@@ -53,11 +61,13 @@ export function buildSystemPrompt(params: {
   matchedRules: RuleLike[];
   route: RouteId;
   usedClinicalChunk: boolean;
+  clinicalBoundaryAlreadyStated?: boolean;
   knowledgeChunks?: ChunkLike[];
   serviceResults?: ServiceLike[];
   frameworkHint?: FrameworkHint | null;
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
+  personaMode?: PersonaMode;
   turnCount?: number;
 }): string {
   const parts: string[] = [];
@@ -82,19 +92,45 @@ export function buildSystemPrompt(params: {
   }
 
   if (params.personaHint) {
-    parts.push(
-      [
-        `[참고] 이 사용자의 웰니스 유형: ${params.personaHint.label} (${params.personaHint.axis}).`,
-        "이건 심리테스트 결과로, 상담 관점과 예시를 고를 때 참고하는 성향 힌트일 뿐이다.",
-        "절대 진단이나 문제의 원인으로 쓰지 말고, 사용자에게 유형을 직접 언급하거나 '당신은 이 유형이라서 그래요'라고 말하지 않는다.",
-        "답변의 톤, 예시, 강조하는 프레임워크 정도만 이 성향에 자연스럽게 맞춘다.",
-      ].join(" "),
-    );
+    if (params.personaMode === "characterization" && params.personaHint.blurb) {
+      // "성향 질문" 전용 — 사용자가 자기 성향을 직접 물어본 경우에만 쓰는, 더 적극적인 캐릭터 해석 모드.
+      // 일반 고민 상담(subtle)에서는 절대 이 모드로 전환하지 않는다.
+      parts.push(
+        [
+          `이 사용자는 자신의 웰니스 유형에 대해 직접 물어봤습니다. 아래는 공식 유형 설명입니다:`,
+          `[${params.personaHint.label}] ${params.personaHint.tagline ?? ""}`,
+          params.personaHint.blurb,
+          params.personaHint.traits?.length ? `특징: ${params.personaHint.traits.join(", ")}` : "",
+          params.personaHint.scoresSummary ? `이 사용자의 5개 영역 점수: ${params.personaHint.scoresSummary}` : "",
+          "위 설명과 점수를 적극적으로 활용해 캐릭터를 해석하듯 생생하고 구체적으로 답하세요. 유형 이름을 직접 언급해도 됩니다. 점수에서 가장 두드러지거나 상대적으로 낮은 영역이 있다면 그 부분도 자연스럽게 짚어서, 같은 유형이라도 이 사용자만의 결과처럼 느껴지게 하세요.",
+          "사용자가 지금 이야기한 생각이나 행동을 이 유형의 전형적인 경향에 비추어 직접 판단하세요. '이 유형은 보통 이런 경향이 있는데, 지금 말씀하신 데서도 그런 모습이 보여요'처럼 구체적이고 확신 있게 짚어주세요. 애매하게 얼버무리거나 매번 '~일 수도 있고 아닐 수도 있다'는 식으로 흐리지 마세요.",
+          "다만 이건 지금 모습을 유형 관점에서 있는 그대로 읽어보는 해석이지, 그 어려움이 '왜' 생겼는지에 대한 원인 설명이 아닙니다. 유형을 문제의 원인으로 지목하거나 진단하듯 말하지 마세요.",
+          "마지막 문장에서만 '실제로 이런 모습이 많이 느껴지시나요, 아니면 다르게 느껴지시나요?'처럼 사용자가 동의하거나 다르게 말할 여지를 한 번 남기세요.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+    } else {
+      parts.push(
+        [
+          `[참고] 이 사용자의 웰니스 유형: ${params.personaHint.label} (${params.personaHint.axis}).`,
+          "이건 심리테스트 결과로, 상담 관점과 예시를 고를 때 참고하는 성향 힌트일 뿐이다.",
+          "절대 진단이나 문제의 원인으로 쓰지 말고, 사용자에게 유형을 직접 언급하거나 '당신은 이 유형이라서 그래요'라고 말하지 않는다.",
+          "답변의 톤, 예시, 강조하는 프레임워크 정도만 이 성향에 자연스럽게 맞춘다.",
+        ].join(" "),
+      );
+    }
   }
 
   if (params.usedClinicalChunk) {
+    // 2026-09-22 결정: "진단을 대신할 수 없어요" 식 안내를 대화마다 반복하지 말라는 실사용
+    // 피드백 반영. 이번 세션에서 이미 한 번 안내했다면(clinicalBoundaryAlreadyStated) 문구를
+    // 반복하는 대신 구체적인 자기돌봄 제안으로 넘어간다. 첫 안내 때도 안내로 끝내지 않고
+    // 자기돌봄 제안을 함께 준다 — 안내만 하고 대화를 닫아버리지 않기 위함.
     parts.push(
-      "지금 답변은 진단·정신건강 관련 참고자료를 사용합니다. 진단하지 말고, 약물 시작/중단/용량을 지시하지 말고, 정신건강의학과 등 전문가 상담을 반드시 안내하세요.",
+      params.clinicalBoundaryAlreadyStated
+        ? "지금 답변도 진단·정신건강 관련 참고자료를 사용하지만, 전문가 상담 안내는 이번 대화에서 이미 한 번 전달했습니다. 같은 안내 문구를 다시 반복하지 말고, 대신 지금 이야기에 맞는 구체적인 자기돌봄·기분 전환 방법을 1~2가지 제안하세요. 여전히 진단하거나 약물 시작/중단/용량을 지시하지는 마세요."
+        : "지금 답변은 진단·정신건강 관련 참고자료를 사용합니다. 진단하지 말고, 약물 시작/중단/용량을 지시하지 말고, 정신건강의학과 등 전문가 상담을 안내하세요. 안내만 하고 끝내지 말고, 지금 바로 시도해볼 수 있는 구체적인 자기돌봄·기분 전환 방법도 1~2가지 함께 제안하세요.",
     );
   }
 

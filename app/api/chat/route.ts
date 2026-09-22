@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { message?: unknown; sessionId?: unknown };
+  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
+  const isPersonaQuestion = body.isPersonaQuestion === true;
   if (!message) return NextResponse.json({ error: "메시지를 입력해주세요." }, { status: 400 });
   if (message.length > MAX_MESSAGE_LENGTH) {
     return NextResponse.json({ error: `메시지가 너무 길어요 (최대 ${MAX_MESSAGE_LENGTH}자).` }, { status: 400 });
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
     if (error || !data) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 });
     sessionId = data.session_id;
   }
+  if (!sessionId) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 }); // TS 안전망(도달 안 함)
 
   // 최근 대화(최대 10개)를 분류기 문맥으로 사용
   const { data: recentRows } = await admin
@@ -163,6 +165,8 @@ export async function POST(req: NextRequest) {
     recentMessages,
     safetyRules,
     userId,
+    sessionId,
+    isPersonaQuestion,
   });
 
   await admin.from("chat_messages").insert({

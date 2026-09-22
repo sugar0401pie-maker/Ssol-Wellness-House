@@ -6,7 +6,9 @@
 //     안전 규칙 원문이 완곡한 진단 암시도 금지하기 때문이다.
 //  2) 약물 시작/중단/용량 지시 (SAFE-008)
 //  3) 검증 안 된 효과·확률 보장 (SAFE-004/016)
-//  4) 임상 chunk를 사용한 답변인데 전문가 상담 안내가 빠진 경우 (SAFE-007)
+//  4) 임상 chunk를 사용한 답변인데 전문가 상담 안내가 빠진 경우 (SAFE-007) — 단, 이번 세션에서
+//     이미 한 번 안내했다면(clinicalBoundaryAlreadyStated) 매 턴 반복을 강요하지 않는다
+//     (2026-09-22 결정: 상담 1회차부터 계속 같은 문구가 반복된다는 실사용 피드백).
 export type OutputCheckResult = { ok: boolean; violations: string[] };
 
 const DISORDER_NOUNS = [
@@ -26,7 +28,10 @@ function findSentences(text: string): string[] {
   return text.split(/(?<=[.!?요다])\s+|\n+/).filter(Boolean);
 }
 
-export function checkOutput(reply: string, opts: { usedClinicalChunk: boolean }): OutputCheckResult {
+export function checkOutput(
+  reply: string,
+  opts: { usedClinicalChunk: boolean; clinicalBoundaryAlreadyStated?: boolean },
+): OutputCheckResult {
   const violations: string[] = [];
   const sentences = findSentences(reply);
 
@@ -46,7 +51,7 @@ export function checkOutput(reply: string, opts: { usedClinicalChunk: boolean })
     }
   }
 
-  if (opts.usedClinicalChunk && !REFERRAL_PHRASES.some((p) => reply.includes(p))) {
+  if (opts.usedClinicalChunk && !opts.clinicalBoundaryAlreadyStated && !REFERRAL_PHRASES.some((p) => reply.includes(p))) {
     violations.push("임상 정보를 참고했는데 전문가 상담 안내가 빠졌습니다.");
   }
 

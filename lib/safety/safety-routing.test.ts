@@ -85,6 +85,24 @@ describe("키워드 검사", () => {
   test("관련 없는 일상 문장은 아무것도 매치되지 않는다", () => {
     assert.deepEqual(findKeywordHits("오늘 점심 뭐 먹을지 고민이에요", RULES), []);
   });
+
+  test("회귀 테스트: '무기력'/'진단'/'치료'/'중단'/'용량'/'부작용' 같은 흔한 단어는 매치는 되지만 weak로 표시된다", () => {
+    // 2026-09-22 실사용 중 발견: 이 단어들 하나만으로 일상 대화가 전부 의료 경계로 강제 이동하던 버그.
+    const cases: [string, string][] = [
+      ["오늘 하루 종일 좀 무기력하네요", "SAFE-009"],
+      ["정확한 진단이 필요한 문제 같아요, 차가 이상해서요", "SAFE-007"],
+      ["이 문제를 어떻게 치료해야 할지 모르겠어요", "SAFE-007"],
+      ["회의를 중단해야 할지 계속해야 할지 고민이에요", "SAFE-008"],
+      ["이 정도 용량이면 충분할까요?", "SAFE-008"],
+      ["이 정책의 부작용이 걱정돼요", "SAFE-008"],
+    ];
+    for (const [msg, ruleId] of cases) {
+      const hits = findKeywordHits(msg, RULES);
+      const hit = hits.find((h) => h.ruleId === ruleId);
+      assert.ok(hit, `"${msg}"에서 ${ruleId} 매치를 찾지 못함`);
+      assert.equal(hit!.weak, true, `"${msg}"의 ${ruleId} 매치가 weak여야 함`);
+    }
+  });
 });
 
 describe("severity 비교", () => {

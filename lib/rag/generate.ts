@@ -14,29 +14,94 @@ import { checkOutput } from "@/lib/safety/outputCheck";
 const SAFE_FALLBACK_REPLY =
   "지금 이 부분은 조심스럽게 정리해서 답해드리고 싶어요. 제가 직접 진단하거나 약물을 안내해 드릴 수는 없지만, 정신건강의학과 등 전문가와 상담하시면 더 정확한 도움을 받으실 수 있어요. 지금 가장 걱정되는 부분이 무엇인지 조금 더 이야기해주실 수 있을까요?";
 
+// 심리테스트 프로토타입의 DOMAINS 라벨을 그대로 사용 (5개 영역, wellness_profiles.theme_scores의 키).
+const DOMAIN_LABELS: Record<string, string> = {
+  relate: "관계·소속",
+  worth: "자기가치·인정",
+  control: "통제·미래",
+  happy: "행복",
+  meaning: "의미·방향",
+};
+
+// 5개 영역 점수를 "관계·소속 12 · 자기가치·인정 13 · 통제·미래 18(가장 높음) · 행복 10(가장 낮음) · 의미·방향 14"
+// 같은 한 줄로 요약한다. 같은 유형이라도 사용자마다 다른 점수를 답변에 반영하기 위함
+// (2026-09-22 결정 — "모든 사람이 비슷한 결과가 나온다"는 피드백에 대한 조치).
+function summarizeThemeScores(scores: unknown): string | undefined {
+  if (!scores || typeof scores !== "object") return undefined;
+  const entries: (readonly [string, number])[] = [];
+  for (const [k, v] of Object.entries(scores as Record<string, unknown>)) {
+    if (k in DOMAIN_LABELS && typeof v === "number") entries.push([k, v] as const);
+  }
+  if (entries.length < 2) return undefined;
+
+  const max = Math.max(...entries.map(([, v]) => v));
+  const min = Math.min(...entries.map(([, v]) => v));
+  return entries
+    .map(([k, v]) => {
+      const tag = v === max && max !== min ? "가장 높음" : v === min && max !== min ? "가장 낮음" : null;
+      return `${DOMAIN_LABELS[k]} ${v}${tag ? `(${tag})` : ""}`;
+    })
+    .join(" · ");
+}
+
 // 사용자의 웰니스 유형(디저트 유형)을 상담 관점 힌트로 쓰기 위해 불러온다.
 // 2026-09-22 결정: 기본 반영, opt-out은 나중에 설정 화면이 생기면 쓸 컬럼만 미리 준비해둠.
-// 진단이나 검색 하드 필터로는 절대 쓰지 않는다 — SAFE-005.
-async function loadPersonaHint(userId: string): Promise<{ label: string | null; hint: PersonaHint | null }> {
-  const admin = createAdminClient();
+// persona_profiles(상세 설명)·theme_scores(5개 영역 점수)는 항상 함께 불러오되, 그걸 얼마나
+// 적극적으로 쓸지(subtle/characterization)는 prompt.ts에서 personaMode로 결정한다 —
+// 진단이나 검색 하드 필터로는 절대 쓰지 않는다 (SAFE-005).
+//
+// 세션당 1회만 조회하고 그 결과를 chat_sessions.persona_snapshot에 캐시해 재사용한다
+// (2026-09-22 결정). 새 대화를 시작해야 최신 정보로 다시 조회된다.
+async function loadPersonaHint(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  sessionId: string,
+): Promise<{ label: string | null; hint: PersonaHint | null }> {
+  const { data: session } = await admin.from("chat_sessions").select("persona_snapshot").eq("session_id", sessionId).maybeSingle();
+  if (session?.persona_snapshot) {
+    return session.persona_snapshot as { label: string | null; hint: PersonaHint | null };
+  }
+
+  const snapshot = await computePersonaHint(admin, userId);
+  await admin.from("chat_sessions").update({ persona_snapshot: snapshot }).eq("session_id", sessionId);
+  return snapshot;
+}
+
+async function computePersonaHint(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<{ label: string | null; hint: PersonaHint | null }> {
   const { data: profile } = await admin
     .from("wellness_profiles")
-    .select("dessert_type, persona_hint_opt_out")
+    .select("dessert_type, theme_scores, persona_hint_opt_out")
     .eq("user_id", userId)
     .maybeSingle();
   if (!profile?.dessert_type || profile.persona_hint_opt_out) return { label: null, hint: null };
 
-  const { data: tax } = await admin
-    .from("taxonomy")
-    .select("label_ko, description")
-    .eq("type", "persona")
-    .eq("code", profile.dessert_type)
-    .maybeSingle();
+  const [{ data: tax }, { data: rich }] = await Promise.all([
+    admin.from("taxonomy").select("label_ko, description").eq("type", "persona").eq("code", profile.dessert_type).maybeSingle(),
+    admin.from("persona_profiles").select("tagline, blurb, traits").eq("code", profile.dessert_type).maybeSingle(),
+  ]);
   if (!tax) return { label: null, hint: null };
 
   const shortLabel = tax.label_ko.split(" · ")[0]; // "티라미수 · 설계형" → "티라미수" (chunk의 persona_tags와 형식을 맞춤)
-  return { label: shortLabel, hint: { label: tax.label_ko, axis: tax.description ?? "" } };
+  return {
+    label: shortLabel,
+    hint: {
+      label: tax.label_ko,
+      axis: tax.description ?? "",
+      tagline: rich?.tagline,
+      blurb: rich?.blurb,
+      traits: rich?.traits,
+      scoresSummary: summarizeThemeScores(profile.theme_scores),
+    },
+  };
 }
+
+// "성향 질문" 칩을 눌렀는데 테스트 결과가 없는 경우: AI를 부르지 않고(비용 없음) 테스트부터
+// 안내한다. 2026-09-22 결정: 이 기능만큼은 테스트가 먼저다.
+const NEEDS_TEST_REPLY =
+  "이 질문에 답하려면 먼저 웰니스 유형(성향) 테스트 결과가 필요해요. 아직 테스트를 하지 않으셨다면, 테스트를 완료한 뒤 다시 물어봐 주세요.";
 
 export type GenerationUsage = { inputTokens: number; outputTokens: number };
 
@@ -47,6 +112,8 @@ export async function generateAnswer(params: {
   recentMessages: { role: "user" | "assistant"; content: string }[];
   safetyRules: SafetyRule[];
   userId: string;
+  sessionId: string;
+  isPersonaQuestion?: boolean;
 }): Promise<{
   reply: string;
   retrievedChunkIds: string[];
@@ -54,6 +121,7 @@ export async function generateAnswer(params: {
   usage: GenerationUsage[];
   regenerated: boolean;
 }> {
+  const admin = createAdminClient();
   const sections = await getSystemPromptSections();
   const matchedRules = params.safetyRules
     .filter((r) => params.matchedRuleIds.includes(r.rule_id))
@@ -63,7 +131,11 @@ export async function generateAnswer(params: {
   let serviceResults: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
   let frameworkHint: Awaited<ReturnType<typeof findFrameworkHint>> = null;
 
-  const { label: personaLabel, hint: personaHint } = await loadPersonaHint(params.userId);
+  const { label: personaLabel, hint: personaHint } = await loadPersonaHint(admin, params.userId, params.sessionId);
+
+  if (params.isPersonaQuestion && !personaHint) {
+    return { reply: NEEDS_TEST_REPLY, retrievedChunkIds: [], frameworkId: null, usage: [], regenerated: false };
+  }
 
   if (params.route === "service_info") {
     serviceResults = await searchServiceKnowledge(params.message);
@@ -83,23 +155,26 @@ export async function generateAnswer(params: {
 
   // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
   // 검색이나 안전 판단에는 쓰지 않는다.
-  const { data: memoryRow } = await createAdminClient()
-    .from("user_memory")
-    .select("summary")
-    .eq("user_id", params.userId)
-    .maybeSingle();
+  const [{ data: memoryRow }, { data: sessionMeta }] = await Promise.all([
+    admin.from("user_memory").select("summary").eq("user_id", params.userId).maybeSingle(),
+    admin.from("chat_sessions").select("clinical_boundary_stated_at").eq("session_id", params.sessionId).maybeSingle(),
+  ]);
 
   const usedClinicalChunk = knowledgeChunks.some((c) => c.clinical_sensitive);
+  // 이번 세션에서 전문가 상담 안내를 이미 한 번 전달했는지 (2026-09-22 결정: 매 턴 반복 방지).
+  const clinicalBoundaryAlreadyStated = usedClinicalChunk && !!sessionMeta?.clinical_boundary_stated_at;
   const system = buildSystemPrompt({
     sections,
     matchedRules,
     route: params.route,
     usedClinicalChunk,
+    clinicalBoundaryAlreadyStated,
     knowledgeChunks: knowledgeChunks.length ? knowledgeChunks : undefined,
     serviceResults: serviceResults.length ? serviceResults : undefined,
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
+    personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
     // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에
     // 요약·제안으로 넘어가야 하는지 판단하는 데 쓴다.
     turnCount: params.recentMessages.filter((m) => m.role === "assistant").length,
@@ -113,7 +188,7 @@ export async function generateAnswer(params: {
   try {
     const first = await generateReply(system, conversation);
     usage.push({ inputTokens: first.usage.inputTokens, outputTokens: first.usage.outputTokens });
-    const check1 = checkOutput(first.text, { usedClinicalChunk });
+    const check1 = checkOutput(first.text, { usedClinicalChunk, clinicalBoundaryAlreadyStated });
 
     if (check1.ok) {
       reply = first.text;
@@ -122,7 +197,7 @@ export async function generateAnswer(params: {
       const retrySystem = `${system}\n\n[내부 검수 실패 — 다시 작성] 방금 만든 답변이 아래 규칙을 어겼습니다. 같은 실수를 반복하지 말고 다시 작성하세요:\n${check1.violations.map((v) => `- ${v}`).join("\n")}`;
       const second = await generateReply(retrySystem, conversation);
       usage.push({ inputTokens: second.usage.inputTokens, outputTokens: second.usage.outputTokens });
-      const check2 = checkOutput(second.text, { usedClinicalChunk });
+      const check2 = checkOutput(second.text, { usedClinicalChunk, clinicalBoundaryAlreadyStated });
       reply = check2.ok ? second.text : SAFE_FALLBACK_REPLY;
       if (!check2.ok) {
         console.warn("출력 검사 2회 연속 실패, 안전한 대체 문구 사용:", check2.violations);
@@ -131,6 +206,15 @@ export async function generateAnswer(params: {
   } catch (e) {
     console.error("답변 생성 실패:", e instanceof Error ? e.message : e);
     reply = SAFE_FALLBACK_REPLY;
+  }
+
+  // 이번이 이 세션에서 처음으로 전문가 상담 안내가 나간 턴이면 기록해둔다 — 다음 턴부터는
+  // 문구를 반복하지 않고 자기돌봄 제안으로 넘어가기 위함 (실패해도 답변 자체엔 영향 없음).
+  if (usedClinicalChunk && !clinicalBoundaryAlreadyStated) {
+    await admin
+      .from("chat_sessions")
+      .update({ clinical_boundary_stated_at: new Date().toISOString() })
+      .eq("session_id", params.sessionId);
   }
 
   return {

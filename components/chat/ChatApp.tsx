@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ensureAnonymousSession } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { getStoredAccessCode } from "@/lib/security/accessCodeClient";
+import { SUGGESTED_QUESTION_GROUPS } from "@/lib/persona/suggestedQuestions";
 
 // /api/chat, /api/memory 호출에 공통으로 붙이는 헤더. AccessGate를 통과해야 이 화면이 보이므로
 // 코드가 저장돼 있을 것이지만, 없어도(게이트 비활성 상태) 그냥 빈 값으로 보내면 서버가 알아서 통과시킨다.
@@ -21,13 +22,14 @@ type Message = { id: number; role: "user" | "assistant"; content: string };
 
 // 첫 인사말 (초안). 시스템 프롬프트의 Identity/Goal 섹션과 같은 취지로 작성.
 const GREETING =
-  "안녕하세요, 쏠 웰니스 하우스예요. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주세요. 저는 의사나 의료기관을 대신하지 않고, 생각을 함께 정리하도록 돕는 AI예요.";
+  "안녕하세요, 쏠 웰니스 하우스예요. 저는 웰니스 관련 상담에 도움을 드릴 수 있습니다. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주시기 바랍니다.";
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [memoryPrompt, setMemoryPrompt] = useState<"idle" | "asking" | "saving">("idle");
+  const [showSuggested, setShowSuggested] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -53,11 +55,11 @@ export default function ChatApp() {
     });
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || sending) return;
+  async function send(text: string, options?: { isPersonaQuestion?: boolean }) {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
     setInput("");
-    appendMessage("user", text);
+    appendMessage("user", trimmed);
     setSending(true);
 
     try {
@@ -70,7 +72,11 @@ export default function ChatApp() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: authHeaders(token),
-        body: JSON.stringify({ message: text, sessionId: sessionId.current }),
+        body: JSON.stringify({
+          message: trimmed,
+          sessionId: sessionId.current,
+          isPersonaQuestion: options?.isPersonaQuestion ?? false,
+        }),
       });
 
       if (!res.ok) {
@@ -88,6 +94,11 @@ export default function ChatApp() {
       appendMessage("assistant", "네트워크 문제로 응답을 받지 못했어요. 다시 시도해주세요.");
     }
     setSending(false);
+  }
+
+  function selectSuggestedQuestion(text: string) {
+    setShowSuggested(false);
+    void send(text, { isPersonaQuestion: true });
   }
 
   function resetChat() {
@@ -137,13 +148,15 @@ export default function ChatApp() {
           priority
           className="h-8 w-auto"
         />
-        <button
-          type="button"
-          onClick={requestNewChat}
-          className="rounded-full border border-navy px-3 py-1.5 text-sm font-medium text-navy active:bg-navy-soft"
-        >
-          새 대화
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={requestNewChat}
+            className="rounded-full border border-navy px-3 py-1.5 text-sm font-medium text-navy active:bg-navy-soft"
+          >
+            새 대화
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
@@ -160,7 +173,7 @@ export default function ChatApp() {
           className="flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            void send();
+            void send(input);
           }}
         >
           <textarea
@@ -170,7 +183,7 @@ export default function ChatApp() {
               // 한글 입력 중(조합 중)에는 Enter를 전송으로 처리하지 않음
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
-                void send();
+                void send(input);
               }
             }}
             rows={1}
@@ -180,6 +193,13 @@ export default function ChatApp() {
             disabled={sending}
             className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none focus:border-navy disabled:opacity-60"
           />
+          <button
+            type="button"
+            onClick={() => setShowSuggested(true)}
+            className="h-11 shrink-0 rounded-2xl border border-line px-3 text-sm font-medium text-foreground active:bg-background"
+          >
+            추천 질문
+          </button>
           <button
             type="submit"
             disabled={!input.trim() || sending}
@@ -225,6 +245,46 @@ export default function ChatApp() {
               >
                 취소
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSuggested && (
+        <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">
+          <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <p className="text-[15px] font-medium text-foreground">추천 질문</p>
+              <button
+                type="button"
+                onClick={() => setShowSuggested(false)}
+                aria-label="닫기"
+                className="rounded-full px-2 py-1 text-slate-500"
+              >
+                닫기
+              </button>
+            </div>
+            <p className="px-4 pt-3 text-[12px] leading-5 text-slate-500">
+              웰니스 유형(성향) 테스트 결과를 바탕으로 답해요. 아직 테스트를 하지 않으셨다면 먼저 안내해드려요.
+            </p>
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              {SUGGESTED_QUESTION_GROUPS.map((group) => (
+                <div key={group.title} className="mt-4">
+                  <p className="text-[12px] font-medium text-slate-400">{group.title}</p>
+                  <div className="mt-1.5 divide-y divide-line rounded-xl border border-line">
+                    {group.questions.map((q) => (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => selectSuggestedQuestion(q.text)}
+                        className="block w-full px-3.5 py-3 text-left text-[14px] leading-5 text-foreground active:bg-background"
+                      >
+                        {q.text}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

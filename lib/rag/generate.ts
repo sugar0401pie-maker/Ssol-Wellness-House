@@ -9,21 +9,13 @@ import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
 import { buildSystemPrompt, type PersonaHint } from "@/lib/rag/prompt.ts";
 import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
+import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 
 // 출력 검사를 두 번 다 통과하지 못했을 때만 쓰는 마지막 안전망. 이 문장 자체는 규칙을 어길 수
 // 없도록 고정 문구로 두었다 (진단·약물 지시·효과 보장이 전혀 없음). 문구는 "~할 수 없지만" 같은
 // 부정형이 아니라 제안형으로 표현한다 (2026-09-22 ground rule).
 const SAFE_FALLBACK_REPLY =
   "지금 이 부분은 조심스럽게 정리해서 답해드리고 싶어요. 정확한 상태는 정신건강의학과 등 전문가와 상담해보시는 건 어떨까요? 지금 가장 걱정되는 부분이 무엇인지 조금 더 이야기해주실 수 있을까요?";
-
-// 심리테스트 프로토타입의 DOMAINS 라벨을 그대로 사용 (5개 영역, wellness_profiles.theme_scores의 키).
-const DOMAIN_LABELS: Record<string, string> = {
-  relate: "관계·소속",
-  worth: "자기가치·인정",
-  control: "통제·미래",
-  happy: "행복",
-  meaning: "의미·방향",
-};
 
 // 5개 영역 점수를 "관계·소속 12 · 자기가치·인정 13 · 통제·미래 18(가장 높음) · 행복 10(가장 낮음) · 의미·방향 14"
 // 같은 한 줄로 요약한다. 같은 유형이라도 사용자마다 다른 점수를 답변에 반영하기 위함

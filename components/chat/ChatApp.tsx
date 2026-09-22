@@ -13,34 +13,68 @@ const GREETING =
 export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
+  const sessionId = useRef<string | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+  }, [messages, sending]);
 
-  function send() {
+  function appendMessage(role: Message["role"], content: string) {
+    setMessages((prev) => [...prev, { id: nextId.current++, role, content }]);
+  }
+
+  async function send() {
     const text = input.trim();
-    if (!text) return;
-    // 첫 메시지 때 익명 로그인 세션을 준비합니다. (C5에서 /api/chat 호출 앞에서 사용)
-    void ensureAnonymousSession();
-    // C2 단계: AI는 아직 연결되지 않았습니다. (C5에서 /api/chat으로 교체)
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId.current++, role: "user", content: text },
-      {
-        id: nextId.current++,
-        role: "assistant",
-        content: "(개발 중) AI 연결은 다음 단계에서 붙습니다.",
-      },
-    ]);
+    if (!text || sending) return;
     setInput("");
+    appendMessage("user", text);
+    setSending(true);
+
+    try {
+      const token = await ensureAnonymousSession();
+      if (!token) {
+        appendMessage("assistant", "로그인 준비에 실패했어요. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: text, sessionId: sessionId.current }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        appendMessage("assistant", body?.error ?? "잠시 문제가 있었어요. 다시 시도해주세요.");
+        return;
+      }
+
+      const data = (await res.json()) as {
+        sessionId: string;
+        route: string;
+        reply: string | null;
+        done: boolean;
+        note?: string;
+      };
+      sessionId.current = data.sessionId;
+
+      // route 1(crisis)·2(violence)는 실제 고정 응답이 온다. 그 외(route 3~7)는 C5에서 답변 생성이
+      // 붙기 전까지 어떤 route로 판정됐는지만 보여준다 (개발 확인용, 실제 서비스 문구 아님).
+      appendMessage("assistant", data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`);
+    } catch {
+      appendMessage("assistant", "네트워크 문제로 응답을 받지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setSending(false);
+    }
   }
 
   function newChat() {
     setMessages([]);
     setInput("");
+    sessionId.current = null;
   }
 
   return (
@@ -68,6 +102,7 @@ export default function ChatApp() {
         {messages.map((m) => (
           <Bubble key={m.id} role={m.role} content={m.content} />
         ))}
+        {sending && <Bubble role="assistant" content="생각하는 중…" muted />}
         <div ref={endRef} />
       </main>
 
@@ -76,7 +111,7 @@ export default function ChatApp() {
           className="flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            send();
+            void send();
           }}
         >
           <textarea
@@ -86,18 +121,19 @@ export default function ChatApp() {
               // 한글 입력 중(조합 중)에는 Enter를 전송으로 처리하지 않음
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
-                send();
+                void send();
               }
             }}
             rows={1}
             maxLength={1000}
             placeholder="마음에 있는 이야기를 적어주세요"
             aria-label="메시지 입력"
-            className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none focus:border-navy"
+            disabled={sending}
+            className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none focus:border-navy disabled:opacity-60"
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || sending}
             className="h-11 shrink-0 rounded-2xl bg-navy px-4 text-sm font-medium text-white disabled:opacity-40"
           >
             보내기
@@ -118,14 +154,14 @@ export default function ChatApp() {
   );
 }
 
-function Bubble({ role, content }: { role: "user" | "assistant"; content: string }) {
+function Bubble({ role, content, muted }: { role: "user" | "assistant"; content: string; muted?: boolean }) {
   const isUser = role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-6 ${
           isUser ? "bg-navy text-white" : "bg-navy-soft text-foreground"
-        }`}
+        } ${muted ? "opacity-60" : ""}`}
       >
         {content}
       </div>

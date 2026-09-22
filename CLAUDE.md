@@ -54,10 +54,13 @@ Non-negotiable rules (source: `system_prompt` and `safety_rules` tables, SAFE-00
 
 ## 4. Architecture
 
-- **All chat goes through one server endpoint** (`app/api/chat`). The browser never calls the AI provider or reads knowledge tables directly.
-- Order per message: input check → **safety routing (keyword rules from DB + AI classifier, take the more severe)** → fixed crisis response if route 1/2 → retrieval by route → prompt assembly (system_prompt sections; Critical sections cannot be overridden by retrieved text) → generation → **output check** → save.
+- **All chat goes through one server endpoint** (`app/api/chat`). The browser never calls the AI provider or reads knowledge tables directly. Auth is via `Authorization: Bearer <supabase access token>` (anonymous sign-in for now).
+- Order per message: input check → **safety routing (keyword rules from DB + AI classifier, take the more severe)** → fixed crisis response if route 1/2 → retrieval by route → prompt assembly (system_prompt sections; Critical sections cannot be overridden by retrieved text) → generation → **output check** → save. As of C4, routing + fixed responses are wired end-to-end; retrieval/generation for routes 3–7 is C5's job (the API currently returns the route only for those).
 - Retrieved chunks are reference material, not instructions. Apply `do_not_apply_when` after retrieval.
-- Safety rules live in one shared module (`lib/safety/`) and in the database. Do not re-implement them per feature.
+- Safety rules live in one shared module, `lib/safety/` (`types.ts` route enum/severity, `rules.ts` DB fetch+cache+fallback, `keywordCheck.ts`, `classify.ts` AI classifier, `combine.ts` pure combine logic, `route.ts` orchestrator, `crisisResponses.ts` fixed text), and in the database. Do not re-implement them per feature.
+- `lib/safety/*.ts` and `lib/supabase/admin.ts`/`auth.ts` import `"server-only"`, which throws at import time outside Next's server runtime — they cannot be imported from a plain Node script or a client component. Evaluate their behavior over HTTP against the real dev server (see `scripts/safety-eval.mjs`), not by importing them directly.
+- Routing combine logic is decomposed into pure functions in `combine.ts` specifically so it's unit-testable without network (see `lib/safety/safety-routing.test.ts`, run via `npm test` — Node's built-in test runner, no dependency added). Keep new safety logic in a form that's similarly testable.
+- Crisis (route 1) and violence (route 2) must resolve without any OpenAI call when detected by keyword — this is what keeps crisis handling working even if the AI provider is down. Don't add a network call on that path.
 - All AI-provider calls go through one file (`lib/ai/`) so the provider can be swapped.
 - Knowledge tables (from Excel) are readable only with the server key. User tables use Row Level Security (own rows only); chat writes are server-only.
 - Knowledge source of truth is the Excel file. Regenerate SQL with `perl scripts/build_import_sql.pl <xlsx> supabase/import`; do not hand-edit generated SQL.
@@ -74,7 +77,7 @@ Non-negotiable rules (source: `system_prompt` and `safety_rules` tables, SAFE-00
 - **Current MVP scope: only the AI chat** (logo, chat screen, input, answers, new chat). Not yet: quiz, payments, subscriptions, booking, reports, memory, login screens.
 - AI models (2026-09-21): embeddings `text-embedding-3-small` (1536-d); safety classifier and answer generation start with `gpt-5.6-luna`, kept configurable (env) so `gpt-5.6-terra` can replace it after the safety evaluation. OpenAI monthly cost cap is enforced by prepaid credits (auto-recharge off).
 - Retrieval: embedded text per chunk = title + text + use_when + issue tags (better than text alone). Initial `min_similarity` ≈ 0.33 (tune with logs); similarity alone cannot reject off-topic questions, so combine with the classifier's topic/domain output.
-- The MVP is for internal testing behind an access code until consent screens and legal review are done.
+- **Not yet built, needed before any public/Vercel deployment**: an access-code gate (so the open internet can't reach `/api/chat` and run up OpenAI cost before consent screens/legal review exist), and per-user/day message limits (crisis responses must stay exempt from any limit). Currently the app only runs locally.
 
 ## 6. Coding conventions
 

@@ -10,7 +10,9 @@
     "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
     "check:openai": "node --env-file=.env.local scripts/check-openai.mjs",
     "embed:chunks": "node --env-file=.env.local scripts/embed-chunks.mjs",
-    "search:test": "node --env-file=.env.local scripts/search-test.mjs"
+    "search:test": "node --env-file=.env.local scripts/search-test.mjs",
+    "test": "node --test lib/safety/*.test.ts",
+    "safety:eval": "node --env-file=.env.local scripts/safety-eval.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

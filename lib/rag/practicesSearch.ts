@@ -60,6 +60,10 @@ function guessDomain(text: string): string {
   return "나 자신";
 }
 
+function stripScore(p: PracticeResult & { score: number }): PracticeResult {
+  return { id: p.id, domain: p.domain, category: p.category, tier: p.tier, title: p.title, detail: p.detail };
+}
+
 export async function searchWellnessPractices(
   message: string,
   recentMessages: { role: "user" | "assistant"; content: string }[],
@@ -71,15 +75,22 @@ export async function searchWellnessPractices(
   const qBigrams = bigrams(contextText);
   const domain = guessDomain(contextText);
 
-  const scored = rows.map((p) => {
-    let score = overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`));
-    if (p.domain === domain) score += 5; // 영역이 맞으면 가장 크게 반영
-    if (p.tier === "가볍게 시작") score += 1; // 지금 바로 해볼 수 있는 것을 우선 제안
-    return { ...p, score };
-  });
+  const scored = rows.map((p) => ({
+    ...p,
+    score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + (p.domain === domain ? 5 : 0),
+  }));
 
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map((p) => ({ id: p.id, domain: p.domain, category: p.category, tier: p.tier, title: p.title, detail: p.detail }));
+  // 2026-09-22 결정: "단기(가볍게 시작)와 중장기(꾸준히 이어가기·장기 습관)를 섞어서 ~3개
+  // 제안"하려면 후보 자체에 tier 다양성이 있어야 한다. 순수 점수 정렬만 하면 "가볍게 시작"
+  // 항목(도메인당 25개)이 상위권을 독식해서 중장기 항목이 후보에 아예 안 들어올 수 있다 —
+  // 그래서 tier별로 나눠 뽑는다: 단기 2개 + 중장기(꾸준히 이어가기/장기 습관) 각 1개.
+  const byTier = (tier: string) => scored.filter((p) => p.tier === tier).sort((a, b) => b.score - a.score);
+
+  const picked = [
+    ...byTier("가볍게 시작").slice(0, 2),
+    ...byTier("꾸준히 이어가기").slice(0, 1),
+    ...byTier("장기 습관·정체성으로").slice(0, 1),
+  ];
+
+  return picked.map(stripScore);
 }

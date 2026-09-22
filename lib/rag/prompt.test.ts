@@ -216,10 +216,19 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(p, /지금 상황은 이런 것 같아요/);
   });
 
-  test("직전 대화가 3턴 이상이면 요약하고 지금 해볼 수 있는 것을 제안하라는 지침이 들어간다", () => {
+  test("직전 대화가 3턴 이상이면 요약하고 단기/중장기로 나눠 제안하라는 지침이 들어간다", () => {
+    // 2026-09-22: "분야에 따라 단기적으로, 중장기적으로 할 수 있는 부분을 예시 3개 정도"
+    // 요청 반영 — 그냥 "2~3가지"가 아니라 단기/중장기 구분이 명시적으로 들어가야 한다.
     const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 3 });
     assert.match(p, /지금 상황은 이런 것 같아요/);
-    assert.match(p, /2~3가지 구체적으로 제안/);
+    assert.match(p, /단기적인 것과 꾸준히 이어가면 좋을 중장기적인 것을 구분/);
+  });
+
+  test("'~할 수 없어요' 식 부정형 대신 제안형 문장을 쓰라는 지침이 모든 답변에 들어간다", () => {
+    // 2026-09-22 ground rule: 부정형·거절형 문장 대신 제안형으로 표현.
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    assert.match(p, /부정형·거절형 문장을 쓰지 마세요/);
+    assert.match(p, /해보는 건 어떨까요/);
   });
 
   test("프레임워크의 영문 약어(WANT: 등)는 그대로 노출되지 않고, 한국어 설명만 남는다", () => {

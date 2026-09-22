@@ -3,7 +3,7 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { determineRoute } from "@/lib/safety/route";
 import { getSafetyData } from "@/lib/safety/rules";
-import { FIXED_RESPONSES } from "@/lib/safety/crisisResponses";
+import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
@@ -113,8 +113,7 @@ export async function POST(req: NextRequest) {
 
   // 분류기를 아예 부르지 못한 경우: 내용을 지어내지 않고 안전한 안내만 준다.
   if (decision.classifierUnavailable) {
-    const reply =
-      "지금 일시적인 문제로 답변을 만들 수 없어요. 잠시 후 다시 시도해주세요. 급한 마음이 드신다면 화면 아래의 도움 연락처를 이용해주세요.";
+    const reply = `지금 답변을 만드는 데 문제가 생겼어요. 잠시 후 다시 시도해주세요. ${SHORT_HELP_CONTACT}`;
     await admin
       .from("chat_messages")
       .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route });
@@ -140,8 +139,7 @@ export async function POST(req: NextRequest) {
     .gte("created_at", startOfTodayKST().toISOString());
 
   if ((todayCount ?? 0) > DAILY_MESSAGE_LIMIT) {
-    const reply =
-      "오늘 나눌 수 있는 대화 횟수를 모두 사용했어요. 내일 다시 이야기해요. 급한 마음이 드신다면 화면 아래 도움 연락처는 언제든 이용하실 수 있어요.";
+    const reply = `오늘 나눌 수 있는 대화 횟수를 모두 사용했어요. 내일 다시 이야기해요. ${SHORT_HELP_CONTACT}`;
     await admin
       .from("chat_messages")
       .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route });

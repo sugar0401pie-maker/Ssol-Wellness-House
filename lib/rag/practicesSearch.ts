@@ -94,3 +94,27 @@ export async function searchWellnessPractices(
 
   return picked.map(stripScore);
 }
+
+// 문자열을 32비트 정수로 접는 아주 단순한 해시(FNV-1a류). 암호화 목적이 아니라 "날짜+사용자
+// 마다 항상 같은 항목이 나오게" 결정론적으로 고르는 용도일 뿐이다.
+function simpleHash(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// 홈 탭의 "오늘의 실천방법" — 하루·사용자 조합마다 항상 같은 항목이 나오도록 날짜+userId를
+// 시드로 결정론적으로 고른다(매번 새로고침해도 같은 날엔 같은 제안). "가볍게 시작" 난이도만
+// 후보로 써서 부담 없이 오늘 바로 해볼 수 있는 것 위주로 제안한다. 심리테스트의 5개 영역
+// (관계·소속/자기가치/통제·미래/행복/의미)과 이 표의 domain(나 자신/인간관계/...)은 서로 다른
+// 분류 체계라 직접 매핑할 수 없으므로, 특정 심리 유형에 억지로 연결하지 않는다.
+export async function getDailyPractice(userId: string, dateKey: string): Promise<PracticeResult | null> {
+  const rows = await loadPractices();
+  const pool = rows.filter((p) => p.tier === "가볍게 시작");
+  if (!pool.length) return null;
+  const idx = simpleHash(`${dateKey}:${userId}`) % pool.length;
+  return pool[idx];
+}

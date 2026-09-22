@@ -13,3 +13,15 @@ export function startOfTodayKST(now: Date = new Date()): Date {
   const d = kst.getUTCDate();
   return new Date(Date.UTC(y, m, d, 0, 0, 0) - 9 * 3600 * 1000);
 }
+
+// "오늘"을 "YYYY-MM-DD"(KST 기준) 문자열로. 홈 탭의 "오늘의 실천방법"처럼 날짜를 키로 쓸 때 사용.
+// 2026-09-22 버그로 발견: startOfTodayKST()가 돌려주는 Date는 "KST 자정" 시각을 UTC 인스턴트로
+// 표현한 것이라, 그 값에 .toISOString().slice(0,10)을 하면 UTC 기준 날짜(하루 전)가 나와버린다
+// — KST 연/월/일을 직접 계산해야 한다.
+export function todayKeyKST(now: Date = new Date()): string {
+  const kst = new Date(now.getTime() + 9 * 3600 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}

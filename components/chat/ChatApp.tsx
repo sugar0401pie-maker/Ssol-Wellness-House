@@ -3,19 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
-import { getStoredAccessCode } from "@/lib/security/accessCodeClient";
+import { authHeaders } from "@/lib/supabase/authHeaders";
 import { SUGGESTED_QUESTION_GROUPS } from "@/lib/persona/suggestedQuestions";
-
-// /api/chat, /api/memory 호출에 공통으로 붙이는 헤더. AccessGate를 통과해야 이 화면이 보이므로
-// 코드가 저장돼 있을 것이지만, 없어도(게이트 비활성 상태) 그냥 빈 값으로 보내면 서버가 알아서 통과시킨다.
-function authHeaders(token: string): Record<string, string> {
-  const code = getStoredAccessCode();
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-    ...(code ? { "X-Access-Code": code } : {}),
-  };
-}
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
 

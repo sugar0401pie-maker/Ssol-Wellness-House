@@ -5,11 +5,11 @@ import { determineRoute } from "@/lib/safety/route";
 import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
+import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
 import type { RouteId } from "@/lib/safety/types";
 
-// C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성이 모두 연결된 버전.
-// 아직 없는 것: 사용량 제한(하루 N회, 월 상한). 실제 모델별 비용을 시뮬레이션한 뒤 값을 정하고
-// 넣을 예정이다 — 위기(route 1·2) 응답은 그 제한이 생겨도 항상 예외로 둔다.
+// C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
+// 위기(route 1)·폭력(route 2)은 아래에서 이 제한 검사보다 먼저 처리되어, 제한과 무관하게 항상 응답한다.
 export const runtime = "nodejs";
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -120,6 +120,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sessionId, route: decision.route, reply: fixed, done: true, ...routingMeta });
   }
 
+  // route 3~7만 하루 사용량 제한을 적용한다 (crisis·violence·classifierUnavailable은 이미 위에서 반환됨).
+  // 방금 저장한 이번 메시지도 포함해서 세어, count가 제한을 넘으면 이번 메시지는 생성 없이 막는다.
+  const { count: todayCount } = await admin
+    .from("chat_messages")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("role", "user")
+    .not("route", "in", "(crisis,violence)")
+    .gte("created_at", startOfTodayKST().toISOString());
+
+  if ((todayCount ?? 0) > DAILY_MESSAGE_LIMIT) {
+    const reply =
+      "오늘 나눌 수 있는 대화 횟수를 모두 사용했어요. 내일 다시 이야기해요. 급한 마음이 드신다면 화면 아래 도움 연락처는 언제든 이용하실 수 있어요.";
+    await admin
+      .from("chat_messages")
+      .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route });
+    return NextResponse.json({
+      sessionId,
+      route: decision.route,
+      reply,
+      done: true,
+      limitReached: true,
+      remainingToday: 0,
+      ...routingMeta,
+    });
+  }
+
   // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
   const { rules: safetyRules } = await getSafetyData();
   const result = await generateAnswer({
@@ -150,6 +177,7 @@ export async function POST(req: NextRequest) {
     route: decision.route,
     reply: result.reply,
     done: true,
+    remainingToday: Math.max(DAILY_MESSAGE_LIMIT - (todayCount ?? 0), 0),
     ...routingMeta,
     // 사용량 정보(민감정보 아님) — 비용 시뮬레이션(scripts/cost-simulation.mjs)이 이 값을 읽는다.
     usage: {

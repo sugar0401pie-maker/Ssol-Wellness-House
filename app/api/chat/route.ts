@@ -6,6 +6,7 @@ import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
+import { checkAccessCode } from "@/lib/security/accessCode";
 import type { RouteId } from "@/lib/safety/types";
 
 // C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
@@ -22,6 +23,12 @@ function safetyFlagFor(route: RouteId): "crisis" | "elevated" | "none" {
 const FLAG_RANK = { none: 0, elevated: 1, crisis: 2 } as const;
 
 export async function POST(req: NextRequest) {
+  // ACCESS_CODE가 설정된 경우에만 검사한다(로컬 개발 시엔 비활성). DB·OpenAI 호출보다 먼저,
+  // 가장 가벼운 검사부터 한다.
+  if (!checkAccessCode(req.headers.get("x-access-code"))) {
+    return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
+  }
+
   const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
   if (!userId) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });

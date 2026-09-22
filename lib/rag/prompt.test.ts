@@ -87,6 +87,39 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(p, /이전 대화 메모/);
   });
 
+  test("웰니스 유형 힌트가 있으면 라벨과 함께, 진단으로 쓰지 말라는 경고가 들어간다", () => {
+    const p = buildSystemPrompt({
+      sections: SECTIONS,
+      matchedRules: [],
+      route: "wellness",
+      usedClinicalChunk: false,
+      personaHint: { label: "티라미수 · 설계형", axis: "통제·미래 × 직면" },
+    });
+    assert.match(p, /티라미수 · 설계형/);
+    assert.match(p, /당신은 이 유형이라서/);
+  });
+
+  test("웰니스 유형 힌트가 없으면 관련 블록이 들어가지 않는다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    assert.doesNotMatch(p, /웰니스 유형/);
+  });
+
+  test("service_info를 제외한 route는 해결책보다 감정을 먼저 다루라는 지침이 들어간다", () => {
+    const wellness = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    const service = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "service_info", usedClinicalChunk: false });
+    assert.match(wellness, /대신 해결해주는 것이 아니라/);
+    assert.doesNotMatch(service, /대신 해결해주는 것이 아니라/);
+  });
+
+  test("wellness/life_decision에서는 위험 신호를 먼저 확인하라는 지침이 들어간다", () => {
+    const wellness = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
+    const lifeDecision = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "life_decision", usedClinicalChunk: false });
+    const serviceInfo = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "service_info", usedClinicalChunk: false });
+    assert.match(wellness, /신체적인 위협이나 폭력이 있었는지/);
+    assert.match(lifeDecision, /신체적인 위협이나 폭력이 있었는지/);
+    assert.doesNotMatch(serviceInfo, /신체적인 위협이나 폭력이 있었는지/);
+  });
+
   test("매칭된 안전 규칙 원문이 그대로 포함된다", () => {
     const p = buildSystemPrompt({
       sections: SECTIONS,

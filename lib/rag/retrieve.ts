@@ -15,6 +15,7 @@ export type RetrievedChunk = {
   domain_tags: string[] | null;
   issue_tags: string[] | null;
   wellness_theme: string[] | null;
+  persona_tags: string[] | null;
   use_when: string | null;
   follow_up_prompt: string | null;
   evidence_level: string;
@@ -55,19 +56,29 @@ function tagBonus(chunk: RetrievedChunk, conversationText: string): number {
   return Math.min(hits, 3) * 0.02; // 태그 하나당 아주 작은 가산점, 최대 0.06
 }
 
+// 사용자의 웰니스 유형(디저트 유형)과 chunk의 persona_tags가 겹치면 상담 관점으로 조금 더
+// 끌어올린다. 단어 우연히 겹친 것보다 뚜렷한 신호라 tagBonus보다 조금 더 크게 준다.
+// (2026-09-22 결정: 상담 관점·프레임워크에 반영. 검색 하드 필터로는 절대 쓰지 않음 — SAFE-005.)
+function personaBonus(chunk: RetrievedChunk, personaLabel: string | null): number {
+  if (!personaLabel) return 0;
+  return (chunk.persona_tags ?? []).includes(personaLabel) ? 0.05 : 0;
+}
+
 /**
  * knowledge_chunks에서 관련 chunk를 찾는다.
  *  - 일반(scope="general") 웰니스/인생결정 route: 최종 5개
  *  - 임상(scope="clinical") route: 최종 3개, clinical_sensitive chunk만
  *  - do_not_apply_when에 해당하는 위험 신호가 최근 대화에 있으면 그 chunk는 제외
  *  - domain/issue/theme 태그가 최근 대화와 겹치면 아주 약하게 순위를 올림 (하드 필터 아님)
- *  - 디저트 유형(wellness_profiles)은 여기서 전혀 참조하지 않는다 — 검색 필터로 쓰지 않기 위함
+ *  - 디저트 유형(personaLabel)이 있으면 persona_tags가 겹치는 chunk를 살짝 더 끌어올림
+ *    (상담 관점 참고용. 검색을 걸러내는 하드 필터로는 절대 쓰지 않는다 — SAFE-005)
  */
 export async function retrieveKnowledgeChunks(
   message: string,
   recentMessages: { role: "user" | "assistant"; content: string }[],
   scope: "general" | "clinical",
   safetyRules: SafetyRule[],
+  personaLabel: string | null = null,
 ): Promise<RetrievedChunk[]> {
   const admin = createAdminClient();
   const openai = new OpenAI();
@@ -102,7 +113,10 @@ export async function retrieveKnowledgeChunks(
 
   return candidates
     .filter((c) => !shouldExclude(c, activeCategories))
-    .map((c) => ({ ...c, similarity: c.similarity + tagBonus(c, conversationText) }))
+    .map((c) => ({
+      ...c,
+      similarity: c.similarity + tagBonus(c, conversationText) + personaBonus(c, personaLabel),
+    }))
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, finalCount);
 }

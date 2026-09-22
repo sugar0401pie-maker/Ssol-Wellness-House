@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { summarizeSessionIntoMemory } from "@/lib/memory/summarize";
+import { checkAccessCode } from "@/lib/security/accessCode";
 
 // 사용자가 "이 대화를 기억하기"를 선택했을 때만 프런트에서 호출한다 (동의 기반).
 // 선택하지 않은 대화는 이 엔드포인트가 아예 호출되지 않으므로 요약되지 않는다.
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  if (!checkAccessCode(req.headers.get("x-access-code"))) {
+    return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
+  }
+
   const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 

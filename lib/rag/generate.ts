@@ -5,7 +5,7 @@ import type { RouteId } from "@/lib/safety/types";
 import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
 import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
 import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
-import { buildSystemPrompt } from "@/lib/rag/prompt.ts";
+import { buildSystemPrompt, type PersonaHint } from "@/lib/rag/prompt.ts";
 import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 
@@ -13,6 +13,30 @@ import { checkOutput } from "@/lib/safety/outputCheck";
 // 없도록 고정 문구로 두었다 (진단·약물 지시·효과 보장이 전혀 없음).
 const SAFE_FALLBACK_REPLY =
   "지금 이 부분은 조심스럽게 정리해서 답해드리고 싶어요. 제가 직접 진단하거나 약물을 안내해 드릴 수는 없지만, 정신건강의학과 등 전문가와 상담하시면 더 정확한 도움을 받으실 수 있어요. 지금 가장 걱정되는 부분이 무엇인지 조금 더 이야기해주실 수 있을까요?";
+
+// 사용자의 웰니스 유형(디저트 유형)을 상담 관점 힌트로 쓰기 위해 불러온다.
+// 2026-09-22 결정: 기본 반영, opt-out은 나중에 설정 화면이 생기면 쓸 컬럼만 미리 준비해둠.
+// 진단이나 검색 하드 필터로는 절대 쓰지 않는다 — SAFE-005.
+async function loadPersonaHint(userId: string): Promise<{ label: string | null; hint: PersonaHint | null }> {
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("wellness_profiles")
+    .select("dessert_type, persona_hint_opt_out")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!profile?.dessert_type || profile.persona_hint_opt_out) return { label: null, hint: null };
+
+  const { data: tax } = await admin
+    .from("taxonomy")
+    .select("label_ko, description")
+    .eq("type", "persona")
+    .eq("code", profile.dessert_type)
+    .maybeSingle();
+  if (!tax) return { label: null, hint: null };
+
+  const shortLabel = tax.label_ko.split(" · ")[0]; // "티라미수 · 설계형" → "티라미수" (chunk의 persona_tags와 형식을 맞춤)
+  return { label: shortLabel, hint: { label: tax.label_ko, axis: tax.description ?? "" } };
+}
 
 export type GenerationUsage = { inputTokens: number; outputTokens: number };
 
@@ -39,11 +63,19 @@ export async function generateAnswer(params: {
   let serviceResults: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
   let frameworkHint: Awaited<ReturnType<typeof findFrameworkHint>> = null;
 
+  const { label: personaLabel, hint: personaHint } = await loadPersonaHint(params.userId);
+
   if (params.route === "service_info") {
     serviceResults = await searchServiceKnowledge(params.message);
   } else {
     const scope = params.route === "clinical_diagnosis" || params.route === "clinical_distress" ? "clinical" : "general";
-    knowledgeChunks = await retrieveKnowledgeChunks(params.message, params.recentMessages, scope, params.safetyRules);
+    knowledgeChunks = await retrieveKnowledgeChunks(
+      params.message,
+      params.recentMessages,
+      scope,
+      params.safetyRules,
+      personaLabel,
+    );
     if (params.route === "life_decision" && knowledgeChunks.length) {
       frameworkHint = await findFrameworkHint(knowledgeChunks.map((c) => c.article_id));
     }
@@ -67,6 +99,7 @@ export async function generateAnswer(params: {
     serviceResults: serviceResults.length ? serviceResults : undefined,
     frameworkHint,
     userMemory: memoryRow?.summary,
+    personaHint,
   });
 
   const conversation = [...params.recentMessages, { role: "user" as const, content: params.message }];

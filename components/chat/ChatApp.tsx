@@ -4,6 +4,18 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ensureAnonymousSession } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
+import { getStoredAccessCode } from "@/lib/security/accessCodeClient";
+
+// /api/chat, /api/memory 호출에 공통으로 붙이는 헤더. AccessGate를 통과해야 이 화면이 보이므로
+// 코드가 저장돼 있을 것이지만, 없어도(게이트 비활성 상태) 그냥 빈 값으로 보내면 서버가 알아서 통과시킨다.
+function authHeaders(token: string): Record<string, string> {
+  const code = getStoredAccessCode();
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    ...(code ? { "X-Access-Code": code } : {}),
+  };
+}
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
 
@@ -57,7 +69,7 @@ export default function ChatApp() {
 
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
         body: JSON.stringify({ message: text, sessionId: sessionId.current }),
       });
 
@@ -103,7 +115,7 @@ export default function ChatApp() {
         if (token) {
           await fetch("/api/memory", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: authHeaders(token),
             body: JSON.stringify({ sessionId: currentSessionId }),
           });
         }
@@ -176,16 +188,9 @@ export default function ChatApp() {
             보내기
           </button>
         </form>
-        <p className="mt-2 text-center text-[11px] leading-4 text-slate-500">
-          의료 상담을 대체하지 않아요 · 힘들 때{" "}
-          <a href="tel:109" className="font-medium text-navy underline">
-            ☎109
-          </a>{" "}
-          <a href="tel:15770199" className="font-medium text-navy underline">
-            ☎1577-0199
-          </a>{" "}
-          (24시간)
-        </p>
+        {/* 2026-09-22 결정: 위기 연락처 상시 노출 대신 브랜드 비전 문구로 교체(사용자 요청).
+            실제 위기 감지 시 안내(109, 1577-0199 등)는 그 상황의 답변 자체에 그대로 포함된다. */}
+        <p className="mt-2 text-center text-[11px] italic leading-4 text-slate-400">SSOL — 삶의 파도를 유영하는 힘</p>
       </footer>
 
       {memoryPrompt !== "idle" && (

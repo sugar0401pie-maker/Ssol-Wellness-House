@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { ensureAnonymousSession } from "@/lib/supabase/browser";
+import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { getStoredAccessCode } from "@/lib/security/accessCodeClient";
 import { SUGGESTED_QUESTION_GROUPS } from "@/lib/persona/suggestedQuestions";
@@ -63,9 +62,9 @@ export default function ChatApp() {
     setSending(true);
 
     try {
-      const token = await ensureAnonymousSession();
+      const token = await getAccessToken();
       if (!token) {
-        appendMessage("assistant", "로그인 준비에 실패했어요. 잠시 후 다시 시도해주세요.");
+        appendMessage("assistant", "로그인이 필요해요. 새로고침 후 다시 로그인해주세요.");
         return;
       }
 
@@ -122,7 +121,7 @@ export default function ChatApp() {
     if (remember && currentSessionId) {
       setMemoryPrompt("saving");
       try {
-        const token = await ensureAnonymousSession();
+        const token = await getAccessToken();
         if (token) {
           await fetch("/api/memory", {
             method: "POST",
@@ -138,16 +137,9 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-white shadow-sm sm:border-x sm:border-line">
+    <div className="flex h-full w-full flex-col bg-white">
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
-        <Image
-          src="/logo.jpg"
-          alt="쏠 웰니스 하우스"
-          width={832}
-          height={180}
-          priority
-          className="h-8 w-auto"
-        />
+        <p className="text-[15px] font-medium text-foreground">AI 채팅</p>
         <div className="flex gap-2">
           <button
             type="button"

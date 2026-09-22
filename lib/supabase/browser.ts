@@ -13,8 +13,9 @@ export function getBrowserClient(): SupabaseClient | null {
   return client;
 }
 
-// 세션이 없으면 익명 로그인(이메일 없이 임시 ID 자동 부여)을 만들고 접근 토큰을 돌려줍니다.
-// 방문만 해도 계정이 생기는 것을 막기 위해, 첫 메시지를 보낼 때 호출합니다.
+// 2026-09-22: 로그인이 필수가 된 뒤로 실제 화면에서는 이 대신 getAccessToken()을 쓴다.
+// (AuthGate가 로그인된 사용자에게만 화면을 보여주므로, 항상 실제 세션이 있다고 가정할 수 있다.)
+// 익명 로그인 자체는 과거 검증 스크립트 등에서 여전히 유효한 개념이라 함수는 남겨둔다.
 export async function ensureAnonymousSession(): Promise<string | null> {
   const supabase = getBrowserClient();
   if (!supabase) return null;
@@ -25,5 +26,14 @@ export async function ensureAnonymousSession(): Promise<string | null> {
     console.warn("익명 로그인 실패:", error.message);
     return null;
   }
+  return data.session?.access_token ?? null;
+}
+
+// 로그인 필수 화면(AuthGate로 보호된 화면)에서 쓰는 버전. 이미 로그인돼 있다고 가정하고
+// 현재 세션의 접근 토큰만 가져온다 — 없으면 null(그 경우 호출한 쪽이 에러 처리).
+export async function getAccessToken(): Promise<string | null> {
+  const supabase = getBrowserClient();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }

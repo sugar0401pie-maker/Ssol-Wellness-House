@@ -1,10 +1,13 @@
 import AccessGate from "@/components/chat/AccessGate";
-import ChatApp from "@/components/chat/ChatApp";
+import AuthGate from "@/components/auth/AuthGate";
+import AppShell from "@/components/app/AppShell";
 
 export default function Home() {
   return (
     <AccessGate>
-      <ChatApp />
+      <AuthGate>
+        <AppShell />
+      </AuthGate>
     </AccessGate>
   );
 }

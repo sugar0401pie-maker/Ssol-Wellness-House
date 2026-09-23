@@ -8,7 +8,12 @@ export function getBrowserClient(): SupabaseClient | null {
   if (client) return client;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null; // 환경변수가 없으면 조용히 비활성
+  if (!url || !anonKey) {
+    // 배포 환경에 NEXT_PUBLIC_SUPABASE_URL/ANON_KEY가 안 채워졌을 때 조용히 실패하지 않고
+    // 콘솔에 남겨서 "로그인 화면이 왜 안 되지" 같은 문제를 빨리 찾게 한다 (2026-09-23).
+    console.error("Supabase 브라우저 클라이언트 초기화 실패: NEXT_PUBLIC_SUPABASE_URL/ANON_KEY가 비어있습니다.");
+    return null;
+  }
   client = createClient(url, anonKey);
   return client;
 }

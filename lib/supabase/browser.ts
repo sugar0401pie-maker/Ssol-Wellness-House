@@ -1,7 +1,16 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { sharedCookieDomain } from "./shared-cookie-domain";
 
 // 브라우저용 클라이언트: 공개되어도 안전한 키(NEXT_PUBLIC_*)만 사용합니다.
 // 지식 테이블은 읽을 수 없고, 본인 데이터만 볼 수 있습니다(RLS).
+//
+// 2026-09-23: 세션 저장소를 localStorage(supabase-js 기본값)에서 쿠키(@supabase/ssr)로
+// 바꿨습니다. ssolwellnesshouse.com(디저트 성향 테스트) 쪽 앱과 로그인 세션을 공유하려면
+// 두 앱 다 같은 상위 도메인(.ssolwellnesshouse.com)에 쿠키를 심어야 하는데, localStorage는
+// 애초에 도메인 간 공유가 불가능한 저장소라 쿠키로 바꾸는 것 말고는 방법이 없습니다.
+// getSession()/getAccessToken() 등 호출부는 저장소가 뭐든 동일하게 동작하므로 이 파일 밖은
+// 손댈 필요가 없습니다(서버 쪽 authHeaders.ts의 Bearer 토큰 검증도 그대로 유효합니다).
 let client: SupabaseClient | null = null;
 
 export function getBrowserClient(): SupabaseClient | null {
@@ -14,7 +23,9 @@ export function getBrowserClient(): SupabaseClient | null {
     console.error("Supabase 브라우저 클라이언트 초기화 실패: NEXT_PUBLIC_SUPABASE_URL/ANON_KEY가 비어있습니다.");
     return null;
   }
-  client = createClient(url, anonKey);
+  client = createBrowserClient(url, anonKey, {
+    cookieOptions: { domain: sharedCookieDomain(typeof window !== "undefined" ? window.location.hostname : undefined) },
+  });
   return client;
 }
 

@@ -32,6 +32,69 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   return { ok: true, needsEmailConfirmation: !data.session };
 }
 
+// 2026-09-23: ssolwellnesshouse.com의 실제 가입 화면(이름·생년월일 입력 → 인증번호 받기 →
+// 인증번호+비밀번호 입력 → 가입 완료)과 맞춘 흐름. 비밀번호 없이 이메일로 먼저 인증번호를
+// 보내고, 인증에 성공한 뒤에야 비밀번호를 설정한다 — signUpWithEmail(위)과는 다른 흐름이라
+// 별도 함수로 둔다. 이름·생년월일은 raw_user_meta_data로 함께 실어 보내서, 인증 후
+// finishSignup에서 다시 꺼내 profiles에 저장한다.
+export async function sendSignupOtp(
+  email: string,
+  meta: { display_name: string; birth_date: string },
+): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true, data: meta },
+  });
+  if (error) return { ok: false, error: translateAuthError(error.message) };
+  return { ok: true };
+}
+
+// 이메일로 받은 인증번호를 확인한다. 성공하면 바로 로그인 상태가 된다(세션 생김).
+export async function verifySignupOtp(email: string, token: string): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error) {
+    const message = /expired|invalid/i.test(error.message)
+      ? "인증번호가 올바르지 않거나 만료됐어요. 다시 받아주세요."
+      : translateAuthError(error.message);
+    return { ok: false, error: message };
+  }
+  return { ok: true };
+}
+
+// verifySignupOtp로 로그인된 상태에서 비밀번호를 설정하고, profiles에 이름·생년월일·약관
+// 동의 시각을 저장해서 가입을 마무리한다.
+export async function finishSignup(params: {
+  password: string;
+  displayName: string;
+  birthDate: string;
+}): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) return { ok: false, error: "세션이 만료됐어요. 처음부터 다시 시도해주세요." };
+
+  const { error: pwError } = await supabase.auth.updateUser({ password: params.password });
+  if (pwError) return { ok: false, error: translateAuthError(pwError.message) };
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      display_name: params.displayName,
+      birth_date: params.birthDate,
+      terms_agreed_at: new Date().toISOString(),
+      sensitive_data_agreed_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+  if (profileError) return { ok: false, error: `가입은 됐지만 정보 저장에 실패했어요: ${profileError.message}` };
+
+  return { ok: true };
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
   const supabase = getBrowserClient();
   if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };

@@ -221,15 +221,17 @@ describe("buildSystemPrompt", () => {
     assert.match(wellness, /사용자가 말한 수준에서 받아들이세요/);
   });
 
-  test("직전 대화가 3턴 미만이면 요약·제안 지침이 들어가지 않는다", () => {
-    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
+  test("직전 대화가 2턴 미만이면 요약·제안 지침이 들어가지 않는다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 1 });
     assert.doesNotMatch(p, /지금 상황은 이런 것 같아요/);
   });
 
-  test("직전 대화가 3턴 이상이면 요약하고 단기/중장기로 나눠 제안하라는 지침이 들어간다", () => {
+  test("직전 대화가 2턴 이상이면(3번째 답변부터) 요약하고 단기/중장기로 나눠 제안하라는 지침이 들어간다", () => {
     // 2026-09-22: "분야에 따라 단기적으로, 중장기적으로 할 수 있는 부분을 예시 3개 정도"
     // 요청 반영 — 그냥 "2~3가지"가 아니라 단기/중장기 구분이 명시적으로 들어가야 한다.
-    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 3 });
+    // 2026-09-24: "1~2회 정도만 구체화하고 이후부터는 구체적인 답변을" 요청으로 turnCount>=3
+    // 이었던 기준을 turnCount>=2로 한 턴 앞당김.
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
     assert.match(p, /지금 상황은 이런 것 같아요/);
     assert.match(p, /단기적인 것과 꾸준히 이어가면 좋을 중장기적인 것을 구분/);
   });

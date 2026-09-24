@@ -197,14 +197,27 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(serviceInfo, /신체적인 위협이나 폭력이 있었는지/);
   });
 
-  test("2턴째부터는 공감 반복·감정 라벨링 대신 실질적 제안을 하라는 지침이 들어간다", () => {
-    // 2026-09-24: "내담자 말을 똑같이 반복하며 공감할 필요 없음", "배제/부당함/무력감처럼
-    // 라벨 붙이며 계속 확인하지 말고 실질적 조치를 일괄 제시" 피드백 반영.
+  test("2턴째부터는 공감을 매 턴 반복하지 말라는 지침이 들어간다", () => {
+    // 2026-09-24: "내담자 말을 똑같이 반복하며 공감할 필요 없음" 피드백 반영.
     const first = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 0 });
     const later = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 1 });
     assert.doesNotMatch(first, /매 턴 반복하지 마세요/);
     assert.match(later, /매 턴 반복하지 마세요/);
-    assert.match(later, /각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어/);
+  });
+
+  test("정확히 2번째 답변(turnCount 1)에서는 대략적인 방향 제시 + 더 구체적으로 원하는지 확인하라는 지침이 들어간다", () => {
+    // 2026-09-24: "2번째부터 대략적으로 안내하고 더 구체적으로 설명해달라 하고, 3번째부터
+    // 무조건 실질적으로" 요청 반영 — 3단계(1턴/2턴/3턴 이상)로 나눔.
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 1 });
+    assert.match(p, /2번째 답변입니다/);
+    assert.match(p, /대략적인 방향이나 일반적인 수준의 도움말을 먼저/);
+    // 아직 3번째 답변이 아니므로, 여러 감정에 실질적 해결책을 짝짓는 강한 지침은 없어야 한다.
+    assert.doesNotMatch(p, /각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어/);
+  });
+
+  test("3번째 답변부터(turnCount 2 이상)는 여러 감정에 실질적 해결책을 짝지어 한 번에 제시하라는 지침이 들어간다", () => {
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
+    assert.match(p, /각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어/);
   });
 
   test("마크다운 기호를 쓰지 말라는 지침과 문단 구분 지침이 들어간다", () => {

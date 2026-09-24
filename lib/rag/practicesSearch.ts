@@ -111,10 +111,24 @@ function simpleHash(text: string): number {
 // 후보로 써서 부담 없이 오늘 바로 해볼 수 있는 것 위주로 제안한다. 심리테스트의 5개 영역
 // (관계·소속/자기가치/통제·미래/행복/의미)과 이 표의 domain(나 자신/인간관계/...)은 서로 다른
 // 분류 체계라 직접 매핑할 수 없으므로, 특정 심리 유형에 억지로 연결하지 않는다.
-export async function getDailyPractice(userId: string, dateKey: string): Promise<PracticeResult | null> {
+// 2026-09-24: 온보딩 답변(즐거움 카테고리·고민 도메인)이 있으면 그 조합으로 후보를 좁힌다
+// ("육아와 무관한데 육아 조언이 나온다"는 피드백 반영). 정확히 맞는 조합이 없거나 아직
+// 온보딩을 안 한 사용자는 이전처럼 전체 "가볍게 시작" 목록에서 고른다(완전히 막히지 않도록
+// domain만 맞는 것 → 전체 순으로 점점 넓혀가는 fallback).
+export async function getDailyPractice(
+  userId: string,
+  dateKey: string,
+  preference?: { category?: string | null; domain?: string | null },
+): Promise<PracticeResult | null> {
   const rows = await loadPractices();
-  const pool = rows.filter((p) => p.tier === "가볍게 시작");
-  if (!pool.length) return null;
+  const base = rows.filter((p) => p.tier === "가볍게 시작");
+  if (!base.length) return null;
+
+  const { category, domain } = preference ?? {};
+  const bothMatch = category && domain ? base.filter((p) => p.category === category && p.domain === domain) : [];
+  const domainOnly = domain ? base.filter((p) => p.domain === domain) : [];
+  const pool = bothMatch.length ? bothMatch : domainOnly.length ? domainOnly : base;
+
   const idx = simpleHash(`${dateKey}:${userId}`) % pool.length;
   return pool[idx];
 }

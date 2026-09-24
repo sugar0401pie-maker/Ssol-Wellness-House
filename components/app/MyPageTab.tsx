@@ -75,6 +75,18 @@ export default function MyPageTab() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"type" | "info" | "counselor" | null>(null);
 
+  // 내 정보 확인 — 이름 수정
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+
+  // 상담사 연결 — 신청 폼 (2026-09-24: 외부 예약 페이지 대신 신청서만 받음)
+  const [counselorContact, setCounselorContact] = useState("");
+  const [counselorMessage, setCounselorMessage] = useState("");
+  const [counselorSubmitting, setCounselorSubmitting] = useState(false);
+  const [counselorDone, setCounselorDone] = useState(false);
+  const [counselorError, setCounselorError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -97,6 +109,57 @@ export default function MyPageTab() {
       cancelled = true;
     };
   }, []);
+
+  async function saveName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed || nameSaving) return;
+    setNameSaving(true);
+    const token = await getAccessToken();
+    if (!token) {
+      setNameSaving(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: authHeaders(token),
+        body: JSON.stringify({ displayName: trimmed }),
+      });
+      if (!res.ok) throw new Error();
+      setData((prev) => (prev ? { ...prev, displayName: trimmed } : prev));
+      setEditingName(false);
+    } catch {
+      // 실패해도 편집 상태를 유지해서 다시 시도할 수 있게 한다
+    } finally {
+      setNameSaving(false);
+    }
+  }
+
+  async function submitCounselorInquiry(e: React.FormEvent) {
+    e.preventDefault();
+    if (!counselorContact.trim() || counselorSubmitting) return;
+    setCounselorSubmitting(true);
+    setCounselorError(null);
+    const token = await getAccessToken();
+    if (!token) {
+      setCounselorSubmitting(false);
+      setCounselorError("로그인 정보를 확인하지 못했어요.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/counselor-inquiry", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ contact: counselorContact.trim(), message: counselorMessage.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      setCounselorDone(true);
+    } catch {
+      setCounselorError("신청에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setCounselorSubmitting(false);
+    }
+  }
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -147,18 +210,56 @@ export default function MyPageTab() {
                 )}
               </div>
             ) : (
-              <p>
-                아직 웰니스 유형 테스트 결과가 없어요. 쏠 웰니스 하우스 홈페이지에서 심리 테스트를 먼저 진행해주시면, 완료 후
-                여기서 결과를 확인할 수 있어요.
-              </p>
+              <div>
+                <p>
+                  아직 웰니스 유형 테스트 결과가 없어요. 심리 테스트를 먼저 진행해주시면, 완료 후 여기서 결과를 확인할 수
+                  있어요.
+                </p>
+                <a
+                  href="https://ssolwellnesshouse.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
+                >
+                  지금 테스트하러 가기
+                </a>
+              </div>
             )}
           </SectionRow>
 
           <SectionRow title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
             <dl className="space-y-2">
-              <div className="flex justify-between">
+              <div className="flex items-center justify-between">
                 <dt className="text-slate-400">이름</dt>
-                <dd>{data.displayName ?? "미설정"}</dd>
+                {editingName ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      autoFocus
+                      className="h-8 w-28 rounded-lg border border-line px-2 text-[13px] outline-none focus:border-navy"
+                    />
+                    <button type="button" onClick={() => void saveName()} disabled={nameSaving} className="text-[12px] text-navy">
+                      저장
+                    </button>
+                    <button type="button" onClick={() => setEditingName(false)} className="text-[12px] text-slate-400">
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameInput(data.displayName ?? "");
+                      setEditingName(true);
+                    }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <dd className="inline">{data.displayName ?? "미설정"}</dd>
+                    <span className="text-[11px] text-navy underline">변경</span>
+                  </button>
+                )}
               </div>
               <div className="flex justify-between">
                 <dt className="text-slate-400">이메일</dt>
@@ -178,15 +279,35 @@ export default function MyPageTab() {
             open={open === "counselor"}
             onToggle={() => setOpen(open === "counselor" ? null : "counselor")}
           >
-            <p>전문 상담사와의 연결은 별도 웹페이지에서 진행돼요. 아래 버튼을 누르면 예약 페이지로 이동해요.</p>
-            <a
-              href="https://ssolwellness.com"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
-            >
-              상담사 연결 페이지로 이동
-            </a>
+            {counselorDone ? (
+              <p>신청이 접수됐어요. 알려주신 연락처로 곧 연락드릴게요.</p>
+            ) : (
+              <form onSubmit={submitCounselorInquiry} className="flex flex-col gap-2">
+                <p>전문 상담사 연결은 현재 신청 접수 방식으로 운영되고 있어요. 연락받으실 방법을 남겨주세요.</p>
+                <input
+                  type="text"
+                  value={counselorContact}
+                  onChange={(e) => setCounselorContact(e.target.value)}
+                  placeholder="연락받을 이메일 또는 전화번호"
+                  className="h-10 rounded-xl border border-line bg-background px-3 text-[14px] outline-none focus:border-navy"
+                />
+                <textarea
+                  value={counselorMessage}
+                  onChange={(e) => setCounselorMessage(e.target.value)}
+                  placeholder="하고 싶은 말(선택)"
+                  rows={3}
+                  className="rounded-xl border border-line bg-background px-3 py-2 text-[14px] outline-none focus:border-navy"
+                />
+                {counselorError && <p className="text-[13px] text-red-600">{counselorError}</p>}
+                <button
+                  type="submit"
+                  disabled={!counselorContact.trim() || counselorSubmitting}
+                  className="mt-1 h-10 rounded-xl bg-navy text-[14px] font-medium text-white disabled:opacity-40"
+                >
+                  {counselorSubmitting ? "접수하는 중…" : "상담 신청하기"}
+                </button>
+              </form>
+            )}
           </SectionRow>
         </div>
       )}

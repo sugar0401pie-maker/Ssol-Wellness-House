@@ -18,10 +18,17 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("display_name").eq("user_id", userId).maybeSingle();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("display_name, enjoyment_category, concern_domain")
+    .eq("user_id", userId)
+    .maybeSingle();
 
   const dateKey = todayKeyKST(); // "YYYY-MM-DD" (KST 기준 하루)
-  const practice = await getDailyPractice(userId, dateKey);
+  const practice = await getDailyPractice(userId, dateKey, {
+    category: profile?.enjoyment_category,
+    domain: profile?.concern_domain,
+  });
 
   return NextResponse.json({
     displayName: profile?.display_name ?? null,

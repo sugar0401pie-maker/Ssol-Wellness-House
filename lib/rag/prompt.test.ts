@@ -197,6 +197,16 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(serviceInfo, /신체적인 위협이나 폭력이 있었는지/);
   });
 
+  test("2턴째부터는 공감 반복·감정 라벨링 대신 실질적 제안을 하라는 지침이 들어간다", () => {
+    // 2026-09-24: "내담자 말을 똑같이 반복하며 공감할 필요 없음", "배제/부당함/무력감처럼
+    // 라벨 붙이며 계속 확인하지 말고 실질적 조치를 일괄 제시" 피드백 반영.
+    const first = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 0 });
+    const later = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 1 });
+    assert.doesNotMatch(first, /매 턴 반복하지 마세요/);
+    assert.match(later, /매 턴 반복하지 마세요/);
+    assert.match(later, /실질적으로 해볼 수 있는 것들을 한 번에 묶어서/);
+  });
+
   test("마크다운 기호를 쓰지 말라는 지침과 문단 구분 지침이 들어간다", () => {
     const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false });
     assert.match(p, /마크다운 기호를 쓰지 말고/);

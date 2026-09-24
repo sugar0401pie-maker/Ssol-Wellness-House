@@ -81,7 +81,12 @@ export async function finishSignup(params: {
   const { error: pwError } = await supabase.auth.updateUser({ password: params.password });
   if (pwError) return { ok: false, error: translateAuthError(pwError.message) };
 
-  const { error: profileError } = await supabase
+  // .select()를 붙여서 실제로 몇 행이 바뀌었는지 확인한다 — 2026-09-24 실사용 중 발견:
+  // profiles 테이블에 authenticated role의 update 권한(GRANT)이 애초에 없어서(RLS 정책만
+  // 있고 기본 권한이 없던 버그, migration 20260924000000에서 수정), 에러 없이 0행만 바뀌고
+  // 그대로 성공한 것처럼 넘어가던 문제가 있었다. 앞으로 비슷한 권한 문제가 또 생겨도 조용히
+  // 넘어가지 않도록 방어한다.
+  const { data: updatedRows, error: profileError } = await supabase
     .from("profiles")
     .update({
       display_name: params.displayName,
@@ -89,8 +94,12 @@ export async function finishSignup(params: {
       terms_agreed_at: new Date().toISOString(),
       sensitive_data_agreed_at: new Date().toISOString(),
     })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("user_id");
   if (profileError) return { ok: false, error: `가입은 됐지만 정보 저장에 실패했어요: ${profileError.message}` };
+  if (!updatedRows || updatedRows.length === 0) {
+    return { ok: false, error: "가입은 됐지만 정보 저장에 실패했어요. 새로고침 후 로그인해서 다시 시도해주세요." };
+  }
 
   return { ok: true };
 }

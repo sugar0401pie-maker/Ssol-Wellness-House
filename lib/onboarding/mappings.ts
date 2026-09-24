@@ -33,16 +33,18 @@ export const ENJOYMENT_TO_CATEGORY: Record<EnjoymentOption, string> = {
 };
 
 // 질문 2: "주요 고민거리" — wellness_practices.domain으로 매핑.
-// domain에 없는 "학업"/"가족"은 가장 가까운 값으로 근사한다(완벽한 1:1 매핑은 아님).
-export const CONCERN_OPTIONS = ["연애", "학업", "직장 및 커리어", "일상", "육아", "가족", "기타"] as const;
+// 2026-09-24: 심리테스트 v2(final-ssol-wellness-v2-master-spec.md §3.1)의 5개 영역과
+// 완전히 동일한 이름으로 맞췄다 — wellness_practices.domain도 이 5개로 재분류했다
+// (migration 20260924000400_recategorize_practices_v2.sql). "기타"만 자유 응답이라
+// 매핑 없이 무난한 기본값("나 자신")으로 둔다.
+export const CONCERN_OPTIONS = ["커리어", "연애", "관계", "나 자신", "삶의 방향", "기타"] as const;
 export type ConcernOption = (typeof CONCERN_OPTIONS)[number];
 
 export const CONCERN_TO_DOMAIN: Record<ConcernOption, string> = {
-  연애: "연인관계·부부생활",
-  학업: "나 자신",
-  "직장 및 커리어": "회사·커리어",
-  일상: "나 자신",
-  육아: "육아",
-  가족: "인간관계",
+  커리어: "커리어",
+  연애: "연애",
+  관계: "관계",
+  "나 자신": "나 자신",
+  "삶의 방향": "삶의 방향",
   기타: "나 자신",
 };

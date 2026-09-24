@@ -10,6 +10,7 @@ import { buildSystemPrompt, type PersonaHint } from "@/lib/rag/prompt.ts";
 import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
+import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 
 // 출력 검사를 두 번 다 통과하지 못했을 때만 쓰는 마지막 안전망. 이 문장 자체는 규칙을 어길 수
 // 없도록 고정 문구로 두었다 (진단·약물 지시·효과 보장이 전혀 없음). 문구는 "~할 수 없지만" 같은
@@ -17,9 +18,12 @@ import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 const SAFE_FALLBACK_REPLY =
   "지금 이 부분은 조심스럽게 정리해서 답해드리고 싶어요. 정확한 상태는 정신건강의학과 등 전문가와 상담해보시는 건 어떨까요? 지금 가장 걱정되는 부분이 무엇인지 조금 더 이야기해주실 수 있을까요?";
 
-// 5개 영역 점수를 "관계·소속 12 · 자기가치·인정 13 · 통제·미래 18(가장 높음) · 행복 10(가장 낮음) · 의미·방향 14"
+// 5개 영역 점수를 "커리어 3.2 · 연애 2.1(요즘 더 신경 쓰이는 영역) · 관계 3.8(비교적 안정적) ..."
 // 같은 한 줄로 요약한다. 같은 유형이라도 사용자마다 다른 점수를 답변에 반영하기 위함
 // (2026-09-22 결정 — "모든 사람이 비슷한 결과가 나온다"는 피드백에 대한 조치).
+// 2026-09-24: 심리테스트 v2에서는 점수가 "그 영역이 얼마나 건강하게 채워져 있나"를 뜻하고
+// (높을수록 좋음), 가장 낮은 영역이 "주 고민 영역"이다(v1과 반대 — v1은 가장 높은 쪽이었다).
+// 그래서 라벨도 단순히 "높음/낮음"이 아니라 이 의미가 드러나게 붙인다.
 function summarizeThemeScores(scores: unknown): string | undefined {
   if (!scores || typeof scores !== "object") return undefined;
   const entries: (readonly [string, number])[] = [];
@@ -32,7 +36,7 @@ function summarizeThemeScores(scores: unknown): string | undefined {
   const min = Math.min(...entries.map(([, v]) => v));
   return entries
     .map(([k, v]) => {
-      const tag = v === max && max !== min ? "가장 높음" : v === min && max !== min ? "가장 낮음" : null;
+      const tag = v === max && max !== min ? "비교적 안정적" : v === min && max !== min ? "요즘 더 신경 쓰이는 영역" : null;
       return `${DOMAIN_LABELS[k]} ${v}${tag ? `(${tag})` : ""}`;
     })
     .join(" · ");
@@ -65,29 +69,21 @@ async function computePersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<{ label: string | null; hint: PersonaHint | null }> {
-  const { data: profile } = await admin
-    .from("wellness_profiles")
-    .select("dessert_type, theme_scores, persona_hint_opt_out")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!profile?.dessert_type || profile.persona_hint_opt_out) return { label: null, hint: null };
+  // 2026-09-24: 마이페이지와 같은 방식(ssol_quiz_results 직접 조회)으로 통일 — 예전엔
+  // wellness_profiles를 봤지만 실제 퀴즈 결과와 연결되지 않아 실사용자 기준으로 항상
+  // 비어 있었다(위 파일 상단 import의 loadQuizPersona 주석 참고).
+  const persona = await loadQuizPersona(admin, userId);
+  if (!persona) return { label: null, hint: null };
 
-  const [{ data: tax }, { data: rich }] = await Promise.all([
-    admin.from("taxonomy").select("label_ko, description").eq("type", "persona").eq("code", profile.dessert_type).maybeSingle(),
-    admin.from("persona_profiles").select("tagline, blurb, traits").eq("code", profile.dessert_type).maybeSingle(),
-  ]);
-  if (!tax) return { label: null, hint: null };
-
-  const shortLabel = tax.label_ko.split(" · ")[0]; // "티라미수 · 설계형" → "티라미수" (chunk의 persona_tags와 형식을 맞춤)
   return {
-    label: shortLabel,
+    label: persona.name,
     hint: {
-      label: tax.label_ko,
-      axis: tax.description ?? "",
-      tagline: rich?.tagline,
-      blurb: rich?.blurb,
-      traits: rich?.traits,
-      scoresSummary: summarizeThemeScores(profile.theme_scores),
+      label: persona.name,
+      axis: DOMAIN_LABELS[persona.axisCode] ?? persona.axisCode,
+      tagline: persona.tagline,
+      blurb: persona.blurb,
+      traits: persona.traits,
+      scoresSummary: summarizeThemeScores(persona.domainScores),
     },
   };
 }

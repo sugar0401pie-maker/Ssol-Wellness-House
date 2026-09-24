@@ -204,7 +204,7 @@ describe("buildSystemPrompt", () => {
     const later = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 1 });
     assert.doesNotMatch(first, /매 턴 반복하지 마세요/);
     assert.match(later, /매 턴 반복하지 마세요/);
-    assert.match(later, /실질적으로 해볼 수 있는 것들을 한 번에 묶어서/);
+    assert.match(later, /각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어/);
   });
 
   test("마크다운 기호를 쓰지 말라는 지침과 문단 구분 지침이 들어간다", () => {

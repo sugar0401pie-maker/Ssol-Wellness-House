@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
-import { TYPE_KEY_TO_DESSERT } from "@/lib/mypage/dessertTypeMap";
+import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 
 // 마이페이지 전용: "내 유형", "결과보고서", "내 정보"를 한 번에 준다.
 // 2026-09-22 결정: 로그인 계정을 기존 웰니스 유형 테스트/결제 사이트와 공유하므로,
@@ -20,55 +20,30 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  const [{ data: authUser }, { data: profile }, { data: ssolProfile }, { data: quizResult }, { data: reports }] =
-    await Promise.all([
-      admin.auth.admin.getUserById(userId),
-      admin.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
-      admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
-      admin
-        .from("ssol_quiz_results")
-        .select("type_key, domain_scores, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      admin
-        .from("ssol_reports")
-        .select("sections, status, ready_at, created_at")
-        .eq("user_id", userId)
-        .eq("status", "ready")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  const [{ data: authUser }, { data: profile }, { data: ssolProfile }, quizPersona, { data: reports }] = await Promise.all([
+    admin.auth.admin.getUserById(userId),
+    admin.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
+    admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
+    loadQuizPersona(admin, userId),
+    admin
+      .from("ssol_reports")
+      .select("sections, status, ready_at, created_at")
+      .eq("user_id", userId)
+      .eq("status", "ready")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  let persona: {
-    label: string;
-    tagline: string;
-    blurb: string;
-    traits: string[];
-    domainScores: Record<string, number> | null;
-  } | null = null;
-
-  if (quizResult?.type_key) {
-    const dessertCode = TYPE_KEY_TO_DESSERT[quizResult.type_key];
-    if (dessertCode) {
-      const { data: rich } = await admin
-        .from("persona_profiles")
-        .select("name, tagline, blurb, traits")
-        .eq("code", dessertCode)
-        .maybeSingle();
-      if (rich) {
-        persona = {
-          label: rich.name,
-          tagline: rich.tagline,
-          blurb: rich.blurb,
-          traits: rich.traits ?? [],
-          domainScores: (quizResult.domain_scores as Record<string, number>) ?? null,
-        };
+  const persona = quizPersona
+    ? {
+        label: quizPersona.name,
+        tagline: quizPersona.tagline,
+        blurb: quizPersona.blurb,
+        traits: quizPersona.traits,
+        domainScores: quizPersona.domainScores,
       }
-    }
-  }
+    : null;
 
   return NextResponse.json({
     displayName: profile?.display_name ?? ssolProfile?.name ?? null,

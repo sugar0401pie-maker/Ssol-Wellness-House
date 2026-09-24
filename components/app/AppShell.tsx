@@ -73,17 +73,23 @@ export default function AppShell() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <div className={tab === "home" ? "h-full" : "hidden"}>
-          <HomeTab />
+      {/* 2026-09-24 버그 수정: 온보딩 확인이 끝나기 전에 탭들을 미리 마운트해두면, 홈 탭이
+          온보딩 답변이 저장되기도 전에 "오늘의 실천방법"을 먼저 불러와 버리고, 온보딩 완료
+          후에도 다시 안 불러와서 개인화가 반영 안 된 채로 남는 문제가 있었다. 온보딩 확인이
+          끝난 뒤에만(로딩 아닐 때) 탭 내용을 마운트한다 — 보통 아주 짧은 지연이라 체감되지 않는다. */}
+      {onboarding !== "loading" && !needsOnboarding && (
+        <div className="min-h-0 flex-1">
+          <div className={tab === "home" ? "h-full" : "hidden"}>
+            <HomeTab />
+          </div>
+          <div className={tab === "chat" ? "h-full" : "hidden"}>
+            <ChatApp />
+          </div>
+          <div className={tab === "mypage" ? "h-full" : "hidden"}>
+            <MyPageTab />
+          </div>
         </div>
-        <div className={tab === "chat" ? "h-full" : "hidden"}>
-          <ChatApp />
-        </div>
-        <div className={tab === "mypage" ? "h-full" : "hidden"}>
-          <MyPageTab />
-        </div>
-      </div>
+      )}
 
       <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map((t) => (

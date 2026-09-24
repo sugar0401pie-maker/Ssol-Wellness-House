@@ -216,7 +216,7 @@ export default function MyPageTab() {
                   있어요.
                 </p>
                 <a
-                  href="https://ssolwellnesshouse.com"
+                  href="https://quiz.ssolwellnesshouse.com"
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"

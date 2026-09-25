@@ -84,6 +84,7 @@ async function computePersonaHint(
       blurb: persona.blurb,
       traits: persona.traits,
       scoresSummary: summarizeThemeScores(persona.domainScores),
+      reportInsight: persona.reportInsight ?? undefined,
     },
   };
 }

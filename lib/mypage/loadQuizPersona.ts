@@ -20,7 +20,30 @@ export type QuizPersona = {
   blurb: string;
   traits: string[];
   domainScores: Record<string, number> | null;
+  // 2026-09-25: 유료 심층 리포트(ssol_reports, 결정론적 조립 — AI 자유생성 아님)가 있으면
+  // 그중 "주 고민 영역 해부"/"이번 주 제안" 두 섹션만 채팅 개인화 참고 자료로 함께 준다.
+  // 결제 안 한 사용자는 report가 아예 없으니 null — 정상 케이스, 에러 아님.
+  reportInsight: string | null;
 };
+
+// ssol_reports.sections는 7섹션({title, body}) 배열이다(마스터 스펙 8.2). 그중 실제 문장이
+// 있는 두 섹션만 골라 쓴다 — "주 고민 영역 해부"(왜 이 영역이 낮은지)와 "이번 주 제안"(바로
+// 해볼 수 있는 것 1개)이 대화에 가장 바로 쓸모 있다. 나머지(오각형/프로파일 모양/대처 상세/
+// 궁합/특수 플래그)는 채팅 참고용으로는 과해서 뺀다. 제목이 바뀌면 매칭이 안 될 뿐 에러는
+// 안 나므로(그냥 reportInsight가 비게 됨) 안전하다.
+const RELEVANT_SECTION_TITLES = ["주 고민 영역 해부", "이번 주 제안"];
+const MAX_SECTION_CHARS = 300;
+
+function buildReportInsight(sections: unknown): string | null {
+  if (!Array.isArray(sections)) return null;
+  const picked = sections
+    .filter(
+      (s): s is { title: string; body: string } =>
+        !!s && typeof s === "object" && RELEVANT_SECTION_TITLES.includes((s as { title?: string }).title ?? ""),
+    )
+    .map((s) => `${s.title}: ${s.body.length > MAX_SECTION_CHARS ? s.body.slice(0, MAX_SECTION_CHARS) + "…" : s.body}`);
+  return picked.length ? picked.join("\n") : null;
+}
 
 export async function loadQuizPersona(
   admin: ReturnType<typeof createAdminClient>,
@@ -38,11 +61,17 @@ export async function loadQuizPersona(
   const dessertCode = TYPE_KEY_TO_DESSERT[quizResult.type_key];
   if (!dessertCode) return null; // v1 시절 결과(예: "relate_F")처럼 새 매핑에 없는 값
 
-  const { data: rich } = await admin
-    .from("persona_profiles")
-    .select("name, tagline, blurb, traits")
-    .eq("code", dessertCode)
-    .maybeSingle();
+  const [{ data: rich }, { data: report }] = await Promise.all([
+    admin.from("persona_profiles").select("name, tagline, blurb, traits").eq("code", dessertCode).maybeSingle(),
+    admin
+      .from("ssol_reports")
+      .select("sections")
+      .eq("user_id", userId)
+      .eq("status", "ready")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
   if (!rich) return null;
 
   const axisCode = quizResult.type_key.split("-")[0];
@@ -54,5 +83,6 @@ export async function loadQuizPersona(
     blurb: rich.blurb,
     traits: rich.traits ?? [],
     domainScores: (quizResult.domain_scores as Record<string, number>) ?? null,
+    reportInsight: buildReportInsight(report?.sections),
   };
 }

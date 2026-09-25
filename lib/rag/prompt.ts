@@ -25,6 +25,9 @@ export type PersonaHint = {
   blurb?: string;
   traits?: string[];
   scoresSummary?: string;
+  // 2026-09-25: 유료 심층 리포트(결정론적 조립, ssol_reports)에서 뽑은 "주 고민 영역 해부"/
+  // "이번 주 제안" 두 섹션. 결제 안 한 사용자는 undefined(정상 — 없어도 되는 부가 정보).
+  reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
 
@@ -125,6 +128,19 @@ export function buildSystemPrompt(params: {
           "답변의 톤, 예시, 강조하는 프레임워크 정도만 이 성향에 자연스럽게 맞춘다.",
         ].join(" "),
       );
+      if (params.personaHint.reportInsight) {
+        // 2026-09-25 owner 요청: 유료 심층 리포트(결정론적 조립, AI가 쓴 글이 아님)를
+        // 채팅 개인화에 참고 자료로 활용. 리포트 문장 자체를 사실로 인용하거나 그대로 읽어주지
+        // 말고, 지금 이 사람이 하는 말과 관련 있을 때만 은근히 녹여 쓰라고 명확히 제한한다.
+        parts.push(
+          [
+            "[참고] 이 사용자가 결제한 심층 리포트에서 뽑은 내용(사용자에게 리포트 존재 자체를 먼저 언급하지 말 것):",
+            params.personaHint.reportInsight,
+            "이 내용은 진단이 아니라 자기 이해를 돕는 참고 자료다. 지금 사용자가 하는 말이 이 내용과 실제로 관련 있을 때만 자연스럽게 녹여 쓰고, 관련 없으면 무시한다.",
+            "리포트 문장을 그대로 읽어주거나 '리포트에 따르면' 식으로 출처를 밝히지 말고, 마치 지금까지의 대화만으로 알아챈 것처럼 자연스럽게 말한다.",
+          ].join(" "),
+        );
+      }
     }
   }
 

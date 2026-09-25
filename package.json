@@ -11,7 +11,7 @@
     "check:openai": "node --env-file=.env.local scripts/check-openai.mjs",
     "embed:chunks": "node --env-file=.env.local scripts/embed-chunks.mjs",
     "search:test": "node --env-file=.env.local scripts/search-test.mjs",
-    "test": "node --test lib/safety/*.test.ts lib/rag/*.test.ts",
+    "test": "node --test lib/safety/*.test.ts lib/rag/*.test.ts lib/onboarding/*.test.ts",
     "safety:eval": "node --env-file=.env.local scripts/safety-eval.mjs",
     "cost:sim": "node --env-file=.env.local scripts/cost-simulation.mjs"
   },

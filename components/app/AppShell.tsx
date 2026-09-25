@@ -5,7 +5,7 @@ import Image from "next/image";
 import ChatApp from "@/components/chat/ChatApp";
 import HomeTab from "./HomeTab";
 import MyPageTab from "./MyPageTab";
-import OnboardingModal from "./OnboardingModal";
+import OnboardingFlow from "./OnboardingFlow";
 import { signOut } from "@/lib/supabase/authClient";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
@@ -25,8 +25,6 @@ type OnboardingInfo = {
   completed: boolean;
   nickname: string | null;
   title: string;
-  enjoymentOptions: string[];
-  concernOptions: string[];
 };
 
 export default function AppShell() {
@@ -105,11 +103,10 @@ export default function AppShell() {
       </nav>
 
       {needsOnboarding && typeof onboarding === "object" && (
-        <OnboardingModal
+        <OnboardingFlow
+          mode="gate"
           nickname={onboarding.nickname}
           title={onboarding.title}
-          enjoymentOptions={onboarding.enjoymentOptions}
-          concernOptions={onboarding.concernOptions}
           onDone={() => setOnboarding({ ...onboarding, completed: true })}
         />
       )}

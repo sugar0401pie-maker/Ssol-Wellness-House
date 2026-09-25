@@ -6,6 +6,7 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { requestEmailChange, verifyEmailChange } from "@/lib/supabase/authClient";
 import CounselorBookingModal from "./CounselorBookingModal";
+import OnboardingFlow from "./OnboardingFlow";
 
 type Persona = {
   label: string;
@@ -85,7 +86,8 @@ function SectionRow({
 export default function MyPageTab() {
   const [data, setData] = useState<MyPageData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "info" | "counselor" | null>(null);
+  const [open, setOpen] = useState<"type" | "info" | "onboarding" | "counselor" | null>(null);
+  const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 이름(실명) 수정
   const [editingName, setEditingName] = useState(false);
@@ -515,6 +517,21 @@ export default function MyPageTab() {
           </SectionRow>
 
           <SectionRow
+            title="온보딩 답변 수정"
+            open={open === "onboarding"}
+            onToggle={() => setOpen(open === "onboarding" ? null : "onboarding")}
+          >
+            <p>가입 직후 답했던 생활·취향 질문을 다시 확인하거나 바꿀 수 있어요. 바뀐 내용은 다음 날 추천부터 반영돼요.</p>
+            <button
+              type="button"
+              onClick={() => setEditingOnboarding(true)}
+              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+            >
+              답변 수정하기
+            </button>
+          </SectionRow>
+
+          <SectionRow
             title="상담사 연결"
             open={open === "counselor"}
             onToggle={() => setOpen(open === "counselor" ? null : "counselor")}
@@ -532,6 +549,15 @@ export default function MyPageTab() {
       )}
 
       {showBooking && <CounselorBookingModal onClose={() => setShowBooking(false)} />}
+
+      {editingOnboarding && (
+        <OnboardingFlow
+          mode="edit"
+          nickname={data?.nickname ?? data?.displayName ?? null}
+          onDone={() => setEditingOnboarding(false)}
+          onClose={() => setEditingOnboarding(false)}
+        />
+      )}
     </div>
   );
 }

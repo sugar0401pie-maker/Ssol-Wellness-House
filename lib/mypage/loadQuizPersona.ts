@@ -41,9 +41,12 @@ function truncate(body: string): string {
 
 function buildReportInsight(assembled: unknown): string | null {
   if (!assembled || typeof assembled !== "object") return null;
-  const a = assembled as { section2?: string; section7?: string | null };
+  // 2026-09-25: section2(주 고민 영역 해부)가 문단 구분을 위해 string -> string[](문단 배열)로
+  // 바뀌었다. 공백으로 합쳐서 기존과 동일하게 처리한다.
+  const a = assembled as { section2?: string | string[]; section7?: string | null };
+  const section2Text = Array.isArray(a.section2) ? a.section2.join(" ") : a.section2;
   const picked: string[] = [];
-  if (a.section2) picked.push(`주 고민 영역 해부: ${truncate(a.section2)}`);
+  if (section2Text) picked.push(`주 고민 영역 해부: ${truncate(section2Text)}`);
   if (a.section7) picked.push(`이번 주 제안: ${truncate(a.section7)}`);
   return picked.length ? picked.join("\n") : null;
 }

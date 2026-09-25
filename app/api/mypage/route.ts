@@ -17,9 +17,9 @@ export const runtime = "nodejs";
 // components/app/MyPageTab.tsx)가 이미 알고 있는 {title,body}[] 모양으로 변환해서, 프론트
 // 컴포넌트는 손대지 않고 여기서만 맞춘다.
 type AssembledReportV2 = {
-  section2: string;
+  section2: string | string[]; // 2026-09-25: 문단 구분을 위해 string[]로 바뀜(assembledToSections가 이미 배열을 처리함)
   section3: string | null;
-  section4: string;
+  section4: string | string[];
   section5: string | null;
   section6: string[];
   section7: string | null;

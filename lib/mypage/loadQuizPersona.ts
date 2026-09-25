@@ -26,22 +26,25 @@ export type QuizPersona = {
   reportInsight: string | null;
 };
 
-// ssol_reports.sections는 7섹션({title, body}) 배열이다(마스터 스펙 8.2). 그중 실제 문장이
-// 있는 두 섹션만 골라 쓴다 — "주 고민 영역 해부"(왜 이 영역이 낮은지)와 "이번 주 제안"(바로
-// 해볼 수 있는 것 1개)이 대화에 가장 바로 쓸모 있다. 나머지(오각형/프로파일 모양/대처 상세/
-// 궁합/특수 플래그)는 채팅 참고용으로는 과해서 뺀다. 제목이 바뀌면 매칭이 안 될 뿐 에러는
-// 안 나므로(그냥 reportInsight가 비게 됨) 안전하다.
-const RELEVANT_SECTION_TITLES = ["주 고민 영역 해부", "이번 주 제안"];
+// 2026-09-25 버그 발견: 심리테스트 앱이 v2로 재구축되면서 ssol_reports의 리포트 본문 컬럼이
+// sections(배열, {title,body}[]) → assembled(객체, {section2..section7})로 바뀌었다(마스터
+// 스펙 8.2/8.3). 예전 컬럼명으로 select하면 에러가 나는데, 에러를 버리고 data만 구조분해했던
+// 탓에 조용히 reportInsight가 비어 있었다. 그중 실제 문장이 있는 두 섹션만 골라 쓴다 —
+// section2(주 고민 영역 해부, 왜 이 영역이 낮은지)와 section7(이번 주 제안, 바로 해볼 수 있는
+// 것 1개)이 대화에 가장 바로 쓸모 있다. 나머지(프로파일 모양/대처 상세/궁합/특수 플래그)는
+// 채팅 참고용으로는 과해서 뺀다.
 const MAX_SECTION_CHARS = 300;
 
-function buildReportInsight(sections: unknown): string | null {
-  if (!Array.isArray(sections)) return null;
-  const picked = sections
-    .filter(
-      (s): s is { title: string; body: string } =>
-        !!s && typeof s === "object" && RELEVANT_SECTION_TITLES.includes((s as { title?: string }).title ?? ""),
-    )
-    .map((s) => `${s.title}: ${s.body.length > MAX_SECTION_CHARS ? s.body.slice(0, MAX_SECTION_CHARS) + "…" : s.body}`);
+function truncate(body: string): string {
+  return body.length > MAX_SECTION_CHARS ? body.slice(0, MAX_SECTION_CHARS) + "…" : body;
+}
+
+function buildReportInsight(assembled: unknown): string | null {
+  if (!assembled || typeof assembled !== "object") return null;
+  const a = assembled as { section2?: string; section7?: string | null };
+  const picked: string[] = [];
+  if (a.section2) picked.push(`주 고민 영역 해부: ${truncate(a.section2)}`);
+  if (a.section7) picked.push(`이번 주 제안: ${truncate(a.section7)}`);
   return picked.length ? picked.join("\n") : null;
 }
 
@@ -71,7 +74,7 @@ export async function loadQuizPersona(
     admin.from("persona_profiles").select("name, tagline, blurb, traits").eq("code", dessertCode).maybeSingle(),
     admin
       .from("ssol_reports")
-      .select("sections")
+      .select("assembled")
       .eq("user_id", userId)
       .eq("status", "ready")
       .order("created_at", { ascending: false })
@@ -89,6 +92,6 @@ export async function loadQuizPersona(
     blurb: rich.blurb,
     traits: rich.traits ?? [],
     domainScores: (quizResult.axis_scores as Record<string, number>) ?? null,
-    reportInsight: buildReportInsight(report?.sections),
+    reportInsight: buildReportInsight(report?.assembled),
   };
 }

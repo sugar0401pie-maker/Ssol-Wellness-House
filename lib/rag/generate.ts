@@ -11,6 +11,7 @@ import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
+import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 
 // 출력 검사를 두 번 다 통과하지 못했을 때만 쓰는 마지막 안전망. 이 문장 자체는 규칙을 어길 수
 // 없도록 고정 문구로 두었다 (진단·약물 지시·효과 보장이 전혀 없음). 문구는 "~할 수 없지만" 같은
@@ -153,10 +154,15 @@ export async function generateAnswer(params: {
 
   // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
   // 검색이나 안전 판단에는 쓰지 않는다.
+  // 2026-09-25: 관계/육아/업무 하드 필터는 온보딩 여부와 무관하게 채팅 실천방법 제안에도
+  // 항상 적용한다(파트너 없는데 "연인과 함께" 제안이 나가지 않도록) — practicesSearch.ts.
+  const onboardingPrefs = wantsPractices ? await loadOnboardingPrefs(admin, params.userId) : null;
   const [{ data: memoryRow }, { data: sessionMeta }, practiceResults] = await Promise.all([
     admin.from("user_memory").select("summary").eq("user_id", params.userId).maybeSingle(),
     admin.from("chat_sessions").select("clinical_boundary_stated_at").eq("session_id", params.sessionId).maybeSingle(),
-    wantsPractices ? searchWellnessPractices(params.message, params.recentMessages) : Promise.resolve([]),
+    wantsPractices && onboardingPrefs
+      ? searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs)
+      : Promise.resolve([]),
   ]);
 
   const usedClinicalChunk = knowledgeChunks.some((c) => c.clinical_sensitive);

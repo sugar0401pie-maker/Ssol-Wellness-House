@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getDailyPractice } from "@/lib/rag/practicesSearch";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
+import { getGreetingLine, holidayPracticeDomain } from "@/lib/home/greeting";
 
 // 홈 탭 전용: 인사말에 쓸 표시 이름 + 오늘의 실천방법 제안 하나를 준다. 채팅과 무관한 조회라
 // 하루 대화 횟수 제한과도 무관하고, AI를 호출하지 않아 비용이 들지 않는다.
@@ -25,14 +26,17 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   const dateKey = todayKeyKST(); // "YYYY-MM-DD" (KST 기준 하루)
+  // 명절 연휴엔 평소 개인화보다 "관계"(가족·지인) 쪽 제안을 우선한다.
+  const holidayDomain = holidayPracticeDomain(dateKey);
   const practice = await getDailyPractice(userId, dateKey, {
-    category: profile?.enjoyment_category,
-    domain: profile?.concern_domain,
+    category: holidayDomain ? null : profile?.enjoyment_category,
+    domain: holidayDomain ?? profile?.concern_domain,
   });
 
   return NextResponse.json({
     displayName: profile?.display_name ?? null,
     dateKey,
+    greeting: getGreetingLine(dateKey, profile?.display_name ?? null),
     practice,
   });
 }

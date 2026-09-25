@@ -5,7 +5,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
-type DailyResponse = { displayName: string | null; dateKey: string; practice: Practice };
+type DailyResponse = { displayName: string | null; dateKey: string; greeting: string; practice: Practice };
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -54,7 +54,7 @@ export default function HomeTab() {
         <p className="mt-1 text-[19px] font-medium leading-7 text-foreground">
           안녕하세요{data?.displayName ? `, ${data.displayName}님` : ""}.
         </p>
-        <p className="mt-1 text-[14px] leading-5 text-slate-500">오늘은 이런 작은 변화를 한번 해볼까요?</p>
+        <p className="mt-1 text-[14px] leading-5 text-slate-500">{data?.greeting ?? " "}</p>
 
         {error && <p className="mt-6 text-[13px] text-red-600">{error}</p>}
 

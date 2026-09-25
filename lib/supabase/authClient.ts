@@ -32,6 +32,19 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   return { ok: true, needsEmailConfirmation: !data.session };
 }
 
+// 2026-09-25 owner 요청: "이메일 중복 확인해서 이미 있으면 가입 못 하게 막기". 서버 관리자
+// API 없이 클라이언트에서 확인하는 표준적인 방법 — shouldCreateUser:false로 OTP를 시도하면,
+// 이미 가입된 이메일은 에러 없이 로그인용 인증번호가 발송되고(그래서 "이미 있다"고 판단),
+// 가입된 적 없는 이메일은 계정을 새로 만들 수 없다는 에러가 난다(그래서 "가입 가능"으로 판단).
+// 실제 회원가입 인증번호(sendSignupOtp, 아래)는 이 확인을 통과한 뒤 별도로 다시 보낸다.
+export async function checkEmailAvailable(email: string): Promise<{ available: boolean; error?: string }> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { available: true }; // 설정 오류 시엔 막지 않고 통과시킨다(다음 단계에서 다시 확인됨)
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  if (!error) return { available: false }; // 에러 없음 = 이미 존재하는 계정에 로그인용 코드가 발송됨
+  return { available: true };
+}
+
 // 2026-09-23: ssolwellnesshouse.com의 실제 가입 화면(이름·생년월일 입력 → 인증번호 받기 →
 // 인증번호+비밀번호 입력 → 가입 완료)과 맞춘 흐름. 비밀번호 없이 이메일로 먼저 인증번호를
 // 보내고, 인증에 성공한 뒤에야 비밀번호를 설정한다 — signUpWithEmail(위)과는 다른 흐름이라
@@ -137,6 +150,33 @@ export async function verifyEmailChange(newEmail: string, token: string): Promis
       : translateAuthError(error.message);
     return { ok: false, error: message };
   }
+  return { ok: true };
+}
+
+// 2026-09-25 owner 요청: "비밀번호 찾기" — 가입/이메일변경과 같은 인증번호(OTP) 패턴을 그대로
+// 쓴다(링크 클릭 대신 숫자 코드 입력). type이 "recovery"라는 점만 다르다. 이 앱은 로그인
+// 아이디가 곧 이메일이라 별도의 "아이디 찾기"는 없다 — 가입 시 쓴 이메일을 모르면 계정을
+// 특정할 방법이 없어(전화번호 인증 미도입), 고객센터로 안내한다.
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 비밀번호를 재설정할 수 없어요." };
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) return { ok: false, error: translateAuthError(error.message) };
+  return { ok: true };
+}
+
+export async function confirmPasswordReset(email: string, token: string, newPassword: string): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 비밀번호를 재설정할 수 없어요." };
+  const { error: verifyError } = await supabase.auth.verifyOtp({ email, token, type: "recovery" });
+  if (verifyError) {
+    const message = /expired|invalid/i.test(verifyError.message)
+      ? "인증번호가 올바르지 않거나 만료됐어요. 다시 받아주세요."
+      : translateAuthError(verifyError.message);
+    return { ok: false, error: message };
+  }
+  const { error: pwError } = await supabase.auth.updateUser({ password: newPassword });
+  if (pwError) return { ok: false, error: translateAuthError(pwError.message) };
   return { ok: true };
 }
 

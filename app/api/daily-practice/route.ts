@@ -53,8 +53,8 @@ export async function GET(req: NextRequest) {
   // "랜덤" 캐릭터를 반투명으로 보여준다(SAFE-005/014/015: 재미 요소일 뿐, 진단·성향 단정이 아니다).
   const persona = await loadQuizPersona(admin, userId);
   const character = persona
-    ? { code: persona.dessertCode, name: persona.name, hasResult: true as const }
-    : { code: pickBySeed(userId), name: null, hasResult: false as const };
+    ? { code: persona.dessertCode, name: persona.name, tagline: persona.tagline, hasResult: true as const }
+    : { code: pickBySeed(userId), name: null, tagline: null, hasResult: false as const };
 
   return NextResponse.json({
     displayName: greetingName,

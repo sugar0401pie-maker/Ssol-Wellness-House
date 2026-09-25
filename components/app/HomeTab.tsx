@@ -6,7 +6,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
-type Character = { code: string; name: string | null; hasResult: boolean };
+type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
 type DailyResponse = {
   displayName: string | null;
   dateKey: string;
@@ -66,18 +66,23 @@ export default function HomeTab() {
 
         {data?.character && (
           <div className="mt-4 flex flex-col items-center">
-            <Image
-              src={`/characters/${data.character.code}.png`}
-              alt={data.character.name ?? "웰니스 캐릭터"}
-              width={140}
-              height={140}
-              className={data.character.hasResult ? "" : "opacity-40"}
-              priority={false}
-            />
-            {data.character.hasResult ? (
-              <p className="mt-1 text-[13px] font-medium text-navy">{data.character.name}</p>
+            <div className="relative aspect-[4/3] w-full">
+              <Image
+                src={`/characters/${data.character.code}.png`}
+                alt={data.character.name ?? "웰니스 캐릭터"}
+                fill
+                className={`object-contain ${data.character.hasResult ? "" : "opacity-40"}`}
+                priority={false}
+              />
+            </div>
+            {data.character.hasResult && data.character.name ? (
+              <p className="mt-2 px-2 text-center text-[14px] leading-6 text-foreground">
+                {data.displayName ? `${data.displayName}님은 ` : ""}
+                <span className="font-medium text-navy">{data.character.name}</span> 유형이에요.
+                {data.character.tagline && <span className="mt-0.5 block text-slate-500">{data.character.tagline}</span>}
+              </p>
             ) : (
-              <p className="mt-1 text-center text-[12px] leading-4 text-slate-400">
+              <p className="mt-2 text-center text-[12px] leading-4 text-slate-400">
                 아직 심리테스트 결과가 없어서 랜덤 캐릭터예요.
                 <br />
                 테스트하면 내 캐릭터를 만날 수 있어요.

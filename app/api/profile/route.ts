@@ -3,9 +3,10 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 
-// 마이페이지 "내 정보 확인"에서 이름(실명)·닉네임·생년월일을 바꿀 때 쓴다. 이메일은 여기서
-// 다루지 않는다 — 재인증(OTP)이 필요해 브라우저에서 Supabase Auth를 직접 호출한다
-// (lib/supabase/authClient.ts의 requestEmailChange/verifyEmailChange, 가입 때와 같은 패턴).
+// 마이페이지 "내 정보 확인"에서 이름(실명)·닉네임·생년월일·휴대전화번호·주소·마케팅 동의를
+// 바꿀 때 쓴다. 이메일은 여기서 다루지 않는다 — 재인증(OTP)이 필요해 브라우저에서 Supabase
+// Auth를 직접 호출한다(lib/supabase/authClient.ts의 requestEmailChange/verifyEmailChange,
+// 가입 때와 같은 패턴). 2026-09-25: 휴대전화번호/주소/마케팅 동의 추가(migration 20260925000700).
 export const runtime = "nodejs";
 
 const BIRTH_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -17,14 +18,21 @@ export async function PATCH(req: NextRequest) {
   const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
-  let body: { displayName?: unknown; nickname?: unknown; birthDate?: unknown };
+  let body: {
+    displayName?: unknown;
+    nickname?: unknown;
+    birthDate?: unknown;
+    phone?: unknown;
+    address?: unknown;
+    marketingConsent?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const update: Record<string, string | null> = {};
+  const update: Record<string, string | boolean | null> = {};
 
   if (body.displayName !== undefined) {
     const displayName = typeof body.displayName === "string" ? body.displayName.trim().slice(0, 50) : "";
@@ -44,6 +52,22 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "생년월일 형식이 올바르지 않습니다." }, { status: 400 });
     }
     update.birth_date = birthDate;
+  }
+
+  if (body.phone !== undefined) {
+    const phone = typeof body.phone === "string" ? body.phone.trim().slice(0, 20) : "";
+    update.phone = phone || null;
+  }
+
+  if (body.address !== undefined) {
+    const address = typeof body.address === "string" ? body.address.trim().slice(0, 300) : "";
+    update.address = address || null;
+  }
+
+  if (body.marketingConsent !== undefined) {
+    const consent = body.marketingConsent === true;
+    update.marketing_consent = consent;
+    update.marketing_consent_at = consent ? new Date().toISOString() : null;
   }
 
   if (Object.keys(update).length === 0) {

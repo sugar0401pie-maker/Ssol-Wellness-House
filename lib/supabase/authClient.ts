@@ -71,6 +71,12 @@ export async function finishSignup(params: {
   password: string;
   displayName: string;
   birthDate: string;
+  // 2026-09-25 owner 요청: 회원가입 화면에 닉네임·휴대전화번호·주소·마케팅 동의 추가.
+  // 전부 선택 입력이라 비어 있어도 가입 자체는 진행된다.
+  nickname?: string;
+  phone?: string;
+  address?: string;
+  marketingConsent?: boolean;
 }): Promise<AuthResult> {
   const supabase = getBrowserClient();
   if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
@@ -93,6 +99,11 @@ export async function finishSignup(params: {
       birth_date: params.birthDate,
       terms_agreed_at: new Date().toISOString(),
       sensitive_data_agreed_at: new Date().toISOString(),
+      nickname: params.nickname || null,
+      phone: params.phone || null,
+      address: params.address || null,
+      marketing_consent: params.marketingConsent ?? false,
+      marketing_consent_at: params.marketingConsent ? new Date().toISOString() : null,
     })
     .eq("user_id", userId)
     .select("user_id");

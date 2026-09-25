@@ -9,6 +9,7 @@ import {
   verifySignupOtp,
   finishSignup,
 } from "@/lib/supabase/authClient";
+import { openAddressSearch } from "@/lib/address/daumPostcode";
 
 // 로그인 전(초기) 화면. 소개 문구는 ssolwellness.com 첫 화면 문구를 그대로 가져왔다 (2026-09-22).
 // 회원가입 화면은 ssolwellnesshouse.com 실제 가입 화면(이름·생년월일 입력 → 인증번호 받기 →
@@ -27,10 +28,15 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
   // 회원가입
   const [step, setStep] = useState<SignupStep>("info");
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [addressDetail, setAddressDetail] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeSensitive, setAgreeSensitive] = useState(false);
+  const [agreeMarketing, setAgreeMarketing] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
 
@@ -74,6 +80,15 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
 
   const canSendOtp = name.trim() && birthDate && signupEmail.trim() && agreeTerms && agreeSensitive;
 
+  async function handleAddressSearch() {
+    try {
+      const result = await openAddressSearch();
+      setAddress(`(${result.zonecode}) ${result.address}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "주소 검색을 열지 못했어요.");
+    }
+  }
+
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     if (!canSendOtp || submitting) return;
@@ -108,7 +123,15 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
       setError(verify.error ?? "인증에 실패했어요.");
       return;
     }
-    const finish = await finishSignup({ password: signupPassword, displayName: name.trim(), birthDate });
+    const finish = await finishSignup({
+      password: signupPassword,
+      displayName: name.trim(),
+      birthDate,
+      nickname: nickname.trim(),
+      phone: phone.trim(),
+      address: addressDetail.trim() ? `${address} ${addressDetail.trim()}` : address,
+      marketingConsent: agreeMarketing,
+    });
     setSubmitting(false);
     if (!finish.ok) {
       setError(finish.error ?? "가입 완료 중 문제가 생겼어요.");
@@ -230,6 +253,13 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
                 className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
               />
               <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="닉네임 (선택, 비우면 이름이 표시돼요)"
+                className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
+              />
+              <input
                 type="date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
@@ -245,7 +275,41 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
                 autoComplete="email"
                 className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
               />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="휴대전화번호 (선택)"
+                autoComplete="tel"
+                className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
+              />
               <p className="text-[12px] text-slate-400">휴대폰 번호 인증은 준비 중이에요. 지금은 이메일로 가입해주세요.</p>
+
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={address}
+                  readOnly
+                  placeholder="주소 (선택)"
+                  className="h-11 flex-1 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleAddressSearch()}
+                  className="h-11 shrink-0 rounded-xl border border-navy px-3 text-[13px] font-medium text-navy"
+                >
+                  주소 검색
+                </button>
+              </div>
+              {address && (
+                <input
+                  type="text"
+                  value={addressDetail}
+                  onChange={(e) => setAddressDetail(e.target.value)}
+                  placeholder="상세주소 (동/호수 등)"
+                  className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
+                />
+              )}
 
               <label className="mt-1 flex items-start gap-2 text-[12px] leading-5 text-slate-600">
                 <input
@@ -284,6 +348,15 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
                   </a>
                   에 동의합니다. (필수)
                 </span>
+              </label>
+              <label className="flex items-start gap-2 text-[12px] leading-5 text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={agreeMarketing}
+                  onChange={(e) => setAgreeMarketing(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                />
+                <span>(선택) 마케팅 정보 활용에 동의합니다.</span>
               </label>
 
               {error && <p className="text-[13px] text-red-600">{error}</p>}

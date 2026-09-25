@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
-import { requestEmailChange, verifyEmailChange } from "@/lib/supabase/authClient";
 import CounselorBookingModal from "./CounselorBookingModal";
 import OnboardingFlow from "./OnboardingFlow";
+import PasswordConfirmModal from "./PasswordConfirmModal";
+import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
 
 type Persona = {
   label: string;
@@ -17,11 +18,7 @@ type Persona = {
 } | null;
 
 type ReportSection = { title: string; body: string };
-type MyPageData = {
-  displayName: string | null;
-  nickname: string | null;
-  birthDate: string | null;
-  email: string | null;
+type MyPageData = MyInfo & {
   gender: string | null;
   persona: Persona;
   report: { sections: ReportSection[] } | null;
@@ -89,29 +86,11 @@ export default function MyPageTab() {
   const [open, setOpen] = useState<"type" | "info" | "onboarding" | "counselor" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
-  // 내 정보 확인 — 이름(실명) 수정
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState("");
-  const [nameSaving, setNameSaving] = useState(false);
+  // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [showInfoEdit, setShowInfoEdit] = useState(false);
 
-  // 내 정보 확인 — 닉네임 수정 (2026-09-25: 실명과 별개로 화면 표시용 별칭)
-  const [editingNickname, setEditingNickname] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState("");
-  const [nicknameSaving, setNicknameSaving] = useState(false);
-
-  // 내 정보 확인 — 생년월일 수정
-  const [editingBirthDate, setEditingBirthDate] = useState(false);
-  const [birthDateInput, setBirthDateInput] = useState("");
-  const [birthDateSaving, setBirthDateSaving] = useState(false);
-
-  // 내 정보 확인 — 이메일 변경 (반드시 새 이메일로 인증번호를 받아 확인해야 바뀐다)
-  const [emailStep, setEmailStep] = useState<"idle" | "entering" | "verifying">("idle");
-  const [newEmailInput, setNewEmailInput] = useState("");
-  const [emailCodeInput, setEmailCodeInput] = useState("");
-  const [emailSaving, setEmailSaving] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
-
-  // 상담사 연결 — 2026-09-25: 간단한 문의 폼 대신 실제 예약 페이지와 같은 신청 팝업으로 교체.
+  // 상담사 연결 — 2026-09-24: 간단한 문의 폼 대신 실제 예약 페이지와 같은 신청 팝업으로 교체.
   const [showBooking, setShowBooking] = useState(false);
 
   useEffect(() => {
@@ -137,111 +116,9 @@ export default function MyPageTab() {
     };
   }, []);
 
-  async function saveName() {
-    const trimmed = nameInput.trim();
-    if (!trimmed || nameSaving) return;
-    setNameSaving(true);
-    const token = await getAccessToken();
-    if (!token) {
-      setNameSaving(false);
-      return;
-    }
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: authHeaders(token),
-        body: JSON.stringify({ displayName: trimmed }),
-      });
-      if (!res.ok) throw new Error();
-      setData((prev) => (prev ? { ...prev, displayName: trimmed } : prev));
-      setEditingName(false);
-    } catch {
-      // 실패해도 편집 상태를 유지해서 다시 시도할 수 있게 한다
-    } finally {
-      setNameSaving(false);
-    }
+  function applyInfoUpdate(next: Partial<MyInfo>) {
+    setData((prev) => (prev ? { ...prev, ...next } : prev));
   }
-
-  async function saveNickname() {
-    if (nicknameSaving) return;
-    const trimmed = nicknameInput.trim();
-    setNicknameSaving(true);
-    const token = await getAccessToken();
-    if (!token) {
-      setNicknameSaving(false);
-      return;
-    }
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: authHeaders(token),
-        body: JSON.stringify({ nickname: trimmed }),
-      });
-      if (!res.ok) throw new Error();
-      setData((prev) => (prev ? { ...prev, nickname: trimmed || null } : prev));
-      setEditingNickname(false);
-    } catch {
-      // 실패해도 편집 상태를 유지해서 다시 시도할 수 있게 한다
-    } finally {
-      setNicknameSaving(false);
-    }
-  }
-
-  async function saveBirthDate() {
-    if (birthDateSaving || !birthDateInput) return;
-    setBirthDateSaving(true);
-    const token = await getAccessToken();
-    if (!token) {
-      setBirthDateSaving(false);
-      return;
-    }
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: authHeaders(token),
-        body: JSON.stringify({ birthDate: birthDateInput }),
-      });
-      if (!res.ok) throw new Error();
-      setData((prev) => (prev ? { ...prev, birthDate: birthDateInput } : prev));
-      setEditingBirthDate(false);
-    } catch {
-      // 실패해도 편집 상태를 유지해서 다시 시도할 수 있게 한다
-    } finally {
-      setBirthDateSaving(false);
-    }
-  }
-
-  async function handleRequestEmailChange() {
-    const trimmed = newEmailInput.trim();
-    if (!trimmed || emailSaving) return;
-    setEmailSaving(true);
-    setEmailError(null);
-    const result = await requestEmailChange(trimmed);
-    setEmailSaving(false);
-    if (!result.ok) {
-      setEmailError(result.error ?? "인증번호 발송에 실패했어요.");
-      return;
-    }
-    setEmailStep("verifying");
-  }
-
-  async function handleConfirmEmailChange() {
-    const trimmed = newEmailInput.trim();
-    if (!emailCodeInput.trim() || emailSaving) return;
-    setEmailSaving(true);
-    setEmailError(null);
-    const result = await verifyEmailChange(trimmed, emailCodeInput.trim());
-    setEmailSaving(false);
-    if (!result.ok) {
-      setEmailError(result.error ?? "인증번호 확인에 실패했어요.");
-      return;
-    }
-    setData((prev) => (prev ? { ...prev, email: trimmed } : prev));
-    setEmailStep("idle");
-    setNewEmailInput("");
-    setEmailCodeInput("");
-  }
-
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -310,203 +187,35 @@ export default function MyPageTab() {
           </SectionRow>
 
           <SectionRow title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
-            <dl className="space-y-3">
-              <div className="flex items-center justify-between">
+            <dl className="space-y-2">
+              <div className="flex justify-between">
                 <dt className="text-slate-400">이름(실명)</dt>
-                {editingName ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      autoFocus
-                      className="h-8 w-28 rounded-lg border border-line px-2 text-[13px] outline-none focus:border-navy"
-                    />
-                    <button type="button" onClick={() => void saveName()} disabled={nameSaving} className="text-[12px] text-navy">
-                      저장
-                    </button>
-                    <button type="button" onClick={() => setEditingName(false)} className="text-[12px] text-slate-400">
-                      취소
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNameInput(data.displayName ?? "");
-                      setEditingName(true);
-                    }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <dd className="inline">{data.displayName ?? "미설정"}</dd>
-                    <span className="text-[11px] text-navy underline">변경</span>
-                  </button>
-                )}
+                <dd>{data.displayName ?? "미설정"}</dd>
               </div>
-
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between">
                 <dt className="text-slate-400">닉네임</dt>
-                {editingNickname ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={nicknameInput}
-                      onChange={(e) => setNicknameInput(e.target.value)}
-                      placeholder="비우면 이름이 표시돼요"
-                      autoFocus
-                      className="h-8 w-32 rounded-lg border border-line px-2 text-[13px] outline-none focus:border-navy"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void saveNickname()}
-                      disabled={nicknameSaving}
-                      className="text-[12px] text-navy"
-                    >
-                      저장
-                    </button>
-                    <button type="button" onClick={() => setEditingNickname(false)} className="text-[12px] text-slate-400">
-                      취소
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNicknameInput(data.nickname ?? "");
-                      setEditingNickname(true);
-                    }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <dd className="inline">{data.nickname ?? "미설정"}</dd>
-                    <span className="text-[11px] text-navy underline">변경</span>
-                  </button>
-                )}
+                <dd>{data.nickname ?? "미설정"}</dd>
               </div>
-
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between">
                 <dt className="text-slate-400">생년월일</dt>
-                {editingBirthDate ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="date"
-                      value={birthDateInput}
-                      onChange={(e) => setBirthDateInput(e.target.value)}
-                      autoFocus
-                      className="h-8 rounded-lg border border-line px-2 text-[13px] outline-none focus:border-navy"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void saveBirthDate()}
-                      disabled={birthDateSaving || !birthDateInput}
-                      className="text-[12px] text-navy"
-                    >
-                      저장
-                    </button>
-                    <button type="button" onClick={() => setEditingBirthDate(false)} className="text-[12px] text-slate-400">
-                      취소
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBirthDateInput(data.birthDate ?? "");
-                      setEditingBirthDate(true);
-                    }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <dd className="inline">{formatBirthDate(data.birthDate)}</dd>
-                    <span className="text-[11px] text-navy underline">변경</span>
-                  </button>
-                )}
+                <dd>{formatBirthDate(data.birthDate)}</dd>
               </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <dt className="text-slate-400">이메일</dt>
-                  {emailStep === "idle" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewEmailInput("");
-                        setEmailError(null);
-                        setEmailStep("entering");
-                      }}
-                      className="flex items-center gap-1.5"
-                    >
-                      <dd className="inline">{data.email ?? "-"}</dd>
-                      <span className="text-[11px] text-navy underline">변경</span>
-                    </button>
-                  ) : (
-                    <dd className="text-slate-400">{data.email ?? "-"}</dd>
-                  )}
-                </div>
-
-                {emailStep === "entering" && (
-                  <div className="mt-2 flex flex-col gap-1.5 rounded-xl border border-line p-2.5">
-                    <p className="text-[12px] text-slate-500">새 이메일로 인증번호를 보내드려요.</p>
-                    <input
-                      type="email"
-                      value={newEmailInput}
-                      onChange={(e) => setNewEmailInput(e.target.value)}
-                      placeholder="새 이메일 주소"
-                      className="h-9 rounded-lg border border-line px-2.5 text-[13px] outline-none focus:border-navy"
-                    />
-                    {emailError && <p className="text-[12px] text-red-600">{emailError}</p>}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleRequestEmailChange()}
-                        disabled={!newEmailInput.trim() || emailSaving}
-                        className="h-8 flex-1 rounded-lg bg-navy text-[12px] font-medium text-white disabled:opacity-40"
-                      >
-                        {emailSaving ? "발송하는 중…" : "인증번호 받기"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEmailStep("idle")}
-                        className="h-8 rounded-lg border border-line px-3 text-[12px] text-slate-500"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {emailStep === "verifying" && (
-                  <div className="mt-2 flex flex-col gap-1.5 rounded-xl border border-line p-2.5">
-                    <p className="text-[12px] text-slate-500">{newEmailInput}(으)로 인증번호를 보냈어요.</p>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={emailCodeInput}
-                      onChange={(e) => setEmailCodeInput(e.target.value)}
-                      placeholder="인증번호 입력"
-                      autoFocus
-                      className="h-9 rounded-lg border border-line px-2.5 text-[13px] outline-none focus:border-navy"
-                    />
-                    {emailError && <p className="text-[12px] text-red-600">{emailError}</p>}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleConfirmEmailChange()}
-                        disabled={!emailCodeInput.trim() || emailSaving}
-                        className="h-8 flex-1 rounded-lg bg-navy text-[12px] font-medium text-white disabled:opacity-40"
-                      >
-                        {emailSaving ? "확인하는 중…" : "인증번호 확인"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEmailStep("idle")}
-                        className="h-8 rounded-lg border border-line px-3 text-[12px] text-slate-500"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <div className="flex justify-between">
+                <dt className="text-slate-400">이메일</dt>
+                <dd>{data.email ?? "-"}</dd>
               </div>
-
+              <div className="flex justify-between">
+                <dt className="text-slate-400">휴대전화번호</dt>
+                <dd>{data.phone ?? "미설정"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="shrink-0 text-slate-400">주소</dt>
+                <dd className="text-right">{data.address ?? "미설정"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-400">마케팅 정보 활용 동의</dt>
+                <dd>{data.marketingConsent ? "동의함" : "동의 안 함"}</dd>
+              </div>
               {data.gender && (
                 <div className="flex justify-between">
                   <dt className="text-slate-400">성별</dt>
@@ -514,6 +223,13 @@ export default function MyPageTab() {
                 </div>
               )}
             </dl>
+            <button
+              type="button"
+              onClick={() => setShowPasswordConfirm(true)}
+              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+            >
+              정보 수정
+            </button>
           </SectionRow>
 
           <SectionRow
@@ -557,6 +273,21 @@ export default function MyPageTab() {
           onDone={() => setEditingOnboarding(false)}
           onClose={() => setEditingOnboarding(false)}
         />
+      )}
+
+      {showPasswordConfirm && data?.email && (
+        <PasswordConfirmModal
+          email={data.email}
+          onConfirmed={() => {
+            setShowPasswordConfirm(false);
+            setShowInfoEdit(true);
+          }}
+          onCancel={() => setShowPasswordConfirm(false)}
+        />
+      )}
+
+      {showInfoEdit && data && (
+        <MyInfoEditModal info={data} onClose={() => setShowInfoEdit(false)} onSaved={applyInfoUpdate} />
       )}
     </div>
   );

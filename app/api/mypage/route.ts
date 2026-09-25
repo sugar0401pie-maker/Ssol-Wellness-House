@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   const [{ data: authUser }, { data: profile }, { data: ssolProfile }, quizPersona, { data: reports }] = await Promise.all([
     admin.auth.admin.getUserById(userId),
-    admin.from("profiles").select("display_name").eq("user_id", userId).maybeSingle(),
+    admin.from("profiles").select("display_name, nickname, birth_date").eq("user_id", userId).maybeSingle(),
     admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
     loadQuizPersona(admin, userId),
     admin
@@ -47,6 +47,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     displayName: profile?.display_name ?? ssolProfile?.name ?? null,
+    nickname: profile?.nickname ?? null,
+    birthDate: profile?.birth_date ?? null,
     email: authUser?.user?.email ?? null,
     gender: ssolProfile?.gender ?? null,
     persona,

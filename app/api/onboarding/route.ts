@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
   const [{ data: profile }, { data: ssolProfile }, { data: quizResult }] = await Promise.all([
-    admin.from("profiles").select("display_name, onboarding_completed_at").eq("user_id", userId).maybeSingle(),
+    admin.from("profiles").select("display_name, nickname, onboarding_completed_at").eq("user_id", userId).maybeSingle(),
     admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
     admin
       .from("ssol_quiz_results")
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle(),
   ]);
 
-  const nickname = profile?.display_name ?? ssolProfile?.name ?? quizResult?.user_name ?? null;
+  const nickname = profile?.nickname ?? profile?.display_name ?? ssolProfile?.name ?? quizResult?.user_name ?? null;
   const gender = ssolProfile?.gender ?? quizResult?.gender ?? null;
 
   return NextResponse.json({

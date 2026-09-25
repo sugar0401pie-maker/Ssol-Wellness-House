@@ -23,9 +23,11 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("display_name, enjoyment_category, concern_domain")
+    .select("display_name, nickname, enjoyment_category, concern_domain")
     .eq("user_id", userId)
     .maybeSingle();
+  // 인사말엔 닉네임을 우선 쓰고, 닉네임을 안 정했으면 가입 때 적은 실명을 대신 쓴다.
+  const greetingName = profile?.nickname ?? profile?.display_name ?? null;
 
   const dateKey = todayKeyKST(); // "YYYY-MM-DD" (KST 기준 하루)
   // 명절 연휴엔 평소 개인화보다 "관계"(가족·지인) 쪽 제안을 우선한다.
@@ -43,9 +45,9 @@ export async function GET(req: NextRequest) {
     : { code: pickBySeed(userId), name: null, hasResult: false as const };
 
   return NextResponse.json({
-    displayName: profile?.display_name ?? null,
+    displayName: greetingName,
     dateKey,
-    greeting: getGreetingLine(dateKey, profile?.display_name ?? null),
+    greeting: getGreetingLine(dateKey, greetingName),
     practice,
     character,
   });

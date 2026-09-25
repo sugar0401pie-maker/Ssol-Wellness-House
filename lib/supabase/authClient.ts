@@ -104,6 +104,31 @@ export async function finishSignup(params: {
   return { ok: true };
 }
 
+// 2026-09-25 owner 요청: 마이페이지에서 이메일을 바꿀 땐 반드시 새 이메일로 인증번호를
+// 받아 확인해야 넘어가도록 한다 — 가입 때(sendSignupOtp/verifySignupOtp)와 같은 패턴이되,
+// type이 "email"이 아니라 "email_change"라는 점만 다르다. 인증에 성공하면 그 자리에서
+// 바로 이메일이 바뀐다(별도 저장 단계 없음 — Supabase Auth 자체 필드라 profiles 테이블과 무관).
+export async function requestEmailChange(newEmail: string): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 이메일을 바꿀 수 없어요." };
+  const { error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) return { ok: false, error: translateAuthError(error.message) };
+  return { ok: true };
+}
+
+export async function verifyEmailChange(newEmail: string, token: string): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 이메일을 바꿀 수 없어요." };
+  const { error } = await supabase.auth.verifyOtp({ email: newEmail, token, type: "email_change" });
+  if (error) {
+    const message = /expired|invalid/i.test(error.message)
+      ? "인증번호가 올바르지 않거나 만료됐어요. 다시 받아주세요."
+      : translateAuthError(error.message);
+    return { ok: false, error: message };
+  }
+  return { ok: true };
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
   const supabase = getBrowserClient();
   if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };

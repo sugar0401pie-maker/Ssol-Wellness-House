@@ -11,11 +11,15 @@ import "server-only";
 // 그 도메인을 이 Resend 계정에도 인증해야 한다).
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "SSOL 웰니스 하우스 <noreply@ssolwellnesshouse.com>";
 
-export async function sendEmail(params: { to: string; subject: string; text: string }): Promise<boolean> {
+// reason은 실패 원인을 API 응답에 잠깐 노출해 디버깅하려고 추가함(2026-09-25, Vercel 로그가
+// 금방 사라져서 확인이 어려웠음) — 원인 확인되면 다시 boolean만 반환하도록 되돌릴 것.
+export async function sendEmail(
+  params: { to: string; subject: string; text: string },
+): Promise<{ ok: boolean; reason?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("RESEND_API_KEY가 설정되지 않아 이메일 발송을 건너뜁니다:", params.subject);
-    return false;
+    return { ok: false, reason: "no_api_key" };
   }
 
   try {
@@ -25,12 +29,14 @@ export async function sendEmail(params: { to: string; subject: string; text: str
       body: JSON.stringify({ from: FROM_EMAIL, to: [params.to], subject: params.subject, text: params.text }),
     });
     if (!res.ok) {
-      console.error("Resend 발송 실패:", res.status, await res.text().catch(() => ""));
-      return false;
+      const body = await res.text().catch(() => "");
+      console.error("Resend 발송 실패:", res.status, body);
+      return { ok: false, reason: `status_${res.status}: ${body}` };
     }
-    return true;
+    return { ok: true };
   } catch (e) {
-    console.error("Resend 호출 중 오류:", e instanceof Error ? e.message : e);
-    return false;
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Resend 호출 중 오류:", msg);
+    return { ok: false, reason: `exception: ${msg}` };
   }
 }

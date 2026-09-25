@@ -125,9 +125,10 @@ export async function POST(req: NextRequest) {
   ].join("\n");
 
   const sent = await sendEmail({ to: NOTIFY_EMAIL, subject: `[쏠 웰니스] 상담 예약 신청 - ${name}`, text: emailBody });
-  if (sent) {
+  if (sent.ok) {
     await admin.from("counselor_inquiries").update({ notified_at: new Date().toISOString() }).eq("id", inserted.id);
   }
 
-  return NextResponse.json({ ok: true });
+  // emailDebugReason은 임시 디버깅용(2026-09-25) — 이메일 발송 원인 확인되면 제거할 것.
+  return NextResponse.json({ ok: true, ...(sent.ok ? {} : { emailDebugReason: sent.reason }) });
 }

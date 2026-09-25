@@ -26,3 +26,15 @@ export const TYPE_KEY_TO_DESSERT: Record<string, string> = {
   "DIR-secondary": "lemontart",
   "DIR-disengage": "fruittart",
 };
+
+// 홈 화면 캐릭터 표시용 — 15유형 코드 전체 목록(public/characters/<code>.png와 1:1 대응).
+// 테스트 결과가 없는 사용자에게 "반투명 랜덤 캐릭터"를 보여줄 때 이 중 하나를 고른다.
+export const ALL_DESSERT_CODES = [...new Set(Object.values(TYPE_KEY_TO_DESSERT))];
+
+// seed(보통 userId)로 후보 중 하나를 결정론적으로 고른다 — 새로고침마다 캐릭터가 바뀌면
+// 이상하니, 같은 사람에겐 항상 같은 "랜덤" 캐릭터가 보이게 한다.
+export function pickBySeed(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return ALL_DESSERT_CODES[h % ALL_DESSERT_CODES.length];
+}

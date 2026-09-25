@@ -1,11 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
-type DailyResponse = { displayName: string | null; dateKey: string; greeting: string; practice: Practice };
+type Character = { code: string; name: string | null; hasResult: boolean };
+type DailyResponse = {
+  displayName: string | null;
+  dateKey: string;
+  greeting: string;
+  practice: Practice;
+  character: Character;
+};
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -55,6 +63,28 @@ export default function HomeTab() {
           안녕하세요{data?.displayName ? `, ${data.displayName}님` : ""}.
         </p>
         <p className="mt-1 text-[14px] leading-5 text-slate-500">{data?.greeting ?? " "}</p>
+
+        {data?.character && (
+          <div className="mt-4 flex flex-col items-center">
+            <Image
+              src={`/characters/${data.character.code}.png`}
+              alt={data.character.name ?? "웰니스 캐릭터"}
+              width={140}
+              height={140}
+              className={data.character.hasResult ? "" : "opacity-40"}
+              priority={false}
+            />
+            {data.character.hasResult ? (
+              <p className="mt-1 text-[13px] font-medium text-navy">{data.character.name}</p>
+            ) : (
+              <p className="mt-1 text-center text-[12px] leading-4 text-slate-400">
+                아직 심리테스트 결과가 없어서 랜덤 캐릭터예요.
+                <br />
+                테스트하면 내 캐릭터를 만날 수 있어요.
+              </p>
+            )}
+          </div>
+        )}
 
         {error && <p className="mt-6 text-[13px] text-red-600">{error}</p>}
 

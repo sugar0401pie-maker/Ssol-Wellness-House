@@ -171,7 +171,7 @@ export default function CounselorBookingModal({ onClose }: { onClose: () => void
                   가능한 시간 ({MIN_PREFERRED_TIMES}~{MAX_PREFERRED_TIMES}개 선택)
                 </p>
                 <p className="mb-2 text-[12.5px] text-slate-500">
-                  아직 실시간 예약 확인이 안 돼서, 가능한 시간을 몇 개 골라주시면 확인 후 다시 연락드려요.
+                  가능한 날짜와 시간을 몇 개 골라주시면, 전문 상담사가 확인 후 48시간 내로 다시 연락드릴 예정입니다.
                 </p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {TIME_SLOTS.map((slot) => (

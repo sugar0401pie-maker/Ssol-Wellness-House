@@ -252,6 +252,10 @@ export default function OnboardingFlow({ nickname, title, mode, onDone, onClose 
               </button>
             )}
           </div>
+          <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
+            {nickname ? `${nickname}님의` : "회원님의"} 관심사에 맞는 채팅을 위해서 사전 조사를 하고있어요. 잠깐만 시간
+            내주실래요?
+          </p>
           {!isConsentScreen && (
             <>
               <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
@@ -386,10 +390,13 @@ function QuestionBlock({
       answer.some((v) => v === OTHER_CODE || (v && typeof v === "object" && "key" in v && v.key === OTHER_CODE)));
   const otherLen = nonWhitespaceCount(otherText);
 
+  const description = "description" in q ? q.description : undefined;
+
   return (
     <div>
-      <p className="mb-2.5 text-[15px] font-medium leading-6 text-foreground">{q.title}</p>
-      <div className="flex flex-col gap-2">
+      <p className="text-[15px] font-medium leading-6 text-foreground">{q.title}</p>
+      {description && <p className="mt-1 text-[12.5px] leading-5 text-slate-400">{description}</p>}
+      <div className="mt-2.5 flex flex-col gap-2">
         {q.options.map(([code, label]) => {
           if (type === "single") {
             const selected = answer === code;

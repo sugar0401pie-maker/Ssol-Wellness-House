@@ -1,6 +1,7 @@
 // SSOL_Onboarding_Development_Spec_v1_0 (2026-09-25) 그대로 옮긴 온보딩 9문항 설정.
 // 브라우저(모달 렌더링)와 서버(검증) 양쪽에서 쓰므로 "server-only"는 넣지 않는다.
 // 문구·선택지·순서는 스펙 문서와 questions.json 원문을 그대로 따른다 — 임의로 다듬지 않는다.
+// description만 예외: 스펙에는 없던, owner가 추가 요청한 "이 질문을 왜 묻는지" 한 줄 설명이다.
 
 export type OptionType = "single" | "multi" | "ranked";
 
@@ -9,6 +10,7 @@ export type QuestionOption = readonly [code: string, label: string];
 export type QuestionDef = {
   id: string;
   title: string;
+  description?: string; // "이 질문이 왜 필요한지" 한 줄 설명(owner 요청, 2026-09-25 추가)
   type: OptionType;
   required: boolean;
   options: readonly QuestionOption[];
@@ -44,6 +46,7 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "relationship_status",
     title: "현재 연애나 동반자 관계는 어떤 상태인가요?",
+    description: "지금 연애 상황과 맞지 않는 연인·배우자 관련 제안은 나가지 않도록 확인하는 질문이에요.",
     type: "single",
     required: false,
     options: [
@@ -85,6 +88,7 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "childcare_status",
     title: "현재 자녀를 양육하거나 정기적으로 돌보고 있나요?",
+    description: "실제로 돌보는 아이가 없다면 육아 관련 제안이 나가지 않도록 확인하는 질문이에요.",
     type: "single",
     required: false,
     options: [
@@ -115,6 +119,7 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "primary_activity",
     title: "현재 일상에서 가장 많은 시간을 보내는 활동은 무엇인가요?",
+    description: "재직 중이 아니라면 직장·업무 관련 제안이 나가지 않도록 확인하는 질문이에요.",
     type: "single",
     required: false,
     options: [
@@ -133,6 +138,7 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "values_ranked",
     title: "지금 삶에서 가장 중요하게 생각하는 것은 무엇인가요?",
+    description: "중요하게 여기시는 가치와 어울리는 제안을 우선해서 골라드리는 데 활용해요.",
     type: "ranked",
     required: false,
     minSelect: 1,
@@ -155,6 +161,7 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "hobbies_ranked",
     title: "평소 좋아하거나 관심 있는 취미는 무엇인가요?",
+    description: "좋아하시는 활동과 어울리는 제안을 골라드리는 데 활용해요.",
     type: "ranked",
     required: false,
     minSelect: 1,
@@ -177,6 +184,7 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "weekends_ranked",
     title: "당신이 생각하는 가장 행복한 주말은 어떤 모습인가요?",
+    description: "쉬는 날 취향에 맞는 제안을 고르는 데 참고해요.",
     type: "ranked",
     required: false,
     minSelect: 1,
@@ -200,9 +208,10 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "focus_domains",
     title: "요즘 조금 더 나아졌으면 하는 삶의 영역은 무엇인가요?",
+    description: "요즘 신경 쓰이는 영역에 맞는 제안을 좀 더 자주 보여드리는 데 활용해요.",
     type: "multi",
     required: false,
-    maxSelect: 2,
+    // 2026-09-25 owner 요청: 2개 제한 제거 — 여러 영역이 동시에 신경 쓰일 수 있으니 개수 제한 없이 다중 선택.
     exclusive: ["none"],
     options: [
       ["self_emotions", "나 자신과 감정"],
@@ -219,7 +228,9 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "daily_time",
     title: "하루에 작은 변화를 위해 어느 정도 시간을 낼 수 있나요?",
-    type: "single",
+    description: "제안의 소요 시간을 가늠하는 데 참고해요.",
+    // 2026-09-25 owner 요청: 상황에 따라 낼 수 있는 시간이 여러 가지일 수 있어 다중 선택으로 변경.
+    type: "multi",
     required: false,
     options: [
       ["under_5", "5분 이내로 가볍게"],
@@ -233,6 +244,8 @@ export const QUESTIONS: readonly QuestionDef[] = [
   {
     id: "excluded_activities",
     title: "매일 추천받고 싶지 않은 제안이 있나요?",
+    description:
+      "여기서 고른 항목은 다른 답변과 상관없이 항상 제외돼요. 예를 들어 지금 연애 중이더라도, 연애 관련 제안을 받고 싶지 않다면 여기서 고르면 뜨지 않도록 처리할 수 있어요.",
     type: "multi",
     required: false,
     exclusive: ["none"],

@@ -49,13 +49,19 @@ export async function loadQuizPersona(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<QuizPersona | null> {
-  const { data: quizResult } = await admin
+  // 2026-09-25 버그 발견: 심리테스트 앱이 v2로 실제 재구축되면서 ssol_quiz_results의 점수
+  // 컬럼명이 domain_scores -> axis_scores로 바뀌었다(v2 스펙의 CAR/LOV/REL/SLF/DIR 축 이름과
+  // 통일). 예전 컬럼명으로 select하면 Postgres가 "column does not exist" 에러를 내는데,
+  // 에러를 버리고 data만 구조분해했던 탓에 조용히 null로 넘어가 "테스트했는데 마이페이지에
+  // 결과가 안 나온다"는 문제가 모든 사용자에게 나고 있었다 — 이제 에러도 로그로 남긴다.
+  const { data: quizResult, error: quizError } = await admin
     .from("ssol_quiz_results")
-    .select("type_key, domain_scores")
+    .select("type_key, axis_scores")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (quizError) console.error("ssol_quiz_results 조회 실패:", quizError.message);
   if (!quizResult?.type_key) return null;
 
   const dessertCode = TYPE_KEY_TO_DESSERT[quizResult.type_key];
@@ -82,7 +88,7 @@ export async function loadQuizPersona(
     tagline: rich.tagline,
     blurb: rich.blurb,
     traits: rich.traits ?? [],
-    domainScores: (quizResult.domain_scores as Record<string, number>) ?? null,
+    domainScores: (quizResult.axis_scores as Record<string, number>) ?? null,
     reportInsight: buildReportInsight(report?.sections),
   };
 }

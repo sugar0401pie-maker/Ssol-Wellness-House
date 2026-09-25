@@ -5,6 +5,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { requestEmailChange, verifyEmailChange } from "@/lib/supabase/authClient";
+import CounselorBookingModal from "./CounselorBookingModal";
 
 type Persona = {
   label: string;
@@ -108,12 +109,8 @@ export default function MyPageTab() {
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  // 상담사 연결 — 신청 폼 (2026-09-24: 외부 예약 페이지 대신 신청서만 받음)
-  const [counselorContact, setCounselorContact] = useState("");
-  const [counselorMessage, setCounselorMessage] = useState("");
-  const [counselorSubmitting, setCounselorSubmitting] = useState(false);
-  const [counselorDone, setCounselorDone] = useState(false);
-  const [counselorError, setCounselorError] = useState<string | null>(null);
+  // 상담사 연결 — 2026-09-25: 간단한 문의 폼 대신 실제 예약 페이지와 같은 신청 팝업으로 교체.
+  const [showBooking, setShowBooking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,31 +240,6 @@ export default function MyPageTab() {
     setEmailCodeInput("");
   }
 
-  async function submitCounselorInquiry(e: React.FormEvent) {
-    e.preventDefault();
-    if (!counselorContact.trim() || counselorSubmitting) return;
-    setCounselorSubmitting(true);
-    setCounselorError(null);
-    const token = await getAccessToken();
-    if (!token) {
-      setCounselorSubmitting(false);
-      setCounselorError("로그인 정보를 확인하지 못했어요.");
-      return;
-    }
-    try {
-      const res = await fetch("/api/counselor-inquiry", {
-        method: "POST",
-        headers: authHeaders(token),
-        body: JSON.stringify({ contact: counselorContact.trim(), message: counselorMessage.trim() }),
-      });
-      if (!res.ok) throw new Error();
-      setCounselorDone(true);
-    } catch {
-      setCounselorError("신청에 실패했어요. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setCounselorSubmitting(false);
-    }
-  }
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
@@ -547,38 +519,19 @@ export default function MyPageTab() {
             open={open === "counselor"}
             onToggle={() => setOpen(open === "counselor" ? null : "counselor")}
           >
-            {counselorDone ? (
-              <p>신청이 접수됐어요. 알려주신 연락처로 곧 연락드릴게요.</p>
-            ) : (
-              <form onSubmit={submitCounselorInquiry} className="flex flex-col gap-2">
-                <p>전문 상담사 연결은 현재 신청 접수 방식으로 운영되고 있어요. 연락받으실 방법을 남겨주세요.</p>
-                <input
-                  type="text"
-                  value={counselorContact}
-                  onChange={(e) => setCounselorContact(e.target.value)}
-                  placeholder="연락받을 이메일 또는 전화번호"
-                  className="h-10 rounded-xl border border-line bg-background px-3 text-[14px] outline-none focus:border-navy"
-                />
-                <textarea
-                  value={counselorMessage}
-                  onChange={(e) => setCounselorMessage(e.target.value)}
-                  placeholder="하고 싶은 말(선택)"
-                  rows={3}
-                  className="rounded-xl border border-line bg-background px-3 py-2 text-[14px] outline-none focus:border-navy"
-                />
-                {counselorError && <p className="text-[13px] text-red-600">{counselorError}</p>}
-                <button
-                  type="submit"
-                  disabled={!counselorContact.trim() || counselorSubmitting}
-                  className="mt-1 h-10 rounded-xl bg-navy text-[14px] font-medium text-white disabled:opacity-40"
-                >
-                  {counselorSubmitting ? "접수하는 중…" : "상담 신청하기"}
-                </button>
-              </form>
-            )}
+            <p>전문 상담사와의 면담·세션을 신청할 수 있어요. 프로그램, 날짜, 가능한 시간을 골라 신청서를 작성해주세요.</p>
+            <button
+              type="button"
+              onClick={() => setShowBooking(true)}
+              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+            >
+              상담 예약 신청하기
+            </button>
           </SectionRow>
         </div>
       )}
+
+      {showBooking && <CounselorBookingModal onClose={() => setShowBooking(false)} />}
     </div>
   );
 }

@@ -11,8 +11,7 @@ import "server-only";
 // 그 도메인을 이 Resend 계정에도 인증해야 한다).
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "SSOL 웰니스 하우스 <noreply@ssolwellnesshouse.com>";
 
-// reason은 실패 원인을 API 응답에 잠깐 노출해 디버깅하려고 추가함(2026-09-25, Vercel 로그가
-// 금방 사라져서 확인이 어려웠음) — 원인 확인되면 다시 boolean만 반환하도록 되돌릴 것.
+// reason은 실패 원인을 서버 로그(console.error)와 호출부에 함께 남기기 위한 용도다.
 export async function sendEmail(
   params: { to: string; subject: string; text: string },
 ): Promise<{ ok: boolean; reason?: string }> {

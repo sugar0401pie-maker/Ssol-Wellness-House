@@ -127,8 +127,10 @@ export async function POST(req: NextRequest) {
   const sent = await sendEmail({ to: NOTIFY_EMAIL, subject: `[쏠 웰니스] 상담 예약 신청 - ${name}`, text: emailBody });
   if (sent.ok) {
     await admin.from("counselor_inquiries").update({ notified_at: new Date().toISOString() }).eq("id", inserted.id);
+  } else {
+    // 이메일 실패해도 신청 접수 자체는 성공이다(부가 기능) — 원인은 서버 로그에만 남긴다.
+    console.warn("상담 신청 이메일 발송 실패:", sent.reason);
   }
 
-  // emailDebugReason은 임시 디버깅용(2026-09-25) — 이메일 발송 원인 확인되면 제거할 것.
-  return NextResponse.json({ ok: true, ...(sent.ok ? {} : { emailDebugReason: sent.reason }) });
+  return NextResponse.json({ ok: true });
 }

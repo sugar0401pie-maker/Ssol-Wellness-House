@@ -7,10 +7,31 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import { SUGGESTED_QUESTION_GROUPS } from "@/lib/persona/suggestedQuestions";
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
+type SessionSummary = {
+  sessionId: string;
+  topicTag: string | null;
+  startedAt: string;
+  lastMessageAt: string;
+  safetyFlag: "none" | "elevated" | "crisis";
+};
 
 // 첫 인사말 (초안). 시스템 프롬프트의 Identity/Goal 섹션과 같은 취지로 작성.
 const GREETING =
   "안녕하세요, 쏠 웰니스 하우스예요. 저는 웰니스 관련 상담에 도움을 드릴 수 있습니다. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주시기 바랍니다.";
+
+// 대화 목록에 "언제"를 사람이 읽기 편하게 보여준다 — 오늘/어제는 시각만, 그 외엔 날짜만.
+function formatSessionDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const time = d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  if (isSameDay(d, now)) return `오늘 ${time}`;
+  if (isSameDay(d, yesterday)) return `어제 ${time}`;
+  return d.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+}
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,6 +39,10 @@ export default function ChatApp() {
   const [sending, setSending] = useState(false);
   const [memoryPrompt, setMemoryPrompt] = useState<"idle" | "asking" | "saving">("idle");
   const [showSuggested, setShowSuggested] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -84,6 +109,47 @@ export default function ChatApp() {
     setSending(false);
   }
 
+  async function openHistory() {
+    setShowHistory(true);
+    setHistoryError(null);
+    const token = await getAccessToken();
+    if (!token) {
+      setHistoryError("로그인 정보를 확인하지 못했어요. 새로고침해주세요.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/chat/sessions", { headers: authHeaders(token) });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { sessions: SessionSummary[] };
+      setSessions(data.sessions);
+    } catch {
+      setHistoryError("대화 목록을 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+    }
+  }
+
+  async function loadSession(id: string) {
+    if (loadingSessionId) return;
+    setLoadingSessionId(id);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch(`/api/chat/sessions/${id}`, { headers: authHeaders(token) });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { messages: { role: "user" | "assistant"; content: string }[] };
+      cancelReveal.current?.();
+      nextId.current = 1;
+      setMessages(data.messages.map((m) => ({ id: nextId.current++, role: m.role, content: m.content })));
+      sessionId.current = id;
+      setInput("");
+      setMemoryPrompt("idle");
+      setShowHistory(false);
+    } catch {
+      setHistoryError("대화를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setLoadingSessionId(null);
+    }
+  }
+
   function selectSuggestedQuestion(text: string) {
     setShowSuggested(false);
     void send(text, { isPersonaQuestion: true });
@@ -130,6 +196,13 @@ export default function ChatApp() {
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
         <p className="text-[15px] font-medium text-foreground">AI 채팅</p>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={openHistory}
+            className="rounded-full border border-line px-3 py-1.5 text-sm font-medium text-foreground active:bg-background"
+          >
+            지난 대화
+          </button>
           <button
             type="button"
             onClick={requestNewChat}
@@ -193,6 +266,51 @@ export default function ChatApp() {
             실제 위기 감지 시 안내(109, 1577-0199 등)는 그 상황의 답변 자체에 그대로 포함된다. */}
         <p className="mt-2 text-center text-[11px] italic leading-4 text-slate-400">SSOL — 삶의 파도를 유영하는 힘</p>
       </footer>
+
+      {showHistory && (
+        <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">
+          <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <p className="text-[15px] font-medium text-foreground">지난 대화</p>
+              <button
+                type="button"
+                onClick={() => setShowHistory(false)}
+                aria-label="닫기"
+                className="rounded-full px-2 py-1 text-slate-500"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {historyError && <p className="text-[13px] text-red-600">{historyError}</p>}
+              {!historyError && sessions === null && (
+                <p className="py-6 text-center text-[13px] text-slate-400">불러오는 중…</p>
+              )}
+              {!historyError && sessions?.length === 0 && (
+                <p className="py-6 text-center text-[13px] text-slate-400">아직 나눈 대화가 없어요.</p>
+              )}
+              {sessions && sessions.length > 0 && (
+                <div className="divide-y divide-line rounded-xl border border-line">
+                  {sessions.map((s) => (
+                    <button
+                      key={s.sessionId}
+                      type="button"
+                      onClick={() => loadSession(s.sessionId)}
+                      disabled={loadingSessionId === s.sessionId}
+                      className="block w-full px-3.5 py-3 text-left active:bg-background disabled:opacity-60"
+                    >
+                      <p className="text-[12px] text-slate-400">{formatSessionDate(s.startedAt)}</p>
+                      <p className="mt-0.5 truncate text-[14px] leading-5 text-foreground">
+                        {s.topicTag ?? "(내용 없음)"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {memoryPrompt !== "idle" && (
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">

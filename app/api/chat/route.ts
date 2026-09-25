@@ -8,6 +8,7 @@ import { generateAnswer } from "@/lib/rag/generate";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import type { RouteId } from "@/lib/safety/types";
+import { makeTopicTag } from "@/lib/chat/topicTag";
 
 // C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
 // 위기(route 1)·폭력(route 2)은 아래에서 이 제한 검사보다 먼저 처리되어, 제한과 무관하게 항상 응답한다.
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
   const newFlag = safetyFlagFor(decision.route);
   const { data: session } = await admin
     .from("chat_sessions")
-    .select("safety_flag")
+    .select("safety_flag, topic_tag")
     .eq("session_id", sessionId)
     .single();
   const currentRank = session ? FLAG_RANK[session.safety_flag as keyof typeof FLAG_RANK] : 0;
@@ -108,6 +109,8 @@ export async function POST(req: NextRequest) {
     .update({
       last_message_at: new Date().toISOString(),
       ...(FLAG_RANK[newFlag] > currentRank ? { safety_flag: newFlag } : {}),
+      // 대화 목록에서 "대략 무슨 내용인지" 보여줄 용도 — 세션의 첫 메시지로 한 번만 정해둔다.
+      ...(session && !session.topic_tag ? { topic_tag: makeTopicTag(message) } : {}),
     })
     .eq("session_id", sessionId);
 

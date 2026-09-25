@@ -245,7 +245,7 @@ export default function OnboardingFlow({ nickname, title, mode, onDone, onClose 
       <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
         <div className="border-b border-line px-5 pb-3 pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-[13px] font-medium text-navy">쏠 웰니스 하우스에 가입해주신 여러분을 환영합니다!</p>
+            <p className="text-[19px] font-semibold leading-6 text-navy">쏠 웰니스 하우스에 가입해주신 여러분을 환영합니다!</p>
             {mode === "edit" && onClose && (
               <button type="button" onClick={onClose} className="text-[12px] text-slate-400">
                 닫기

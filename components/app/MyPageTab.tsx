@@ -93,6 +93,8 @@ export default function MyPageTab() {
   // 상담사 연결 — 2026-09-24: 간단한 문의 폼 대신 실제 예약 페이지와 같은 신청 팝업으로 교체.
   const [showBooking, setShowBooking] = useState(false);
 
+  // 2026-09-26: 다른 창(심리테스트 사이트)에서 테스트를 마치고 이 앱으로 돌아오면 자동으로 다시
+  // 불러온다 — 탭은 계속 마운트돼 있어서 마운트 시 1회 조회만으로는 새 결과가 반영되지 않았다.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -102,17 +104,27 @@ export default function MyPageTab() {
         return;
       }
       try {
-        const res = await fetch("/api/mypage", { headers: authHeaders(token) });
+        const res = await fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" });
         if (!res.ok) throw new Error();
         const json = (await res.json()) as MyPageData;
-        if (!cancelled) setData(json);
+        if (!cancelled) {
+          setData(json);
+          setError(null);
+        }
       } catch {
         if (!cancelled) setError("정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
       }
     }
     void load();
+    function onVisible() {
+      if (document.visibilityState === "visible") void load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 

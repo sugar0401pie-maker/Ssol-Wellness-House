@@ -28,6 +28,7 @@ export default function HomeTab() {
   const [data, setData] = useState<DailyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 2026-09-26: 테스트를 새로 마치고 돌아오면 캐릭터도 바로 바뀌도록 창이 다시 보일 때 재조회한다.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -37,17 +38,27 @@ export default function HomeTab() {
         return;
       }
       try {
-        const res = await fetch("/api/daily-practice", { headers: authHeaders(token) });
+        const res = await fetch("/api/daily-practice", { headers: authHeaders(token), cache: "no-store" });
         if (!res.ok) throw new Error();
         const json = (await res.json()) as DailyResponse;
-        if (!cancelled) setData(json);
+        if (!cancelled) {
+          setData(json);
+          setError(null);
+        }
       } catch {
         if (!cancelled) setError("오늘의 제안을 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
       }
     }
     void load();
+    function onVisible() {
+      if (document.visibilityState === "visible") void load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 

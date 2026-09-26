@@ -15,7 +15,13 @@ function isRealSession(session: { user?: { is_anonymous?: boolean } } | null): b
   return !!session && session.user?.is_anonymous !== true;
 }
 
-export default function AuthGate({ children }: { children: React.ReactNode }) {
+export default function AuthGate({
+  children,
+  initialMode,
+}: {
+  children: React.ReactNode;
+  initialMode?: "signin" | "signup";
+}) {
   const [status, setStatus] = useState<"checking" | "loggedOut" | "loggedIn">("checking");
 
   useEffect(() => {
@@ -47,5 +53,5 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (status === "checking") return null;
   if (status === "loggedIn") return <>{children}</>;
-  return <LoginScreen onLoggedIn={() => setStatus("loggedIn")} />;
+  return <LoginScreen initialMode={initialMode} onLoggedIn={() => setStatus("loggedIn")} />;
 }

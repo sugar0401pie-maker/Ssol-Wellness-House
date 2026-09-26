@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   signInWithEmail,
   signInWithOAuth,
@@ -22,8 +23,20 @@ import SiteFooter from "@/components/SiteFooter";
 type Mode = "signin" | "signup" | "reset";
 type ResetStep = "request" | "confirm";
 
-export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
-  const [mode, setMode] = useState<Mode>("signin");
+// 2026-09-26: 카카오/네이버 로그인은 Supabase 쪽 설정이 끝나기 전까지 화면에서 숨긴다(코드는 유지).
+const SHOW_SOCIAL_LOGIN = false;
+
+// initialMode="signup"이면 /signup 주소 전용 화면이다. 로그인 화면의 "회원가입"과 가입 화면의
+// "뒤로"는 같은 화면 안에서 탭만 바꾸지 않고 실제로 주소(/ ↔ /signup)를 이동한다.
+export default function LoginScreen({
+  onLoggedIn,
+  initialMode = "signin",
+}: {
+  onLoggedIn: () => void;
+  initialMode?: "signin" | "signup";
+}) {
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>(initialMode);
 
   // 로그인
   const [email, setEmail] = useState("");
@@ -221,7 +234,7 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
 
         <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
           {mode === "signup" && (
-            <button type="button" onClick={() => switchMode("signin")} className="mb-3 text-[13px] text-slate-500">
+            <button type="button" onClick={() => router.push("/")} className="mb-3 text-[13px] text-slate-500">
               ← 뒤로
             </button>
           )}
@@ -245,7 +258,7 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
                 >
                   로그인
                 </button>
-                <button type="button" onClick={() => switchMode("signup")} className="flex-1 rounded-lg py-1.5 text-slate-500">
+                <button type="button" onClick={() => router.push("/signup")} className="flex-1 rounded-lg py-1.5 text-slate-500">
                   회원가입
                 </button>
               </div>
@@ -289,6 +302,8 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
                 </button>
               </form>
 
+              {SHOW_SOCIAL_LOGIN && (
+                <>
               <div className="my-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-line" />
                 <span className="text-[12px] text-slate-400">또는</span>
@@ -311,6 +326,8 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
                   네이버로 로그인
                 </button>
               </div>
+                </>
+              )}
             </>
           )}
 

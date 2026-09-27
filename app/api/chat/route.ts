@@ -9,6 +9,7 @@ import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import type { RouteId } from "@/lib/safety/types";
 import { makeTopicTag } from "@/lib/chat/topicTag";
+import { loadAccessStatus } from "@/lib/billing/loadAccess";
 
 // C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
 // 위기(route 1)·폭력(route 2)은 아래에서 이 제한 검사보다 먼저 처리되어, 제한과 무관하게 항상 응답한다.
@@ -129,6 +130,25 @@ export async function POST(req: NextRequest) {
       .from("chat_messages")
       .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: fixed, route: decision.route });
     return NextResponse.json({ sessionId, route: decision.route, reply: fixed, done: true, ...routingMeta });
+  }
+
+  // route 3~7만 무료체험/이용권을 확인한다 (crisis·violence·classifierUnavailable은 이미 위에서
+  // 반환됨 — 위기·폭력 대응은 결제 여부와 무관하게 항상 응답해야 한다). 가입 후 7일은 무료,
+  // 그 후엔 활성 이용권(chat_entitlements.status='active')이 있어야 한다.
+  const access = await loadAccessStatus(admin, userId);
+  if (!access.allowed) {
+    const reply = "무료체험 기간이 끝났어요. 이용권을 구매하시면 계속 대화를 나눌 수 있어요.";
+    await admin
+      .from("chat_messages")
+      .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route });
+    return NextResponse.json({
+      sessionId,
+      route: decision.route,
+      reply,
+      done: true,
+      paywallBlocked: true,
+      ...routingMeta,
+    });
   }
 
   // route 3~7만 하루 사용량 제한을 적용한다 (crisis·violence·classifierUnavailable은 이미 위에서 반환됨).

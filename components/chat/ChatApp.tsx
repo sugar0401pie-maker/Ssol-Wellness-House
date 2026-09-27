@@ -5,6 +5,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { SUGGESTED_QUESTION_GROUPS } from "@/lib/persona/suggestedQuestions";
+import TrialPaywallOverlay from "./TrialPaywallOverlay";
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
 type SessionSummary = {
@@ -43,6 +44,7 @@ export default function ChatApp() {
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+  const [paywallBlocked, setPaywallBlocked] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -53,6 +55,28 @@ export default function ChatApp() {
   }, [messages, sending]);
 
   useEffect(() => () => cancelReveal.current?.(), []); // 화면을 벗어나면 진행 중이던 연출 정리
+
+  // 메시지를 보내보기 전에 미리 확인해서, 무료체험이 끝난 사용자는 바로 안내를 볼 수 있게 한다.
+  // 최종 차단은 서버(app/api/chat)가 하므로, 이 조회가 실패하거나 느려도 안전에는 영향이 없다.
+  useEffect(() => {
+    let cancelled = false;
+    async function checkAccess() {
+      const token = await getAccessToken();
+      if (!token) return;
+      try {
+        const res = await fetch("/api/billing/status", { headers: authHeaders(token) });
+        if (!res.ok) return;
+        const data = (await res.json()) as { allowed: boolean };
+        if (!cancelled && !data.allowed) setPaywallBlocked(true);
+      } catch {
+        // 조회 실패 시엔 막지 않는다 — 실제 차단은 서버가 메시지를 보낼 때 한 번 더 확인한다.
+      }
+    }
+    void checkAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function appendMessage(role: Message["role"], content: string) {
     setMessages((prev) => [...prev, { id: nextId.current++, role, content }]);
@@ -98,10 +122,17 @@ export default function ChatApp() {
         return;
       }
 
-      const data = (await res.json()) as { sessionId: string; route: string; reply: string | null; note?: string };
+      const data = (await res.json()) as {
+        sessionId: string;
+        route: string;
+        reply: string | null;
+        note?: string;
+        paywallBlocked?: boolean;
+      };
       sessionId.current = data.sessionId;
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
       revealAssistantMessage(data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`);
+      if (data.paywallBlocked) setPaywallBlocked(true);
       return;
     } catch {
       appendMessage("assistant", "네트워크 문제로 응답을 받지 못했어요. 다시 시도해주세요.");
@@ -222,50 +253,54 @@ export default function ChatApp() {
         <div ref={endRef} />
       </main>
 
-      <footer className="border-t border-line bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-        <form
-          className="flex items-end gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send(input);
-          }}
-        >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              // 한글 입력 중(조합 중)에는 Enter를 전송으로 처리하지 않음
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void send(input);
-              }
+      {paywallBlocked ? (
+        <TrialPaywallOverlay />
+      ) : (
+        <footer className="border-t border-line bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+          <form
+            className="flex items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send(input);
             }}
-            rows={1}
-            maxLength={1000}
-            placeholder="마음에 있는 이야기를 적어주세요"
-            aria-label="메시지 입력"
-            disabled={sending}
-            className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none focus:border-navy disabled:opacity-60"
-          />
-          <button
-            type="button"
-            onClick={() => setShowSuggested(true)}
-            className="h-11 shrink-0 rounded-2xl border border-line px-3 text-sm font-medium text-foreground active:bg-background"
           >
-            추천 질문
-          </button>
-          <button
-            type="submit"
-            disabled={!input.trim() || sending}
-            className="h-11 shrink-0 rounded-2xl bg-navy px-4 text-sm font-medium text-white disabled:opacity-40"
-          >
-            보내기
-          </button>
-        </form>
-        {/* 2026-09-22 결정: 위기 연락처 상시 노출 대신 브랜드 비전 문구로 교체(사용자 요청).
-            실제 위기 감지 시 안내(109, 1577-0199 등)는 그 상황의 답변 자체에 그대로 포함된다. */}
-        <p className="mt-2 text-center text-[11px] italic leading-4 text-slate-400">SSOL — 삶의 파도를 유영하는 힘</p>
-      </footer>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                // 한글 입력 중(조합 중)에는 Enter를 전송으로 처리하지 않음
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  void send(input);
+                }
+              }}
+              rows={1}
+              maxLength={1000}
+              placeholder="마음에 있는 이야기를 적어주세요"
+              aria-label="메시지 입력"
+              disabled={sending}
+              className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none focus:border-navy disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={() => setShowSuggested(true)}
+              className="h-11 shrink-0 rounded-2xl border border-line px-3 text-sm font-medium text-foreground active:bg-background"
+            >
+              추천 질문
+            </button>
+            <button
+              type="submit"
+              disabled={!input.trim() || sending}
+              className="h-11 shrink-0 rounded-2xl bg-navy px-4 text-sm font-medium text-white disabled:opacity-40"
+            >
+              보내기
+            </button>
+          </form>
+          {/* 2026-09-22 결정: 위기 연락처 상시 노출 대신 브랜드 비전 문구로 교체(사용자 요청).
+              실제 위기 감지 시 안내(109, 1577-0199 등)는 그 상황의 답변 자체에 그대로 포함된다. */}
+          <p className="mt-2 text-center text-[11px] italic leading-4 text-slate-400">SSOL — 삶의 파도를 유영하는 힘</p>
+        </footer>
+      )}
 
       {showHistory && (
         <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">

@@ -2,16 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
-import { sendEmail } from "@/lib/email/resend";
 import { PLAN_LABELS, PLAN_PRICES, type PlanId } from "@/lib/billing/pricing";
 
-// 2026-09-27: 토스페이먼츠 연동 전까지는 실제 결제를 처리하지 않는다. 신청을
-// chat_entitlements에 status='pending'으로 남기고 관리자에게 이메일로 알린 뒤, owner가
-// 결제(계좌이체 등)를 직접 확인하고 Supabase 테이블 편집기에서 status를 'active'로
-// 바꿔주는 수동 절차를 쓴다 — 상담 예약 신청(app/api/counselor-inquiry)과 같은 패턴.
+// 2026-09-27: 토스페이먼츠 결제창을 열기 전, "이 결제가 어떤 신청 건인지"를 먼저 우리
+// DB에 status='pending'으로 남겨 orderId(=이 행의 id)를 만든다. 실제 승인은
+// app/api/billing/toss/confirm에서 결제 완료 후 한 번 더 서버 대 서버로 확인한다 —
+// 클라이언트가 "결제 성공했다"고 우기는 것만으로는 이용권을 열어주지 않는다.
 export const runtime = "nodejs";
-
-const NOTIFY_EMAIL = process.env.COUNSELOR_NOTIFY_EMAIL ?? "junseok@ssolwellness.com";
 
 export async function POST(req: NextRequest) {
   if (!checkAccessCode(req.headers.get("x-access-code"))) {
@@ -44,17 +41,12 @@ export async function POST(req: NextRequest) {
     .single();
   if (error || !inserted) return NextResponse.json({ error: "신청 접수에 실패했어요." }, { status: 500 });
 
-  const name = profile?.nickname ?? profile?.display_name ?? "이름 미상";
-  const emailBody = [
-    `새 이용권 결제 신청이 접수됐어요. (토스페이먼츠 연동 전 — 결제 확인 후 아래 신청 건을 'active'로 처리해주세요)`,
-    ``,
-    `이용권: ${PLAN_LABELS[planId]} (${PLAN_PRICES[planId].toLocaleString()}원)`,
-    `이름: ${name}`,
-    `이메일: ${authUser?.user?.email ?? "-"}`,
-    `신청 ID: ${inserted.id}`,
-  ].join("\n");
-  const sent = await sendEmail({ to: NOTIFY_EMAIL, subject: `[쏠 웰니스] 이용권 결제 신청 - ${PLAN_LABELS[planId]}`, text: emailBody });
-  if (!sent.ok) console.warn("이용권 신청 이메일 발송 실패:", sent.reason);
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    orderId: inserted.id,
+    orderName: PLAN_LABELS[planId],
+    amount: PLAN_PRICES[planId],
+    customerKey: userId,
+    customerName: profile?.nickname ?? profile?.display_name ?? "고객",
+    customerEmail: authUser?.user?.email ?? undefined,
+  });
 }

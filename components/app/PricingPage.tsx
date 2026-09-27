@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
@@ -11,22 +11,45 @@ import {
   ANNUAL_SAVINGS_PERCENT,
   type PlanId,
 } from "@/lib/billing/pricing";
+import type { PaymentWidgetInstance } from "@tosspayments/payment-widget-sdk";
 
-// 2026-09-27: "이용권 결제하기" 눌러 들어오는 요금 안내 + 신청 화면. 전용 주소(/pricing)를
-// 할당해달라는 요청대로 별도 페이지로 만든다. 토스페이먼츠 연동 전이라 신청만 접수하고,
-// 실제 결제 연동 후 이 화면의 버튼이 토스 결제창을 여는 방식으로 바뀔 예정이다.
+// 2026-09-27: "이용권 결제하기" 눌러 들어오는 요금 안내 + 실제 토스페이먼츠 결제 화면.
+// 전용 주소(/pricing)를 할당해달라는 요청대로 별도 페이지로 만든다.
+//
+// 흐름: 플랜 선택 → app/api/billing/checkout(주문 생성, chat_entitlements에 pending 저장)
+// → 토스 결제위젯을 이 페이지 안에 그려서 카드 등 결제수단 선택 → "결제하기"를 누르면
+// 토스 결제창으로 이동 → 성공 시 /pricing/success로 돌아와 app/api/billing/toss/confirm이
+// 서버 대 서버로 실제 승인을 한 번 더 확인한 뒤에만 이용권이 active로 바뀐다.
+const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
+
 function won(n: number): string {
   return `${n.toLocaleString()}원`;
 }
 
+type Order = {
+  orderId: string;
+  orderName: string;
+  amount: number;
+  customerKey: string;
+  customerName: string;
+  customerEmail?: string;
+};
+
 export default function PricingPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState<PlanId | null>(null);
-  const [done, setDone] = useState<PlanId | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [readyForOrderId, setReadyForOrderId] = useState<string | null>(null);
+  const widgetReady = order !== null && readyForOrderId === order.orderId;
+  const widgetRef = useRef<PaymentWidgetInstance | null>(null);
 
-  async function apply(plan: PlanId) {
+  async function startCheckout(plan: PlanId) {
     if (submitting) return;
+    if (!TOSS_CLIENT_KEY) {
+      setError("결제 연동이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.");
+      return;
+    }
     setSubmitting(plan);
     setError(null);
     try {
@@ -41,7 +64,8 @@ export default function PricingPage() {
         body: JSON.stringify({ plan }),
       });
       if (!res.ok) throw new Error();
-      setDone(plan);
+      const data = (await res.json()) as Order;
+      setOrder(data);
     } catch {
       setError("신청 접수에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -49,9 +73,49 @@ export default function PricingPage() {
     }
   }
 
+  useEffect(() => {
+    if (!order || !TOSS_CLIENT_KEY) return;
+    let cancelled = false;
+    const orderId = order.orderId;
+    import("@tosspayments/payment-widget-sdk").then(async ({ loadPaymentWidget }) => {
+      const widget = await loadPaymentWidget(TOSS_CLIENT_KEY!, order.customerKey);
+      if (cancelled) return;
+      widget.renderPaymentMethods("#toss-payment-methods", order.amount);
+      widget.renderAgreement("#toss-agreement");
+      widgetRef.current = widget;
+      setReadyForOrderId(orderId);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.orderId]);
+
+  async function requestPayment() {
+    if (!order || !widgetRef.current) return;
+    setError(null);
+    try {
+      await widgetRef.current.requestPayment({
+        orderId: order.orderId,
+        orderName: order.orderName,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        successUrl: `${window.location.origin}/pricing/success`,
+        failUrl: `${window.location.origin}/pricing/fail`,
+      });
+      // 성공하면 토스가 successUrl로 브라우저를 이동시키므로, 이후 코드는 보통 실행되지 않는다.
+    } catch {
+      setError("결제창을 여는 데 실패했어요. 잠시 후 다시 시도해주세요.");
+    }
+  }
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-white px-5 py-8">
-      <button type="button" onClick={() => router.push("/")} className="mb-4 self-start text-[13px] text-slate-500">
+      <button
+        type="button"
+        onClick={() => (order ? setOrder(null) : router.push("/"))}
+        className="mb-4 self-start text-[13px] text-slate-500"
+      >
         ← 뒤로
       </button>
 
@@ -60,12 +124,21 @@ export default function PricingPage() {
         가입 후 7일은 무료로 이용하실 수 있어요. 이후에는 이용권 결제가 필요해요.
       </p>
 
-      {done ? (
-        <div className="mt-8 rounded-2xl bg-navy-soft p-5 text-center">
-          <p className="text-[15px] font-medium text-foreground">신청이 접수됐어요</p>
-          <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
-            확인 후 결제 안내를 드릴게요. 결제가 완료되면 바로 이용하실 수 있어요.
-          </p>
+      {order ? (
+        <div className="mt-6 flex flex-col gap-4">
+          <div className="rounded-xl border border-line bg-background p-3 text-[14px] text-foreground">
+            {order.orderName} · {won(order.amount)}
+          </div>
+          <div id="toss-payment-methods" />
+          <div id="toss-agreement" />
+          <button
+            type="button"
+            onClick={requestPayment}
+            disabled={!widgetReady}
+            className="h-11 w-full rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-40"
+          >
+            {widgetReady ? `${won(order.amount)} 결제하기` : "결제창 준비 중…"}
+          </button>
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
@@ -74,7 +147,7 @@ export default function PricingPage() {
             price={won(MONTHLY_PRICE)}
             sub="매달 결제"
             highlight={false}
-            onApply={() => apply("monthly")}
+            onApply={() => startCheckout("monthly")}
             submitting={submitting === "monthly"}
             disabled={submitting !== null}
           />
@@ -83,7 +156,7 @@ export default function PricingPage() {
             price={won(ANNUAL_PRICE)}
             sub={`월 환산 ${won(ANNUAL_MONTHLY_EQUIVALENT)} · 월간 대비 약 ${ANNUAL_SAVINGS_PERCENT}% 절약`}
             highlight
-            onApply={() => apply("annual")}
+            onApply={() => startCheckout("annual")}
             submitting={submitting === "annual"}
             disabled={submitting !== null}
           />
@@ -92,30 +165,34 @@ export default function PricingPage() {
 
       {error && <p className="mt-3 text-[13px] text-red-600">{error}</p>}
 
-      <div className="mt-6 rounded-xl border border-line bg-background p-4 text-[13px] leading-5 text-slate-500">
-        <p className="font-medium text-foreground">오프라인 웰니스 세션을 이용 중이신가요?</p>
-        <p className="mt-1">오프라인 웰니스 세션 패키지를 이용하고 계신 분은 패키지별로 채팅을 무료로 이용하실 수 있어요.</p>
-      </div>
+      {!order && (
+        <>
+          <div className="mt-6 rounded-xl border border-line bg-background p-4 text-[13px] leading-5 text-slate-500">
+            <p className="font-medium text-foreground">오프라인 웰니스 세션을 이용 중이신가요?</p>
+            <p className="mt-1">오프라인 웰니스 세션 패키지를 이용하고 계신 분은 패키지별로 채팅을 무료로 이용하실 수 있어요.</p>
+          </div>
 
-      <div className="mt-6 text-[12px] leading-5 text-slate-400">
-        <p className="font-medium text-slate-500">이용 관련 안내</p>
-        <p className="mt-1">이용권은 결제 확인 후 바로 적용돼요. 이용 시작 후 7일 이내 미사용 시 전액 환불해드려요.</p>
-        <p className="mt-1">
-          자세한 환불·해지 규정은{" "}
-          <a href="/legal#terms" target="_blank" rel="noreferrer" className="text-navy underline">
-            이용약관
-          </a>
-          을 확인해주세요.
-        </p>
-      </div>
+          <div className="mt-6 text-[12px] leading-5 text-slate-400">
+            <p className="font-medium text-slate-500">이용 관련 안내</p>
+            <p className="mt-1">이용권은 결제 확인 후 바로 적용돼요. 이용 시작 후 7일 이내 미사용 시 전액 환불해드려요.</p>
+            <p className="mt-1">
+              자세한 환불·해지 규정은{" "}
+              <a href="/legal#terms" target="_blank" rel="noreferrer" className="text-navy underline">
+                이용약관
+              </a>
+              을 확인해주세요.
+            </p>
+          </div>
 
-      <button
-        type="button"
-        onClick={() => router.push("/packages")}
-        className="mt-8 text-center text-[13px] text-slate-500 underline underline-offset-2"
-      >
-        오프라인 웰니스 패키지 알아보기
-      </button>
+          <button
+            type="button"
+            onClick={() => router.push("/packages")}
+            className="mt-8 text-center text-[13px] text-slate-500 underline underline-offset-2"
+          >
+            오프라인 웰니스 패키지 알아보기
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -151,7 +228,7 @@ function PlanCard({
         disabled={disabled}
         className="mt-3 h-11 w-full rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-40"
       >
-        {submitting ? "신청하는 중…" : "이용권 결제하기"}
+        {submitting ? "준비하는 중…" : "이용권 결제하기"}
       </button>
     </div>
   );

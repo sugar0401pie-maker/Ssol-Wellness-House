@@ -24,6 +24,15 @@ function formatDateKey(dateKey: string): string {
   return `${m}월 ${d}일 ${WEEKDAY[dt.getDay()]}요일`;
 }
 
+// 2026-09-27 owner 피드백: 유형 한 줄 설명(tagline)이 화면 너비에서 애매한 지점에 자동 줄바꿈돼
+// 어색하게 잘렸다. 모든 tagline이 "은유 부분, 실제 의미" 형태로 쉼표 하나만 갖고 있어서
+// (persona_profiles 15행 전수 확인함), 그 쉼표에서 직접 줄을 나누면 항상 자연스럽게 끊긴다.
+function splitAtFirstComma(text: string): [string, string | null] {
+  const idx = text.indexOf(",");
+  if (idx === -1) return [text, null];
+  return [text.slice(0, idx + 1), text.slice(idx + 1).trim()];
+}
+
 export default function HomeTab() {
   const [data, setData] = useState<DailyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +99,21 @@ export default function HomeTab() {
               <p className="mt-2 px-2 text-center text-[14px] leading-6 text-foreground">
                 {data.displayName ? `${data.displayName}님은 ` : ""}
                 <span className="font-medium text-navy">{data.character.name}</span> 유형이에요.
-                {data.character.tagline && <span className="mt-0.5 block text-slate-500">{data.character.tagline}</span>}
+                {data.character.tagline &&
+                  (() => {
+                    const [firstLine, secondLine] = splitAtFirstComma(data.character.tagline);
+                    return (
+                      <span className="mt-0.5 block text-slate-500">
+                        {firstLine}
+                        {secondLine && (
+                          <>
+                            <br />
+                            {secondLine}
+                          </>
+                        )}
+                      </span>
+                    );
+                  })()}
               </p>
             ) : (
               <p className="mt-2 text-center text-[12px] leading-4 text-slate-400">

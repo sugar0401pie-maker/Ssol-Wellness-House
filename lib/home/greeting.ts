@@ -5,17 +5,30 @@
 
 // 음력 공휴일(설날·추석)은 매년 날짜가 바뀐다 — 이 표는 해당 연도가 지나면 다음 해 날짜로
 // 갱신해야 한다(양력 공휴일은 고정이라 갱신 불필요). 지금은 2026년만 채워뒀다.
-// "쉬어가는" 명절(가족·축하 성격)과 "기리는" 기념일(엄숙한 성격)을 구분해서 문구 톤을 다르게 쓴다.
-const REST_HOLIDAYS: Record<string, string> = {
+//
+// 2026-09-27 owner 피드백: "쉬어가는" 한 문구를 명절·어린이날·크리스마스에 전부 똑같이 쓰니 어색하다
+// (게다가 "추석 연휴이에요"처럼 받침 없는 단어에 "이에요"가 붙는 문법 오류도 있었다). 성격이 다른
+// 세 그룹으로 나눠 각각 어울리는 톤으로 쓰고, 받침 유무에 따라 "이에요"/"예요"를 자동으로 고른다.
+const LUNAR_AND_NEW_YEAR_HOLIDAYS: Record<string, string> = {
   "2026-01-01": "신정",
   "2026-02-16": "설날 연휴",
   "2026-02-17": "설날",
   "2026-02-18": "설날 연휴",
-  "2026-05-05": "어린이날",
   "2026-09-24": "추석 연휴",
   "2026-09-25": "추석",
   "2026-09-26": "추석 연휴",
+};
+const CHILDRENS_DAY: Record<string, string> = {
+  "2026-05-05": "어린이날",
+};
+const CHRISTMAS: Record<string, string> = {
   "2026-12-25": "크리스마스",
+};
+// "쉬어가는" 명절/기념일을 통틀어 하나로 — 실천방법을 "관계"(가족·지인) 쪽으로 기울이는 데 쓴다.
+const REST_HOLIDAYS: Record<string, string> = {
+  ...LUNAR_AND_NEW_YEAR_HOLIDAYS,
+  ...CHILDRENS_DAY,
+  ...CHRISTMAS,
 };
 
 const OBSERVANCE_HOLIDAYS: Record<string, string> = {
@@ -30,6 +43,17 @@ const OBSERVANCE_HOLIDAYS: Record<string, string> = {
 // 이 domain으로 재분류되어 있어(20260924000400 마이그레이션) 명절 분위기에 더 잘 맞는다.
 export function holidayPracticeDomain(dateKey: string): string | null {
   return REST_HOLIDAYS[dateKey] ? "관계" : null;
+}
+
+// 한글 단어 끝음절에 받침이 있는지 본다 — "이에요"(받침 있음)/"예요"(받침 없음)를 자동으로 고르기 위함.
+// 한글 음절이 아닌 문자로 끝나면(드문 경우) 안전하게 받침 있음으로 취급한다.
+function endsWithBatchim(word: string): boolean {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return true;
+  return code % 28 !== 0;
+}
+function copula(word: string): string {
+  return endsWithBatchim(word) ? "이에요" : "예요";
 }
 
 function weekdayOf(dateKey: string): number {
@@ -56,11 +80,21 @@ const GENERIC_LINES: ((name: string) => string)[] = [
 ];
 
 export function getGreetingLine(dateKey: string, displayName: string | null): string {
-  const restHoliday = REST_HOLIDAYS[dateKey];
-  if (restHoliday) return `오늘은 ${restHoliday}이에요. 마음 편히 쉬어가는 하루 되시길 바라요.`;
+  if (LUNAR_AND_NEW_YEAR_HOLIDAYS[dateKey]) {
+    const name = LUNAR_AND_NEW_YEAR_HOLIDAYS[dateKey];
+    return `오늘은 ${name}${copula(name)}. 마음 편히 쉬어가는 하루 되시길 바라요.`;
+  }
+  if (CHILDRENS_DAY[dateKey]) {
+    const name = CHILDRENS_DAY[dateKey];
+    return `오늘은 ${name}${copula(name)}. 소중한 사람들과 즐거운 시간 보내시길 바라요.`;
+  }
+  if (CHRISTMAS[dateKey]) {
+    const name = CHRISTMAS[dateKey];
+    return `오늘은 ${name}${copula(name)}. 따뜻하고 행복한 하루 되시길 바라요.`;
+  }
 
   const observance = OBSERVANCE_HOLIDAYS[dateKey];
-  if (observance) return `오늘은 ${observance}이에요.`;
+  if (observance) return `오늘은 ${observance}${copula(observance)}.`;
 
   if (weekdayOf(dateKey) === 1) return "활기찬 한 주의 시작이네요.";
 

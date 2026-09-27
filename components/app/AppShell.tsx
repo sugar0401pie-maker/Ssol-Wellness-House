@@ -27,8 +27,17 @@ type OnboardingInfo = {
   title: string;
 };
 
+// 2026-09-27: /report/[resultId]에서 "마이페이지로" 돌아올 때 홈 탭이 아니라 마이페이지 탭으로
+// 바로 돌아오도록, "?tab=mypage" 쿼리를 초기 탭으로 반영한다. AppShell은 AuthGate가 로그인
+// 확인을 마친 뒤에만(항상 클라이언트에서) 렌더링되므로, useState 초기값 함수에서 바로
+// window.location을 읽어도 안전하다(서버 렌더링 중에는 이 함수 자체가 호출되지 않는다).
+function initialTabFromUrl(): Tab {
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  return requestedTab === "mypage" || requestedTab === "chat" ? requestedTab : "home";
+}
+
 export default function AppShell() {
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>(initialTabFromUrl);
   // 2026-09-24: 로그인 후 "자기소개" 온보딩을 반드시 먼저 마치도록 한다 — 안 했으면 이
   // 모달이 탭 내용 위를 덮어서, 3탭 어디로도 못 빠져나가고 반드시 답해야 한다.
   const [onboarding, setOnboarding] = useState<OnboardingInfo | "loading" | "error">("loading");

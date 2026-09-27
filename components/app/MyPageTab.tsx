@@ -1,28 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import CounselorBookingModal from "./CounselorBookingModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
 
-type Persona = {
-  label: string;
-  tagline: string;
-  blurb: string;
-  traits: string[];
-  domainScores: Record<string, number> | null;
-} | null;
+type MyPageData = MyInfo & { gender: string | null };
 
-type ReportSection = { title: string; body: string };
-type MyPageData = MyInfo & {
-  gender: string | null;
-  persona: Persona;
-  report: { sections: ReportSection[] } | null;
+// 2026-09-27: "지금은 보고서가 1개인데 나중에 여러 개를 열람할 수도 있으니" — 응시 기록을
+// 목록으로 보여주고, 각 항목의 "열기"를 누르면 /report/[resultId]에서 전체 심층보고서를 본다.
+type ReportListItem = {
+  id: string;
+  createdAt: string;
+  dessertCode: string;
+  dessertName: string;
+  hasReport: boolean;
 };
+
+// "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY.MM.DD" (표시용)
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
 
 // "YYYY-MM-DD" -> "YYYY년 M월 D일" (표시용)
 function formatBirthDate(birthDate: string | null): string {
@@ -30,32 +33,6 @@ function formatBirthDate(birthDate: string | null): string {
   const [y, m, d] = birthDate.split("-").map(Number);
   if (!y || !m || !d) return birthDate;
   return `${y}년 ${m}월 ${d}일`;
-}
-
-// 결과보고서 본문은 AI가 마크다운 스타일(**굵게**, - 목록)로 써서, 기호를 그대로 노출하지
-// 않도록 아주 가벼운 렌더링만 한다(별도 마크다운 라이브러리 없이) — 채팅의 "마크다운 금지"
-// 규칙과 달리, 이 화면은 결제한 리포트를 보여주는 문서형 화면이라 최소한의 서식은 살린다.
-function renderLiteMarkdown(text: string) {
-  return text.split("\n").map((line, i) => {
-    const trimmed = line.trim();
-    if (!trimmed) return <div key={i} className="h-2" />;
-    const isBullet = trimmed.startsWith("- ");
-    const content = isBullet ? trimmed.slice(2) : trimmed;
-    const parts = content.split(/(\*\*[^*]+\*\*)/g).map((chunk, j) =>
-      chunk.startsWith("**") && chunk.endsWith("**") ? (
-        <strong key={j} className="font-semibold text-foreground">
-          {chunk.slice(2, -2)}
-        </strong>
-      ) : (
-        <span key={j}>{chunk}</span>
-      ),
-    );
-    return (
-      <p key={i} className={isBullet ? "pl-3 before:mr-1.5 before:content-['·']" : ""}>
-        {parts}
-      </p>
-    );
-  });
 }
 
 function SectionRow({
@@ -81,7 +58,9 @@ function SectionRow({
 }
 
 export default function MyPageTab() {
+  const router = useRouter();
   const [data, setData] = useState<MyPageData | null>(null);
+  const [reports, setReports] = useState<ReportListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"type" | "info" | "onboarding" | "counselor" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
@@ -104,11 +83,16 @@ export default function MyPageTab() {
         return;
       }
       try {
-        const res = await fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const json = (await res.json()) as MyPageData;
+        const [infoRes, reportsRes] = await Promise.all([
+          fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" }),
+          fetch("/api/mypage/reports", { headers: authHeaders(token), cache: "no-store" }),
+        ]);
+        if (!infoRes.ok || !reportsRes.ok) throw new Error();
+        const json = (await infoRes.json()) as MyPageData;
+        const reportsJson = (await reportsRes.json()) as { reports: ReportListItem[] };
         if (!cancelled) {
           setData(json);
+          setReports(reportsJson.reports);
           setError(null);
         }
       } catch {
@@ -143,42 +127,25 @@ export default function MyPageTab() {
       {data && (
         <div className="flex-1">
           <SectionRow title="내 유형 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
-            {data.persona ? (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[16px] font-medium text-foreground">{data.persona.label}</p>
-                  <p className="mt-0.5 text-[13px] text-navy">{data.persona.tagline}</p>
-                  <p className="mt-2 leading-6">{data.persona.blurb}</p>
-                  {data.persona.traits.length > 0 && (
-                    <ul className="mt-2 list-inside list-disc space-y-0.5">
-                      {data.persona.traits.map((t) => (
-                        <li key={t}>{t}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {data.persona.domainScores && (
-                    <p className="mt-3 text-[13px] text-slate-500">
-                      {Object.entries(data.persona.domainScores)
-                        .filter(([k]) => k in DOMAIN_LABELS)
-                        .map(([k, v]) => `${DOMAIN_LABELS[k]} ${v}`)
-                        .join(" · ")}
-                    </p>
-                  )}
-                </div>
-
-                {data.report && (
-                  <div className="border-t border-line pt-4">
-                    <p className="mb-2 text-[13px] font-medium text-slate-400">결과보고서</p>
-                    <div className="space-y-5">
-                      {data.report.sections.map((s, i) => (
-                        <div key={i}>
-                          <p className="text-[14px] font-medium text-foreground">{s.title}</p>
-                          <div className="mt-1 space-y-1.5">{renderLiteMarkdown(s.body)}</div>
-                        </div>
-                      ))}
+            {reports && reports.length > 0 ? (
+              <div className="divide-y divide-line rounded-xl border border-line">
+                {reports.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between px-3.5 py-3">
+                    <div>
+                      <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
+                      <p className="mt-0.5 text-[14px] font-medium text-foreground">
+                        {r.dessertName} 유형{r.hasReport && <span className="ml-1.5 text-[11px] font-normal text-navy">심층보고서</span>}
+                      </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/report/${r.id}`)}
+                      className="shrink-0 rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                    >
+                      열기
+                    </button>
                   </div>
-                )}
+                ))}
               </div>
             ) : (
               <div>

@@ -259,7 +259,9 @@ export default function ChatApp() {
   return (
     <div className="flex h-full w-full flex-col bg-white">
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
-        <p className="text-[15px] font-medium text-foreground">AI 채팅</p>
+        {/* 2026-09-28: owner 확인 후 채팅 헤더를 "쏘웰라"로 변경(첫 화면에서 이 이름으로
+            AI를 소개하므로) — 화면 안 대화 로직·API 이름 등은 그대로, 라벨만 바꾼 것. */}
+        <p className="text-[15px] font-medium text-foreground">쏘웰라</p>
         <div className="flex gap-2">
           <button
             type="button"

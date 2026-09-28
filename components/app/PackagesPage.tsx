@@ -17,7 +17,7 @@ export default function PackagesPage() {
       </p>
       <button
         type="button"
-        onClick={() => router.push("/")}
+        onClick={() => router.push("/home")}
         className="mt-8 h-11 w-full max-w-xs rounded-xl bg-navy text-sm font-medium text-white"
       >
         앱으로 돌아가기

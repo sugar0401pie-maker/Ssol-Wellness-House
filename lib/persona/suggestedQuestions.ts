@@ -52,3 +52,16 @@ export const SUGGESTED_QUESTION_GROUPS: SuggestedQuestionGroup[] = [
     ],
   },
 ];
+
+// 2026-09-28 owner 요청: 시안(.chipq)처럼, 대화를 시작하기 전 첫 인사말 아래에 바로 눌러볼 수
+// 있는 질문 몇 개를 칩 형태로 랜덤 노출한다(대화가 시작되면 사라짐) — 매번 다른 질문이
+// 보이도록 순수 함수로 분리해 테스트 가능하게 둔다.
+export function pickRandomSuggestedQuestions(count: number): SuggestedQuestion[] {
+  const all = SUGGESTED_QUESTION_GROUPS.flatMap((g) => g.questions);
+  const shuffled = [...all];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}

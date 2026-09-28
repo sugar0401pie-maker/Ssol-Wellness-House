@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { SUGGESTED_QUESTION_GROUPS } from "@/lib/persona/suggestedQuestions";
+import { SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/persona/suggestedQuestions";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
+import OnboardingFlow from "@/components/app/OnboardingFlow";
+import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
 
 type Message = { id: number; role: "user" | "assistant"; content: string };
 type SessionSummary = {
@@ -20,7 +22,7 @@ type SessionSummary = {
 const GREETING =
   "안녕하세요, 쏠 웰니스 하우스예요. 저는 웰니스 관련 상담에 도움을 드릴 수 있습니다. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주시기 바랍니다.";
 
-// 2026-09-28: 홈/채팅/마이페이지가 "/", "/chat", "/mypage" 개별 주소로 나뉘면서, 채팅 탭을
+// 2026-09-28: 홈/채팅/마이페이지가 "/home", "/chat", "/mypage" 개별 주소로 나뉘면서, 채팅 탭을
 // 벗어났다 돌아오면 이 컴포넌트가 새로 마운트된다(예전엔 세 탭을 전부 마운트해두고 CSS로만
 // 숨겨서 이 문제가 없었다). 지금 나누고 있던 대화가 사라지지 않도록, 활성 세션 id를
 // localStorage에 저장해두고 마운트 시 자동으로 그 대화를 불러온다. 개인정보(대화 내용)는
@@ -61,6 +63,21 @@ export default function ChatApp() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [paywallBlocked, setPaywallBlocked] = useState(false);
+  // 2026-09-28 owner 요청: 온보딩을 "닫기"로 건너뛴 사용자가 채팅에 들어오면, 첫 인사말
+  // 바로 아래에 온보딩을 다시 열 수 있는 안내+버튼을 보여준다. 완료한 사용자에겐 안 보인다 —
+  // 단, "완료" 처리는 됐어도 모든 문항을 건너뛰기만 해서 실제 답변이 하나도 없는 사람은
+  // 예외로 동일하게 보여준다(showPrompt = 완료 안 함 OR 완료했지만 답변이 전부 비어있음).
+  const [onboarding, setOnboarding] = useState<{
+    completed: boolean;
+    nickname: string | null;
+    title: string;
+    showPrompt: boolean;
+  } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  // 2026-09-28 owner 요청(시안 .chipq): 대화 시작 전(메시지가 아직 없을 때)엔 첫 인사말 밑에
+  // 눌러볼 만한 질문 몇 개를 칩으로 랜덤 노출한다 — lazy initializer로 마운트 시 한 번만 뽑아서
+  // 리렌더될 때마다 바뀌지 않게 한다. 대화가 시작되면(messages.length>0) 더 이상 안 보인다.
+  const [starterChips] = useState(() => pickRandomSuggestedQuestions(3));
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -89,6 +106,38 @@ export default function ChatApp() {
       }
     }
     void checkAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkOnboarding() {
+      const token = await getAccessToken();
+      if (!token) return;
+      try {
+        const res = await fetch("/api/onboarding", { headers: authHeaders(token) });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          completed: boolean;
+          nickname: string | null;
+          title: string;
+          answers?: Record<string, unknown>;
+        };
+        if (!cancelled) {
+          setOnboarding({
+            completed: json.completed,
+            nickname: json.nickname,
+            title: json.title,
+            showPrompt: !json.completed || allOnboardingAnswersBlank(json.answers),
+          });
+        }
+      } catch {
+        // 조회 실패해도 채팅 자체는 그대로 쓸 수 있어야 하므로 조용히 넘어간다(안내만 안 보임).
+      }
+    }
+    void checkOnboarding();
     return () => {
       cancelled = true;
     };
@@ -282,6 +331,36 @@ export default function ChatApp() {
 
       <main className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
         <Bubble role="assistant" content={GREETING} />
+        {onboarding && onboarding.showPrompt && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl bg-navy-soft px-4 py-2.5 text-[15px] leading-6 text-foreground">
+              <p>
+                온보딩 테스트를 하고 오시면 {onboarding.nickname ?? "회원"}님께 더 맞춤화된 답변을 받으실 수 있어요.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowOnboarding(true)}
+                className="mt-2 rounded-full bg-navy px-3 py-1.5 text-[13px] font-medium text-white"
+              >
+                온보딩 테스트 하기
+              </button>
+            </div>
+          </div>
+        )}
+        {messages.length === 0 && starterChips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pl-1">
+            {starterChips.map((q) => (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => void send(q.text, { isPersonaQuestion: true })}
+                className="rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] text-foreground active:border-navy active:text-navy"
+              >
+                {q.text}
+              </button>
+            ))}
+          </div>
+        )}
         {messages.map((m) => (
           <Bubble key={m.id} role={m.role} content={m.content} />
         ))}
@@ -458,6 +537,19 @@ export default function ChatApp() {
             </div>
           </div>
         </div>
+      )}
+
+      {showOnboarding && onboarding && (
+        <OnboardingFlow
+          mode="gate"
+          nickname={onboarding.nickname}
+          title={onboarding.title}
+          onDone={() => {
+            setOnboarding({ ...onboarding, completed: true, showPrompt: false });
+            setShowOnboarding(false);
+          }}
+          onClose={() => setShowOnboarding(false)}
+        />
       )}
     </div>
   );

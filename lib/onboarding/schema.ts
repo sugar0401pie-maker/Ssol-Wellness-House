@@ -281,3 +281,21 @@ export function findQuestion(id: string): QuestionDef | BranchDef | undefined {
   }
   return undefined;
 }
+
+// 2026-09-28 owner 요청: "완료" 처리는 됐지만(status='completed') 모든 문항을 "건너뛰기"만
+// 눌러서 실제 답변이 하나도 없는 사람도, 아직 온보딩을 안 한 사람과 똑같이 채팅에서 "온보딩
+// 테스트 하기" 안내를 다시 보여줘야 한다. GET /api/onboarding이 돌려주는 answers 객체
+// (문항 컬럼들 + other_answers)를 보고 전부 비어있는지 판단하는 순수 함수.
+function isBlankAnswerValue(v: unknown): boolean {
+  if (v === null || v === undefined) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  return false;
+}
+
+export function allOnboardingAnswersBlank(answers: Record<string, unknown> | undefined | null): boolean {
+  if (!answers) return true;
+  const { other_answers, ...rest } = answers as { other_answers?: Record<string, string> };
+  const restBlank = Object.values(rest).every(isBlankAnswerValue);
+  const otherBlank = !other_answers || Object.keys(other_answers).length === 0;
+  return restBlank && otherBlank;
+}

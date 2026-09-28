@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import SiteFooter from "@/components/SiteFooter";
-import { SHOW_KAKAO_LOGIN } from "./LoginScreen";
 
 // 2026-09-28: owner가 전달한 디자인 시안(ssol-app-handoff.md 2절)의 "첫 화면(로그아웃 상태 /)".
 // 로그인 폼 없이 헤드라인+CTA만 보여주고, 실제 로그인/회원가입은 여기서 이동한 별도 화면에서 한다.
@@ -87,16 +86,6 @@ export default function LandingScreen({ onStart }: { onStart: () => void }) {
         >
           지금 대화를 시작하세요 →
         </button>
-
-        {SHOW_KAKAO_LOGIN && (
-          <button
-            type="button"
-            onClick={onStart}
-            className="mt-2 h-[52px] w-full rounded-[14px] bg-[#FEE500] text-[15px] font-medium text-[#191600]"
-          >
-            카카오로 계속하기
-          </button>
-        )}
 
         <button
           type="button"

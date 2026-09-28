@@ -34,7 +34,7 @@ type ResetStep = "request" | "confirm";
 // 뒤, 실제로 버튼을 눌러 두 곳 다 진짜 로그인 도메인(nid.naver.com / accounts.kakao.com)까지
 // 정상적으로 넘어가는 것까지 확인하고 owner 확인 후 켰다.
 export const SHOW_KAKAO_LOGIN = true;
-export const SHOW_NAVER_LOGIN = true;
+export const SHOW_NAVER_LOGIN = false; // 2026-09-28 owner 요청으로 다시 숨김(코드는 유지)
 
 // initialMode="signup"이면 /signup 주소 전용 화면이라 랜딩을 건너뛰고 바로 가입 화면부터
 // 보여준다. 그 외(기본값 "landing")에서는 첫 화면 → 로그인 → (필요시) 비밀번호 재설정 순.
@@ -241,7 +241,12 @@ export default function LoginScreen({
   }
 
   return (
-    <div className="flex h-dvh w-full items-center justify-center overflow-y-auto bg-background px-6 py-10">
+    // 2026-09-28 버그 수정(반복 신고됨: "이름 쓰는 화면이 자꾸 잘려"): items-center로 세로
+    // 가운데 정렬해두면, 내용이 화면보다 길 때 브라우저가 넘치는 위쪽(제목·뒤로가기 등)으로는
+    // 스크롤을 허용하지 않는 CSS 특성이 있어서 — 특히 회원가입처럼 긴 폼에서 위쪽이 항상
+    // 잘려 보였다. items-start로 위에서부터 쌓이게 바꿔서 어떤 화면 높이에서도 스크롤만
+    // 하면 전체 내용에 닿을 수 있게 한다.
+    <div className="flex h-dvh w-full items-start justify-center overflow-y-auto bg-background px-6 py-10">
       <div className="w-full max-w-xs">
         {/* 2026-09-28 재확인 중 발견: 랜딩/앱 헤더는 새 로고로 바꿨는데 이 화면(로그인/회원가입/
             비밀번호 재설정 카드)만 옛 흰 박스 로고(logo.jpg)가 그대로 남아있었다 — 놓친 부분이라
@@ -346,11 +351,24 @@ export default function LoginScreen({
           )}
 
           {mode === "signup" && (
-            <form onSubmit={handleCompleteSignup} className="flex flex-col gap-2.5">
-              <p className="font-serif text-[17px] font-bold text-foreground">계정 만들기</p>
-              <p className="mb-1 text-[13px] text-slate-500">본인 확인 후 가입할게요</p>
+            <div className="flex flex-col gap-2.5">
+              {/* 2026-09-28 owner 요청: 회원가입 화면 맨 위에 카카오로 바로 시작할 수 있는
+                  지름길을 둔다 — 이메일 가입 절차 전체를 안 거쳐도 되는 사람들을 위한 것. */}
+              {SHOW_KAKAO_LOGIN && (
+                <button
+                  type="button"
+                  onClick={() => handleOAuth("kakao")}
+                  className="mb-1 h-11 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
+                >
+                  회원가입 없이 10초만에 카카오로 로그인하기
+                </button>
+              )}
 
-              <input
+              <form onSubmit={handleCompleteSignup} className="flex flex-col gap-2.5">
+                <p className="font-serif text-[17px] font-bold text-foreground">계정 만들기</p>
+                <p className="mb-1 text-[13px] text-slate-500">본인 확인 후 가입할게요</p>
+
+                <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -534,7 +552,8 @@ export default function LoginScreen({
               >
                 {submitting ? "확인하는 중…" : "가입 완료"}
               </button>
-            </form>
+              </form>
+            </div>
           )}
 
           {mode === "reset" && resetDone && (

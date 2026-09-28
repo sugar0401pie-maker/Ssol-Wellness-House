@@ -113,7 +113,7 @@ export default function PricingPage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-white px-5 py-8">
       <button
         type="button"
-        onClick={() => (order ? setOrder(null) : router.push("/"))}
+        onClick={() => (order ? setOrder(null) : router.push("/home"))}
         className="mb-4 self-start text-[13px] text-slate-500"
       >
         ← 뒤로

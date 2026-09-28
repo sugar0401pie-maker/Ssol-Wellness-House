@@ -19,12 +19,14 @@ import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 const SAFE_FALLBACK_REPLY =
   "지금 이 부분은 조심스럽게 정리해서 답해드리고 싶어요. 정확한 상태는 정신건강의학과 등 전문가와 상담해보시는 건 어떨까요? 지금 가장 걱정되는 부분이 무엇인지 조금 더 이야기해주실 수 있을까요?";
 
-// 5개 영역 점수를 "커리어 3.2 · 연애 2.1(요즘 더 신경 쓰이는 영역) · 관계 3.8(비교적 안정적) ..."
+// 5개 영역 점수를 "커리어 3.20 · 연애 2.10(요즘 더 신경 쓰이는 영역) · 관계 3.80(비교적 안정적) ..."
 // 같은 한 줄로 요약한다. 같은 유형이라도 사용자마다 다른 점수를 답변에 반영하기 위함
 // (2026-09-22 결정 — "모든 사람이 비슷한 결과가 나온다"는 피드백에 대한 조치).
 // 2026-09-24: 심리테스트 v2에서는 점수가 "그 영역이 얼마나 건강하게 채워져 있나"를 뜻하고
 // (높을수록 좋음), 가장 낮은 영역이 "주 고민 영역"이다(v1과 반대 — v1은 가장 높은 쪽이었다).
 // 그래서 라벨도 단순히 "높음/낮음"이 아니라 이 의미가 드러나게 붙인다.
+// 2026-09-28 owner 요청: 점수 표기를 소수점 둘째 자리까지 고정(x.xx)한다 — DB 원본이 소수점
+// 자릿수가 들쭉날쭉해도(예: 3.2, 2.104928) 프롬프트에는 항상 같은 자릿수로 들어가게 한다.
 function summarizeThemeScores(scores: unknown): string | undefined {
   if (!scores || typeof scores !== "object") return undefined;
   const entries: (readonly [string, number])[] = [];
@@ -38,7 +40,7 @@ function summarizeThemeScores(scores: unknown): string | undefined {
   return entries
     .map(([k, v]) => {
       const tag = v === max && max !== min ? "비교적 안정적" : v === min && max !== min ? "요즘 더 신경 쓰이는 영역" : null;
-      return `${DOMAIN_LABELS[k]} ${v}${tag ? `(${tag})` : ""}`;
+      return `${DOMAIN_LABELS[k]} ${v.toFixed(2)}${tag ? `(${tag})` : ""}`;
     })
     .join(" · ");
 }

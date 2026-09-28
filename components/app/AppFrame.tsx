@@ -9,7 +9,7 @@ import { signOut } from "@/lib/supabase/authClient";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 
-// 2026-09-28: owner 요청으로 홈/채팅/마이페이지를 "/", "/chat", "/mypage" 개별 주소로
+// 2026-09-28: owner 요청으로 홈/채팅/마이페이지를 "/home", "/chat", "/mypage" 개별 주소로
 // 분리했다(예전엔 AppShell.tsx가 세 탭을 전부 마운트해두고 CSS로만 보이기/숨기기 — 그래서
 // 홈 화면 하나 보여주려고 채팅·마이페이지 코드까지 한꺼번에 받아와 첫 로딩이 무거웠다).
 // 이 컴포넌트(AppFrame)는 세 페이지가 공유하는 헤더·하단 탭바·온보딩 게이트를 담당하고,
@@ -20,7 +20,7 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 // 벗어나면 언마운트된다 — "탭 바꿔도 대화 안 사라지게" 하려고 ChatApp이 활성 세션 id를
 // localStorage에 저장해두고 다시 마운트될 때 그 대화를 자동으로 불러오는 방식으로 바꿨다.
 const TABS = [
-  { href: "/", label: "홈" },
+  { href: "/home", label: "홈" },
   { href: "/chat", label: "채팅" },
   { href: "/mypage", label: "마이페이지" },
 ];
@@ -35,7 +35,12 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // 2026-09-24: 로그인 후 "자기소개" 온보딩을 반드시 먼저 마치도록 한다 — 안 했으면 이
   // 모달이 화면 전체를 덮어서, 어느 탭으로도 못 빠져나가고 반드시 답해야 한다.
+  // 2026-09-28 owner 요청으로 변경: 이제 "닫기"로 일단 건너뛸 수 있다 — dismissed는 이
+  // 컴포넌트가 마운트돼 있는 동안(=이번 로그인 세션 동안)만 기억하는 화면 상태일 뿐, 서버에
+  // 저장되지 않는다. 그래서 로그아웃 후 다시 로그인하면(AppFrame이 새로 마운트되면)
+  // dismissed도 false로 초기화돼 온보딩이 자동으로 다시 뜬다 — 완료 전까지 계속.
   const [onboarding, setOnboarding] = useState<OnboardingInfo | "loading" | "error">("loading");
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +90,9 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           온보딩 답변이 저장되기도 전에 "오늘의 실천방법"을 먼저 불러와 버리고, 온보딩 완료
           후에도 다시 안 불러와서 개인화가 반영 안 된 채로 남는 문제가 있었다. 온보딩 확인이
           끝난 뒤에만(로딩 아닐 때) 내용을 그린다 — 보통 아주 짧은 지연이라 체감되지 않는다. */}
-      {onboarding !== "loading" && !needsOnboarding && <div className="min-h-0 flex-1 overflow-hidden">{children}</div>}
+      {onboarding !== "loading" && (!needsOnboarding || dismissed) && (
+        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      )}
 
       <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map((t) => (
@@ -99,12 +106,13 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      {needsOnboarding && typeof onboarding === "object" && (
+      {needsOnboarding && !dismissed && typeof onboarding === "object" && (
         <OnboardingFlow
           mode="gate"
           nickname={onboarding.nickname}
           title={onboarding.title}
           onDone={() => setOnboarding({ ...onboarding, completed: true })}
+          onClose={() => setDismissed(true)}
         />
       )}
     </div>

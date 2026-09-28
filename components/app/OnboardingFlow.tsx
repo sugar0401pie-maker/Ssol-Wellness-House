@@ -245,16 +245,21 @@ export default function OnboardingFlow({ nickname, title, mode, onDone, onClose 
       <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
         <div className="border-b border-line px-5 pb-3 pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-[19px] font-semibold leading-6 text-navy">쏠 웰니스 하우스에 가입해주신 여러분을 환영합니다!</p>
-            {mode === "edit" && onClose && (
+            <p className="text-[19px] font-semibold leading-6 text-navy">쏘웰라에 가입해주셔서 감사합니다.</p>
+            {/* 2026-09-28 owner 요청: 가입 직후 필수로 막던 온보딩(gate 모드)도 이제 닫을 수
+                있게 한다. 여기서 "닫기"는 완료 처리(onDone)가 아니라 AppFrame에게 "이번 세션엔
+                일단 넘어가라"고만 알리는 것 — 서버의 완료 상태는 그대로라서, 다음에 새로
+                로그인하면(AppFrame이 다시 마운트되면) 온보딩이 자동으로 다시 뜬다. */}
+            {onClose && (
               <button type="button" onClick={onClose} className="text-[12px] text-slate-400">
                 닫기
               </button>
             )}
           </div>
           <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
-            {nickname ? `${nickname}님의` : "회원님의"} 관심사에 맞는 채팅을 위해서 사전 조사를 하고있어요. 잠깐만 시간
-            내주실래요?
+            {nickname ? `${nickname}님의` : "회원님의"} 관심사에 맞는 채팅을 위해서 사전 조사를 하고있어요.
+            <br />
+            잠깐만 시간 내주실래요?
           </p>
           {!isConsentScreen && (
             <>

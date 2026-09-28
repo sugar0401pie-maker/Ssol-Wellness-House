@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   signInWithEmail,
   signInWithOAuth,
@@ -15,28 +15,42 @@ import {
 } from "@/lib/supabase/authClient";
 import { openAddressSearch } from "@/lib/address/daumPostcode";
 import SiteFooter from "@/components/SiteFooter";
+import LandingScreen from "./LandingScreen";
 
-// 로그인 전(초기) 화면. 소개 문구는 ssolwellness.com 첫 화면 문구를 그대로 가져왔다 (2026-09-22).
+// 로그인 전 화면들. 2026-09-28: owner가 전달한 디자인 시안(ssol-app-handoff.md)에 따라
+// "첫 화면"을 로그인 폼이 없는 랜딩(LandingScreen.tsx)으로 바꾸고, 로그인은 그 화면의
+// CTA를 눌러야 나오는 별도 화면으로 분리했다(예전엔 로그인/회원가입 탭이 한 화면에 있었음).
 // 회원가입 화면은 ssolwellnesshouse.com 실제 가입 화면(이름·생년월일 입력 → 인증번호 받기 →
-// 인증번호+비밀번호 입력 → 약관 동의 → 가입 완료)과 같은 구조로 맞췄다 (2026-09-23).
+// 인증번호+비밀번호 입력 → 약관 동의 → 가입 완료)과 같은 구조로 맞췄다 (2026-09-23) — 시안
+// 문서도 "회원가입은 항목·순서·문구 변경 없음"이라고 명시해서 그대로 둔다.
 // 휴대폰 인증은 SMS 발송 업체 연동이 아직 없어(PLAN.md 7-9 참고) 이메일 인증번호만 지원한다.
-type Mode = "signin" | "signup" | "reset";
+type Mode = "landing" | "signin" | "signup" | "reset";
 type ResetStep = "request" | "confirm";
 
 // 2026-09-26: 카카오/네이버 로그인은 Supabase 쪽 설정이 끝나기 전까지 화면에서 숨긴다(코드는 유지).
-const SHOW_SOCIAL_LOGIN = false;
+// 새 디자인 시안에도 카카오 버튼이 들어있지만, 이 결정은 아직 안 바뀌었으므로 같은 플래그로 가린다.
+export const SHOW_SOCIAL_LOGIN = false;
 
-// initialMode="signup"이면 /signup 주소 전용 화면이다. 로그인 화면의 "회원가입"과 가입 화면의
-// "뒤로"는 같은 화면 안에서 탭만 바꾸지 않고 실제로 주소(/ ↔ /signup)를 이동한다.
+// initialMode="signup"이면 /signup 주소 전용 화면이라 랜딩을 건너뛰고 바로 가입 화면부터
+// 보여준다. 그 외(기본값 "landing")에서는 첫 화면 → 로그인 → (필요시) 비밀번호 재설정 순.
 export default function LoginScreen({
   onLoggedIn,
-  initialMode = "signin",
+  initialMode = "landing",
 }: {
   onLoggedIn: () => void;
-  initialMode?: "signin" | "signup";
+  initialMode?: "landing" | "signin" | "signup";
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [mode, setMode] = useState<Mode>(initialMode);
+
+  // 2026-09-28 시안: "로그인 성공 시 채팅으로 이동"(첫 화면 CTA가 "지금 대화를 시작하세요"라서).
+  // 다만 AuthGate는 /pricing·/report/[id] 같은 다른 화면에서도 재사용되므로, 루트 화면("/")에서
+  // 로그인했을 때만 채팅으로 보내고, 다른 화면에서 로그인한 경우엔 원래 있던 화면을 그대로 보여준다.
+  function afterLogin() {
+    if (pathname === "/") router.push("/chat");
+    else onLoggedIn();
+  }
 
   // 로그인
   const [email, setEmail] = useState("");
@@ -121,7 +135,13 @@ export default function LoginScreen({
 
   async function handleSignin(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim() || !password || submitting) return;
+    if (submitting) return;
+    // 2026-09-28 디자인 시안: 로그인 버튼은 입력 전에도 항상 navy로 보이게 하고(회색 비활성
+    // 버튼 지양), 값 검증은 여기 제출 시점에만 한다 — 버튼 자체를 disabled로 두지 않는다.
+    if (!email.trim() || !password) {
+      setError("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const result = await signInWithEmail(email.trim(), password);
@@ -130,7 +150,7 @@ export default function LoginScreen({
       setError(result.error ?? "문제가 생겼어요. 다시 시도해주세요.");
       return;
     }
-    onLoggedIn();
+    afterLogin();
   }
 
   async function handleOAuth(provider: "kakao" | "naver") {
@@ -211,57 +231,31 @@ export default function LoginScreen({
     onLoggedIn();
   }
 
+  if (mode === "landing") {
+    return <LandingScreen onStart={() => switchMode("signin")} />;
+  }
+
   return (
     <div className="flex h-dvh w-full items-center justify-center overflow-y-auto bg-background px-6 py-10">
       <div className="w-full max-w-xs">
         <Image src="/logo.jpg" alt="쏠 웰니스 하우스" width={832} height={180} className="mx-auto h-9 w-auto" />
 
-        {mode === "signin" && (
-          <div className="mt-6 text-center">
-            <p className="text-[13px] font-medium tracking-wide text-navy">당신을 위한 프리미엄 멘탈 웰니스 서비스</p>
-            <p className="mt-4 text-[17px] font-medium leading-7 text-foreground">
-              이유 없는 불안의 다스림,
-              <br />
-              삶과 진로에 대한 확신이 필요하신가요?
-            </p>
-            <p className="mt-3 text-[14px] leading-6 text-slate-500">
-              성공과 행복 그 이상의 당신을 찾아드립니다.
-              <br />
-              쏠 웰니스 하우스에 오신 것을 환영합니다.
-            </p>
-          </div>
-        )}
-
         <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
-          {mode === "signup" && (
-            <button type="button" onClick={() => router.push("/")} className="mb-3 text-[13px] text-slate-500">
-              ← 뒤로
-            </button>
-          )}
-          {mode === "reset" && (
-            <button
-              type="button"
-              onClick={() => (resetStep === "confirm" ? backToResetRequest() : switchMode("signin"))}
-              className="mb-3 text-[13px] text-slate-500"
-            >
-              ← 뒤로
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (mode === "reset" && resetStep === "confirm") backToResetRequest();
+              else if (mode === "signup") router.push("/"); // /signup은 전용 주소라 뒤로가기는 홈으로.
+              else switchMode("landing");
+            }}
+            className="mb-3 text-[13px] text-slate-500"
+          >
+            ← 뒤로
+          </button>
 
           {mode === "signin" && (
             <>
-              <div className="mb-4 flex rounded-xl bg-background p-1 text-[13px] font-medium">
-                <button
-                  type="button"
-                  onClick={() => switchMode("signin")}
-                  className="flex-1 rounded-lg bg-white py-1.5 text-navy shadow-sm"
-                >
-                  로그인
-                </button>
-                <button type="button" onClick={() => router.push("/signup")} className="flex-1 rounded-lg py-1.5 text-slate-500">
-                  회원가입
-                </button>
-              </div>
+              <p className="mb-4 font-serif text-[17px] font-bold text-foreground">로그인하고 쏘웰라와 이야기해요</p>
 
               <form onSubmit={handleSignin} className="flex flex-col gap-2.5">
                 <input
@@ -283,8 +277,8 @@ export default function LoginScreen({
                 {error && <p className="text-[13px] text-red-600">{error}</p>}
                 <button
                   type="submit"
-                  disabled={!email.trim() || !password || submitting}
-                  className="mt-1 h-11 rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-40"
+                  disabled={submitting}
+                  className="mt-1 h-11 rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-70"
                 >
                   {submitting ? "확인하는 중…" : "로그인"}
                 </button>
@@ -328,12 +322,20 @@ export default function LoginScreen({
               </div>
                 </>
               )}
+
+              <button
+                type="button"
+                onClick={() => router.push("/signup")}
+                className="mt-4 block w-full text-center text-[12px] text-slate-500"
+              >
+                계정이 없으신가요? <span className="text-navy underline underline-offset-2">회원가입하기</span>
+              </button>
             </>
           )}
 
           {mode === "signup" && (
             <form onSubmit={handleCompleteSignup} className="flex flex-col gap-2.5">
-              <p className="text-[16px] font-medium text-foreground">계정 만들기</p>
+              <p className="font-serif text-[17px] font-bold text-foreground">계정 만들기</p>
               <p className="mb-1 text-[13px] text-slate-500">본인 확인 후 가입할게요</p>
 
               <input

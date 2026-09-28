@@ -56,4 +56,32 @@ describe("computeAccess", () => {
     });
     assert.equal(result.allowed, true);
   });
+
+  test("trialEndsAt은 가입일 기준 정확히 7일 뒤이고, 결제 여부와 무관하게 항상 계산된다", () => {
+    const now = new Date("2026-09-10T00:00:00Z");
+    const withEntitlement = computeAccess({
+      trialStartedAt: "2026-09-05T00:00:00Z",
+      entitlements: [{ status: "active", expiresAt: null }],
+      now,
+    });
+    assert.equal(withEntitlement.trialEndsAt, "2026-09-12T00:00:00.000Z");
+    const withoutEntitlement = computeAccess({ trialStartedAt: "2026-09-05T00:00:00Z", entitlements: [], now });
+    assert.equal(withoutEntitlement.trialEndsAt, "2026-09-12T00:00:00.000Z");
+  });
+
+  test("entitlementExpiresAt은 활성 이용권으로 허용된 경우에만 그 이용권의 만료일을 담고, 그 외엔 null이다", () => {
+    const now = new Date("2026-09-10T00:00:00Z");
+    const entitlementCase = computeAccess({
+      trialStartedAt: "2026-01-01T00:00:00Z",
+      entitlements: [{ status: "active", expiresAt: "2026-12-01T00:00:00Z" }],
+      now,
+    });
+    assert.equal(entitlementCase.entitlementExpiresAt, "2026-12-01T00:00:00Z");
+
+    const trialCase = computeAccess({ trialStartedAt: "2026-09-05T00:00:00Z", entitlements: [], now });
+    assert.equal(trialCase.entitlementExpiresAt, null);
+
+    const expiredCase = computeAccess({ trialStartedAt: "2026-01-01T00:00:00Z", entitlements: [], now });
+    assert.equal(expiredCase.entitlementExpiresAt, null);
+  });
 });

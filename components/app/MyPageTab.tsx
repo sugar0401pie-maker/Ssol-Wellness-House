@@ -19,6 +19,7 @@ type ReportListItem = {
   dessertCode: string;
   dessertName: string;
   hasReport: boolean;
+  isPrimary: boolean;
 };
 
 // "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY.MM.DD" (표시용)
@@ -34,6 +35,20 @@ function formatBirthDate(birthDate: string | null): string {
   if (!y || !m || !d) return birthDate;
   return `${y}년 ${m}월 ${d}일`;
 }
+
+// ISO 타임스탬프 -> "YYYY년 M월 D일" (표시용)
+function formatDateTimeKR(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+// 2026-09-28 owner 요청: 마이페이지에서 이용권 상태를 볼 수 있게 한다.
+type BillingStatus = {
+  allowed: boolean;
+  reason: "entitlement" | "trial" | "expired";
+  trialEndsAt: string;
+  entitlementExpiresAt: string | null;
+};
 
 function SectionRow({
   title,
@@ -61,8 +76,9 @@ export default function MyPageTab() {
   const router = useRouter();
   const [data, setData] = useState<MyPageData | null>(null);
   const [reports, setReports] = useState<ReportListItem[] | null>(null);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "info" | "onboarding" | "counselor" | null>(null);
+  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -83,16 +99,19 @@ export default function MyPageTab() {
         return;
       }
       try {
-        const [infoRes, reportsRes] = await Promise.all([
+        const [infoRes, reportsRes, billingRes] = await Promise.all([
           fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" }),
           fetch("/api/mypage/reports", { headers: authHeaders(token), cache: "no-store" }),
+          fetch("/api/billing/status", { headers: authHeaders(token), cache: "no-store" }),
         ]);
-        if (!infoRes.ok || !reportsRes.ok) throw new Error();
+        if (!infoRes.ok || !reportsRes.ok || !billingRes.ok) throw new Error();
         const json = (await infoRes.json()) as MyPageData;
         const reportsJson = (await reportsRes.json()) as { reports: ReportListItem[] };
+        const billingJson = (await billingRes.json()) as BillingStatus;
         if (!cancelled) {
           setData(json);
           setReports(reportsJson.reports);
+          setBilling(billingJson);
           setError(null);
         }
       } catch {
@@ -116,6 +135,28 @@ export default function MyPageTab() {
     setData((prev) => (prev ? { ...prev, ...next } : prev));
   }
 
+  // 2026-09-28: "대표 유형으로 선택" — 홈 화면/채팅이 이 응시 기록을 쓰도록 고정한다.
+  const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null);
+  async function selectPrimary(resultId: string) {
+    if (settingPrimaryId) return;
+    setSettingPrimaryId(resultId);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error();
+      const res = await fetch("/api/mypage/primary-type", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ resultId }),
+      });
+      if (!res.ok) throw new Error();
+      setReports((prev) => prev?.map((r) => ({ ...r, isPrimary: r.id === resultId })) ?? prev);
+    } catch {
+      setError("대표 유형 지정에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSettingPrimaryId(null);
+    }
+  }
+
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <header className="border-b border-line px-4 py-3">
@@ -137,13 +178,27 @@ export default function MyPageTab() {
                         {r.dessertName} 유형{r.hasReport && <span className="ml-1.5 text-[11px] font-normal text-navy">심층보고서</span>}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => router.push(`/report/${r.id}`)}
-                      className="shrink-0 rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
-                    >
-                      열기
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {r.isPrimary ? (
+                        <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => selectPrimary(r.id)}
+                          disabled={settingPrimaryId === r.id}
+                          className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
+                        >
+                          대표 유형으로 선택
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/report/${r.id}`)}
+                        className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                      >
+                        열기
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -209,6 +264,29 @@ export default function MyPageTab() {
             >
               정보 수정
             </button>
+          </SectionRow>
+
+          <SectionRow title="이용권 정보" open={open === "billing"} onToggle={() => setOpen(open === "billing" ? null : "billing")}>
+            {billing && (
+              <>
+                {billing.reason === "entitlement" ? (
+                  <p>
+                    이용권 이용 중이에요.
+                    {billing.entitlementExpiresAt ? ` (만료일: ${formatDateTimeKR(billing.entitlementExpiresAt)})` : " (만료일 없음)"}
+                  </p>
+                ) : (
+                  <p>채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (가입일로부터 +7일, 가입일 포함)</p>
+                )}
+                <p className="mt-1.5 text-slate-500">만료 이후에도 기존 대화내역과 심층 보고서는 볼 수 있어요.</p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/pricing")}
+                  className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+                >
+                  웰니스 채팅 구독하기
+                </button>
+              </>
+            )}
           </SectionRow>
 
           <SectionRow

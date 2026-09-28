@@ -12,20 +12,25 @@ export type QuizReportListItem = {
   dessertCode: string;
   dessertName: string;
   hasReport: boolean;
+  // 2026-09-28: 홈 화면/채팅이 지금 이 응시 기록을 쓰고 있는지 — owner가 명시적으로
+  // "대표 유형으로 선택"했거나, 아무도 선택 안 해서 가장 최근 기록이 기본값으로 쓰이는 경우.
+  isPrimary: boolean;
 };
 
 export async function loadQuizReportsList(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<QuizReportListItem[]> {
-  const [{ data: results, error: resultsError }, { data: reports, error: reportsError }] = await Promise.all([
-    admin
-      .from("ssol_quiz_results")
-      .select("id, type_key, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false }),
-    admin.from("ssol_reports").select("result_id").eq("user_id", userId).eq("status", "ready"),
-  ]);
+  const [{ data: results, error: resultsError }, { data: reports, error: reportsError }, { data: profile }] =
+    await Promise.all([
+      admin
+        .from("ssol_quiz_results")
+        .select("id, type_key, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      admin.from("ssol_reports").select("result_id").eq("user_id", userId).eq("status", "ready"),
+      admin.from("profiles").select("primary_quiz_result_id").eq("user_id", userId).maybeSingle(),
+    ]);
   if (resultsError) console.error("ssol_quiz_results 목록 조회 실패:", resultsError.message);
   if (reportsError) console.error("ssol_reports 목록 조회 실패:", reportsError.message);
 
@@ -40,6 +45,13 @@ export async function loadQuizReportsList(
   const { data: personas } = await admin.from("persona_profiles").select("code, name").in("code", dessertCodes);
   const nameByCode = new Map((personas ?? []).map((p) => [p.code, p.name]));
 
+  // primary_quiz_result_id가 이 목록에 실제로 있는 id를 가리킬 때만 그걸 대표로 본다 —
+  // 없거나 무효하면(탈퇴 등으로 사라진 값) 항상 최신 기록(mappable[0])이 대표다.
+  const validPrimaryId = mappable.some((r) => r.id === profile?.primary_quiz_result_id)
+    ? profile?.primary_quiz_result_id
+    : null;
+  const effectivePrimaryId = validPrimaryId ?? mappable[0].id;
+
   return mappable.map((r) => {
     const dessertCode = TYPE_KEY_TO_DESSERT[r.type_key];
     return {
@@ -48,6 +60,7 @@ export async function loadQuizReportsList(
       dessertCode,
       dessertName: nameByCode.get(dessertCode) ?? dessertCode,
       hasReport: reportedResultIds.has(r.id),
+      isPrimary: r.id === effectivePrimaryId,
     };
   });
 }

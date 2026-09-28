@@ -58,13 +58,17 @@ export default function LandingScreen({ onStart }: { onStart: () => void }) {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-y-auto bg-background px-6 py-6">
+      {/* 2026-09-28 버그 수정: 로고 원본(logo-mark.png)은 440×117(가로로 넓은 물결 심볼)인데,
+          정사각형 박스(h-24 w-24 등)로 강제 표시해서 세로로 심하게 눌려 보이는 문제가 있었다.
+          시안 원본 CSS(.brand img{width:34px}, .hero img{width:84px})처럼 너비만 지정하고
+          높이는 실제 비율(117/440)대로 계산해 자연스럽게 나오게 한다. */}
       <div className="flex items-center gap-2">
-        <Image src="/logo-mark.png" alt="" width={28} height={28} className="h-7 w-7" />
+        <Image src="/logo-mark.png" alt="" width={34} height={9} className="h-auto w-[34px]" />
         <span className="text-[14px] font-medium text-navy">쏠 웰니스 하우스</span>
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <Image src="/logo-mark.png" alt="쏠 웰니스 하우스" width={96} height={96} className="h-24 w-24" />
+        <Image src="/logo-mark.png" alt="쏠 웰니스 하우스" width={84} height={22} className="h-auto w-[84px]" />
         <p className="mt-6 whitespace-pre-line font-serif text-[22px] font-bold leading-8 text-foreground">
           {headline}
         </p>

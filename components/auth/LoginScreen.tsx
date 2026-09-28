@@ -420,13 +420,17 @@ export default function LoginScreen({
               />
               <p className="text-[12px] text-slate-400">휴대폰 번호 인증은 준비 중이에요. 지금은 이메일로 가입해주세요.</p>
 
+              {/* 2026-09-28 버그 수정(좁은 화면에서 재현됨, 320px): flex 안의 input은 기본
+                  min-width가 내용 기준(auto)이라 flex-1을 줘도 일정 너비 밑으로는 줄어들지
+                  않는다 — 그래서 "주소 검색" 버튼이 화면 밖으로 밀려났다. min-w-0으로 실제로
+                  줄어들 수 있게 한다. */}
               <div className="flex gap-1.5">
                 <input
                   type="text"
                   value={address}
                   readOnly
                   placeholder="주소 (선택)"
-                  className="h-11 flex-1 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none"
+                  className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none"
                 />
                 <button
                   type="button"

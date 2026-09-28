@@ -79,7 +79,10 @@ export default function HomeTab() {
 
       <div className="flex-1 px-4 py-5">
         <p className="text-[13px] text-slate-400">{data ? formatDateKey(data.dateKey) : " "}</p>
-        <p className="mt-1 text-[19px] font-medium leading-7 text-foreground">
+        {/* 2026-09-28 버그 수정: 시안의 홈 인사말은 .h-title(Gowun Batang 서체, 24px)인데
+            여기만 제목 서체가 빠져 있어서 "홈이 하나도 안 바뀌었다"는 지적을 받았다 — 다른
+            화면 제목(로그인/회원가입 등)과 같은 font-serif를 적용한다. */}
+        <p className="mt-1 font-serif text-[22px] font-bold leading-7 text-foreground">
           안녕하세요{data?.displayName ? `, ${data.displayName}님` : ""}!
         </p>
         <p className="mt-1 text-[14px] leading-5 text-slate-500">{data?.greeting ?? " "}</p>

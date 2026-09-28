@@ -1,12 +1,17 @@
 @import "tailwindcss";
 
-/* 로고가 흰 배경 JPG라서 지금은 라이트 테마만 사용합니다. (투명 로고가 생기면 다크 모드 검토) */
+/* 2026-09-28: owner가 전달한 디자인 시안(ssol-app-prototype.html/ssol-app-handoff.md)의
+   공통 디자인 값을 그대로 반영한다. 색 토큰은 @theme inline으로 매핑돼 있어서, 여기 값만
+   바꾸면 앱 전체(모든 컴포넌트의 bg-background/text-navy/bg-navy-soft/border-line/
+   text-foreground 등)에 자동으로 퍼진다 — 컴포넌트를 하나씩 고칠 필요가 없다. */
 :root {
-  --background: #f5f7fb;
-  --foreground: #1b2433;
-  --ssol-navy: #0b3060;
-  --ssol-navy-soft: #e6ecf6;
-  --ssol-line: #dde3ee;
+  --background: #f7f3ec; /* ivory */
+  --foreground: #1b2733; /* ink */
+  --ssol-navy: #033667;
+  --ssol-navy-soft: #e6edf5;
+  --ssol-line: #ddd6ca;
+  --ssol-cream: #fdf6ec; /* navy 배경 위 텍스트용 */
+  --ssol-muted: #56616c;
   color-scheme: light;
 }
 
@@ -16,7 +21,10 @@
   --color-navy: var(--ssol-navy);
   --color-navy-soft: var(--ssol-navy-soft);
   --color-line: var(--ssol-line);
+  --color-cream: var(--ssol-cream);
+  --color-muted: var(--ssol-muted);
   --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
+  --font-serif: var(--font-gowun-batang), serif;
 }
 
 body {

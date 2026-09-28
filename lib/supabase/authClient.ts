@@ -190,14 +190,21 @@ export async function signInWithEmail(email: string, password: string): Promise<
 
 // 카카오/네이버 소셜 로그인. Supabase 프로젝트(Auth > Providers)에 해당 provider가
 // 켜져 있어야 실제로 동작한다 — 꺼져 있으면 Supabase가 에러를 돌려준다.
-// 네이버는 Supabase 기본 제공 목록에 없어, 프로젝트에 커스텀 OAuth provider로 등록돼 있어야 한다
-// (provider 이름은 'naver'로 가정 — owner가 다르게 등록했다면 이 이름만 바꾸면 된다).
+// 2026-09-28 바로잡음: 네이버는 Supabase 기본 제공 목록에 없어 "커스텀 OAuth provider"로
+// 등록해야 하는데, 예전에 여기 적어뒀던 "provider 이름을 'naver'로"는 틀린 정보였다 —
+// Supabase 커스텀 provider identifier는 반드시 "custom:" 접두사로 시작해야 한다(예:
+// "custom:naver", 확인: https://supabase.com/docs/guides/auth/custom-oauth-providers).
+// 그래서 대시보드에도 identifier를 "custom:naver"로 등록해야 하고, 여기서도 그 이름 그대로
+// 호출해야 한다 — 대시보드 쪽 identifier를 다르게 등록했다면 아래 NAVER_PROVIDER_ID만 바꾸면 된다.
+const NAVER_PROVIDER_ID = "custom:naver";
+
 export async function signInWithOAuth(provider: "kakao" | "naver"): Promise<AuthResult> {
   const supabase = getBrowserClient();
   if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
+  const providerId = provider === "naver" ? NAVER_PROVIDER_ID : provider;
   const { error } = await supabase.auth.signInWithOAuth({
-    // naver는 supabase-js의 내장 Provider 타입에 없는 커스텀 provider라 타입 단언이 필요하다.
-    provider: provider as Parameters<typeof supabase.auth.signInWithOAuth>[0]["provider"],
+    // 커스텀 provider("custom:naver")는 supabase-js의 내장 Provider 타입에 없어 타입 단언이 필요하다.
+    provider: providerId as Parameters<typeof supabase.auth.signInWithOAuth>[0]["provider"],
     options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
   });
   if (error) return { ok: false, error: translateAuthError(error.message) };

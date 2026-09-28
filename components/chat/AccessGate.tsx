@@ -64,7 +64,9 @@ export default function AccessGate({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex h-dvh w-full items-center justify-center bg-background px-6">
       <div className="w-full max-w-xs">
-        <Image src="/logo.jpg" alt="쏠 웰니스 하우스" width={832} height={180} className="mx-auto mb-6 h-8 w-auto" />
+        {/* 2026-09-28 재확인 중 발견: 이 접속 코드 화면도 옛 흰 박스 로고(logo.jpg)가 남아있었다
+            — 다른 화면과 같은 물결 심볼로 통일(실제 비율 440:117, 너비만 지정·높이 auto). */}
+        <Image src="/logo-mark.png" alt="쏠 웰니스 하우스" width={84} height={22} className="mx-auto mb-6 h-auto w-[84px]" />
         <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-5 shadow-sm">
           <p className="text-[15px] font-medium leading-6 text-foreground">접속 코드를 입력해주세요</p>
           <input

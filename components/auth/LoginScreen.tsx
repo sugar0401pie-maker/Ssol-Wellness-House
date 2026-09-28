@@ -238,7 +238,10 @@ export default function LoginScreen({
   return (
     <div className="flex h-dvh w-full items-center justify-center overflow-y-auto bg-background px-6 py-10">
       <div className="w-full max-w-xs">
-        <Image src="/logo.jpg" alt="쏠 웰니스 하우스" width={832} height={180} className="mx-auto h-9 w-auto" />
+        {/* 2026-09-28 재확인 중 발견: 랜딩/앱 헤더는 새 로고로 바꿨는데 이 화면(로그인/회원가입/
+            비밀번호 재설정 카드)만 옛 흰 박스 로고(logo.jpg)가 그대로 남아있었다 — 놓친 부분이라
+            같은 물결 심볼로 통일한다. 실제 비율(440:117)대로 너비만 지정, 높이는 auto. */}
+        <Image src="/logo-mark.png" alt="쏠 웰니스 하우스" width={84} height={22} className="mx-auto h-auto w-[84px]" />
 
         <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
           <button

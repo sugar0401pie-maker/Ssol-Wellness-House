@@ -20,6 +20,22 @@ type SessionSummary = {
 const GREETING =
   "안녕하세요, 쏠 웰니스 하우스예요. 저는 웰니스 관련 상담에 도움을 드릴 수 있습니다. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주시기 바랍니다.";
 
+// 2026-09-28: 홈/채팅/마이페이지가 "/", "/chat", "/mypage" 개별 주소로 나뉘면서, 채팅 탭을
+// 벗어났다 돌아오면 이 컴포넌트가 새로 마운트된다(예전엔 세 탭을 전부 마운트해두고 CSS로만
+// 숨겨서 이 문제가 없었다). 지금 나누고 있던 대화가 사라지지 않도록, 활성 세션 id를
+// localStorage에 저장해두고 마운트 시 자동으로 그 대화를 불러온다. 개인정보(대화 내용)는
+// 저장하지 않고 세션 id만 저장한다 — 실제 메시지는 항상 서버에서 다시 불러온다.
+const ACTIVE_SESSION_KEY = "ssol_active_chat_session";
+
+function saveActiveSessionId(id: string | null) {
+  try {
+    if (id) localStorage.setItem(ACTIVE_SESSION_KEY, id);
+    else localStorage.removeItem(ACTIVE_SESSION_KEY);
+  } catch {
+    // 프라이빗 브라우징 등으로 localStorage를 못 쓰면 그냥 세션 복원 기능만 조용히 빠진다.
+  }
+}
+
 // 대화 목록에 "언제"를 사람이 읽기 편하게 보여준다 — 오늘/어제는 시각만, 그 외엔 날짜만.
 function formatSessionDate(iso: string): string {
   const d = new Date(iso);
@@ -130,6 +146,7 @@ export default function ChatApp() {
         paywallBlocked?: boolean;
       };
       sessionId.current = data.sessionId;
+      saveActiveSessionId(data.sessionId);
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
       revealAssistantMessage(data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`);
       if (data.paywallBlocked) setPaywallBlocked(true);
@@ -171,6 +188,7 @@ export default function ChatApp() {
       nextId.current = 1;
       setMessages(data.messages.map((m) => ({ id: nextId.current++, role: m.role, content: m.content })));
       sessionId.current = id;
+      saveActiveSessionId(id);
       setInput("");
       setMemoryPrompt("idle");
       setShowHistory(false);
@@ -181,6 +199,21 @@ export default function ChatApp() {
     }
   }
 
+  // 2026-09-28: 채팅 탭을 벗어났다 돌아오면(별도 주소라 새로 마운트됨) 나누고 있던 대화를
+  // 자동으로 이어서 보여준다.
+  useEffect(() => {
+    let savedId: string | null = null;
+    try {
+      savedId = localStorage.getItem(ACTIVE_SESSION_KEY);
+    } catch {
+      // localStorage를 못 읽으면 그냥 새 대화로 시작한다.
+    }
+    // loadSession은 그 안에서 setState를 곧바로 호출하므로, 이펙트 본문에서 직접 부르지 않고
+    // 마이크로태스크로 한 틱 미룬다(react-hooks/set-state-in-effect 회피).
+    if (savedId) void Promise.resolve().then(() => loadSession(savedId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function selectSuggestedQuestion(text: string) {
     setShowSuggested(false);
     void send(text, { isPersonaQuestion: true });
@@ -190,6 +223,7 @@ export default function ChatApp() {
     setMessages([]);
     setInput("");
     sessionId.current = null;
+    saveActiveSessionId(null);
     setMemoryPrompt("idle");
   }
 

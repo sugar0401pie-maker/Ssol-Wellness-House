@@ -82,7 +82,7 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-white px-5 py-8">
-      <button type="button" onClick={() => router.push("/?tab=mypage")} className="mb-4 self-start text-[13px] text-slate-500">
+      <button type="button" onClick={() => router.push("/mypage")} className="mb-4 self-start text-[13px] text-slate-500">
         ← 마이페이지로
       </button>
 

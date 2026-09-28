@@ -2,23 +2,27 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import ChatApp from "@/components/chat/ChatApp";
-import HomeTab from "./HomeTab";
-import MyPageTab from "./MyPageTab";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import OnboardingFlow from "./OnboardingFlow";
 import { signOut } from "@/lib/supabase/authClient";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 
-// 2026-09-22: 로그인 이후 화면을 홈/채팅/마이페이지 3파트로 분리. 탭을 바꿔도 채팅 대화가
-// 초기화되지 않도록 세 탭을 전부 마운트해두고 CSS로만 보이기/숨기기를 전환한다
-// (조건부 렌더링으로 언마운트하면 채팅 메시지·세션이 날아간다).
-type Tab = "home" | "chat" | "mypage";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "home", label: "홈" },
-  { id: "chat", label: "채팅" },
-  { id: "mypage", label: "마이페이지" },
+// 2026-09-28: owner 요청으로 홈/채팅/마이페이지를 "/", "/chat", "/mypage" 개별 주소로
+// 분리했다(예전엔 AppShell.tsx가 세 탭을 전부 마운트해두고 CSS로만 보이기/숨기기 — 그래서
+// 홈 화면 하나 보여주려고 채팅·마이페이지 코드까지 한꺼번에 받아와 첫 로딩이 무거웠다).
+// 이 컴포넌트(AppFrame)는 세 페이지가 공유하는 헤더·하단 탭바·온보딩 게이트를 담당하고,
+// app/(app)/layout.tsx에 한 번만 마운트돼 탭을 오가도 다시 그려지지 않는다 — 헤더 깜빡임이나
+// 온보딩 재확인 없이, 각 탭의 실제 내용(page.tsx)만 필요할 때 불러와 가벼워진다.
+//
+// 대신 탭 전환은 실제 페이지 이동이라 채팅 화면(components/chat/ChatApp.tsx)은 페이지를
+// 벗어나면 언마운트된다 — "탭 바꿔도 대화 안 사라지게" 하려고 ChatApp이 활성 세션 id를
+// localStorage에 저장해두고 다시 마운트될 때 그 대화를 자동으로 불러오는 방식으로 바꿨다.
+const TABS = [
+  { href: "/", label: "홈" },
+  { href: "/chat", label: "채팅" },
+  { href: "/mypage", label: "마이페이지" },
 ];
 
 type OnboardingInfo = {
@@ -27,19 +31,10 @@ type OnboardingInfo = {
   title: string;
 };
 
-// 2026-09-27: /report/[resultId]에서 "마이페이지로" 돌아올 때 홈 탭이 아니라 마이페이지 탭으로
-// 바로 돌아오도록, "?tab=mypage" 쿼리를 초기 탭으로 반영한다. AppShell은 AuthGate가 로그인
-// 확인을 마친 뒤에만(항상 클라이언트에서) 렌더링되므로, useState 초기값 함수에서 바로
-// window.location을 읽어도 안전하다(서버 렌더링 중에는 이 함수 자체가 호출되지 않는다).
-function initialTabFromUrl(): Tab {
-  const requestedTab = new URLSearchParams(window.location.search).get("tab");
-  return requestedTab === "mypage" || requestedTab === "chat" ? requestedTab : "home";
-}
-
-export default function AppShell() {
-  const [tab, setTab] = useState<Tab>(initialTabFromUrl);
+export default function AppFrame({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   // 2026-09-24: 로그인 후 "자기소개" 온보딩을 반드시 먼저 마치도록 한다 — 안 했으면 이
-  // 모달이 탭 내용 위를 덮어서, 3탭 어디로도 못 빠져나가고 반드시 답해야 한다.
+  // 모달이 화면 전체를 덮어서, 어느 탭으로도 못 빠져나가고 반드시 답해야 한다.
   const [onboarding, setOnboarding] = useState<OnboardingInfo | "loading" | "error">("loading");
 
   useEffect(() => {
@@ -80,34 +75,21 @@ export default function AppShell() {
         </button>
       </div>
 
-      {/* 2026-09-24 버그 수정: 온보딩 확인이 끝나기 전에 탭들을 미리 마운트해두면, 홈 탭이
+      {/* 2026-09-24 버그 수정: 온보딩 확인이 끝나기 전에 탭 내용을 먼저 그리면, 홈 탭이
           온보딩 답변이 저장되기도 전에 "오늘의 실천방법"을 먼저 불러와 버리고, 온보딩 완료
           후에도 다시 안 불러와서 개인화가 반영 안 된 채로 남는 문제가 있었다. 온보딩 확인이
-          끝난 뒤에만(로딩 아닐 때) 탭 내용을 마운트한다 — 보통 아주 짧은 지연이라 체감되지 않는다. */}
-      {onboarding !== "loading" && !needsOnboarding && (
-        <div className="min-h-0 flex-1">
-          <div className={tab === "home" ? "h-full" : "hidden"}>
-            <HomeTab />
-          </div>
-          <div className={tab === "chat" ? "h-full" : "hidden"}>
-            <ChatApp />
-          </div>
-          <div className={tab === "mypage" ? "h-full" : "hidden"}>
-            <MyPageTab />
-          </div>
-        </div>
-      )}
+          끝난 뒤에만(로딩 아닐 때) 내용을 그린다 — 보통 아주 짧은 지연이라 체감되지 않는다. */}
+      {onboarding !== "loading" && !needsOnboarding && <div className="min-h-0 flex-1 overflow-hidden">{children}</div>}
 
       <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`py-1.5 text-[13px] font-medium ${tab === t.id ? "text-navy" : "text-slate-400"}`}
+          <Link
+            key={t.href}
+            href={t.href}
+            className={`py-1.5 text-center text-[13px] font-medium ${pathname === t.href ? "text-navy" : "text-slate-400"}`}
           >
             {t.label}
-          </button>
+          </Link>
         ))}
       </nav>
 

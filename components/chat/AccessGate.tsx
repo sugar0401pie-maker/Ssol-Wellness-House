@@ -13,16 +13,22 @@ export default function AccessGate({ children }: { children: React.ReactNode }) 
   const [submitting, setSubmitting] = useState(false);
 
   async function verify(candidate: string | null) {
+    // 2026-09-29 버그 수정: 이 확인 요청이 응답 없이 멈추면(타임아웃 등) status가 계속
+    // "checking"에 머물러서 앱 전체가 영원히 빈 흰 화면으로 남았다(실사용 중 재현됨) —
+    // 8초 안에 응답이 없으면 요청을 포기하고, 아래 catch와 같은 안전한 경로(잠긴 화면
+    // 표시, 코드 입력하면 재시도 가능)로 넘어가게 한다.
+    const timeout = AbortSignal.timeout(8000);
     try {
       const res = await fetch("/api/access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: candidate }),
+        signal: timeout,
       });
       const data = (await res.json()) as { ok: boolean };
       setStatus(data.ok ? "unlocked" : "locked");
     } catch {
-      // 확인 자체가 실패하면(네트워크 문제 등) 일단 잠긴 화면을 보여준다 — 안전하게 실패
+      // 확인 자체가 실패하면(네트워크 문제, 타임아웃 등) 일단 잠긴 화면을 보여준다 — 안전하게 실패
       setStatus("locked");
     }
   }
@@ -43,6 +49,7 @@ export default function AccessGate({ children }: { children: React.ReactNode }) 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
+        signal: AbortSignal.timeout(8000),
       });
       const data = (await res.json()) as { ok: boolean };
       if (data.ok) {

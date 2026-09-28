@@ -68,7 +68,9 @@ export default function OAuthProfileGate({
       <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl">
         <p className="font-serif text-[18px] font-bold text-foreground">몇 가지만 더 알려주세요</p>
         <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
-          카카오·네이버 계정으로는 확인되지 않는 정보예요. 서비스 이용을 위해 한 번만 입력해주시면 돼요.
+          카카오·네이버 계정으로는 확인되지 않는 정보예요.
+          <br />
+          서비스 이용을 위해 한 번만 입력해주시면 돼요.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2.5">
@@ -87,14 +89,22 @@ export default function OAuthProfileGate({
             placeholder="닉네임 (선택, 비우면 이름이 표시돼요)"
             className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
           />
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            aria-label="생년월일"
-            max={new Date().toISOString().slice(0, 10)}
-            className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none focus:border-navy"
-          />
+          {/* 2026-09-28 owner 피드백: date input은 placeholder가 없어서, iOS에서 빈 칸일 때도
+              시스템 기본 날짜 형식(예: "01/04/1996")이 흐리게 보여 "이미 값이 채워진 것"처럼
+              오해하기 쉬웠다 — 무슨 칸인지 눈에 보이는 라벨을 따로 붙인다. */}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="oauth-birth-date" className="text-[12px] font-medium text-slate-500">
+              생년월일
+            </label>
+            <input
+              id="oauth-birth-date"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none focus:border-navy"
+            />
+          </div>
           <input
             type="tel"
             value={phone}

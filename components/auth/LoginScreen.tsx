@@ -383,14 +383,22 @@ export default function LoginScreen({
                 placeholder="닉네임 (선택, 비우면 이름이 표시돼요)"
                 className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] outline-none focus:border-navy"
               />
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                aria-label="생년월일"
-                max={new Date().toISOString().slice(0, 10)}
-                className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none focus:border-navy"
-              />
+              {/* 2026-09-28 owner 피드백(추가정보 입력 화면에서 동일 문제 발견): date input은
+                  placeholder가 없어서 iOS에서 빈 칸도 흐린 기본 날짜 형식으로 보여 "이미
+                  채워진 값"처럼 오해하기 쉬웠다 — 눈에 보이는 라벨을 붙인다. */}
+              <div className="flex flex-col gap-1">
+                <label htmlFor="signup-birth-date" className="text-[12px] font-medium text-slate-500">
+                  생년월일
+                </label>
+                <input
+                  id="signup-birth-date"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                  className="h-11 rounded-xl border border-line bg-background px-4 text-[15px] text-foreground outline-none focus:border-navy"
+                />
+              </div>
 
               {/* 2026-09-25 owner 요청: 이메일 쓰고 중복확인한 다음 바로 인증번호를 받을 수
                   있도록, 버튼을 이메일 입력칸 바로 아래로 옮겼다. 이메일을 바꾸면 이미 받은

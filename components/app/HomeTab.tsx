@@ -80,7 +80,7 @@ export default function HomeTab() {
       <div className="flex-1 px-4 py-5">
         <p className="text-[13px] text-slate-400">{data ? formatDateKey(data.dateKey) : " "}</p>
         <p className="mt-1 text-[19px] font-medium leading-7 text-foreground">
-          안녕하세요{data?.displayName ? `, ${data.displayName}님` : ""}.
+          안녕하세요{data?.displayName ? `, ${data.displayName}님` : ""}!
         </p>
         <p className="mt-1 text-[14px] leading-5 text-slate-500">{data?.greeting ?? " "}</p>
 
@@ -97,8 +97,7 @@ export default function HomeTab() {
             </div>
             {data.character.hasResult && data.character.name ? (
               <p className="mt-2 px-2 text-center text-[14px] leading-6 text-foreground">
-                {data.displayName ? `${data.displayName}님은 ` : ""}
-                <span className="font-medium text-navy">{data.character.name}</span> 유형이에요.
+                당신은 <span className="font-medium text-navy">{data.character.name}</span> 유형이에요.
                 {data.character.tagline &&
                   (() => {
                     const [firstLine, secondLine] = splitAtFirstComma(data.character.tagline);
@@ -128,11 +127,13 @@ export default function HomeTab() {
         {error && <p className="mt-6 text-[13px] text-red-600">{error}</p>}
 
         {data?.practice && (
-          <div className="mt-5 rounded-2xl bg-navy-soft p-4">
-            <p className="text-[12px] font-medium text-navy">{data.practice.category}</p>
-            <p className="mt-1.5 text-[16px] font-medium leading-6 text-foreground">{data.practice.title}</p>
-            <p className="mt-1.5 text-[14px] leading-5 text-slate-600">{data.practice.detail}</p>
-          </div>
+          <>
+            <p className="mt-6 text-[14px] font-medium text-foreground">오늘 이렇게 해보면 어떨까요?</p>
+            <div className="mt-2 rounded-2xl bg-navy-soft p-4">
+              <p className="text-[16px] font-medium leading-6 text-foreground">{data.practice.title}</p>
+              <p className="mt-1.5 text-[14px] leading-5 text-slate-600">{data.practice.detail}</p>
+            </div>
+          </>
         )}
 
         {data && !data.practice && (

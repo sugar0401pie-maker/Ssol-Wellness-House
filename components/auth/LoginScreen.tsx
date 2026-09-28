@@ -29,7 +29,12 @@ type ResetStep = "request" | "confirm";
 
 // 2026-09-26: 카카오/네이버 로그인은 Supabase 쪽 설정이 끝나기 전까지 화면에서 숨긴다(코드는 유지).
 // 새 디자인 시안에도 카카오 버튼이 들어있지만, 이 결정은 아직 안 바뀌었으므로 같은 플래그로 가린다.
-export const SHOW_SOCIAL_LOGIN = false;
+// 2026-09-28: 카카오/네이버를 각각 독립된 플래그로 분리하고 둘 다 켠다 — 네이버는 Supabase
+// 커스텀 provider(custom:naver) 등록을, 카카오는 Supabase 기본 provider 설정을 각각 마친
+// 뒤, 실제로 버튼을 눌러 두 곳 다 진짜 로그인 도메인(nid.naver.com / accounts.kakao.com)까지
+// 정상적으로 넘어가는 것까지 확인하고 owner 확인 후 켰다.
+export const SHOW_KAKAO_LOGIN = true;
+export const SHOW_NAVER_LOGIN = true;
 
 // initialMode="signup"이면 /signup 주소 전용 화면이라 랜딩을 건너뛰고 바로 가입 화면부터
 // 보여준다. 그 외(기본값 "landing")에서는 첫 화면 → 로그인 → (필요시) 비밀번호 재설정 순.
@@ -299,7 +304,7 @@ export default function LoginScreen({
                 </button>
               </form>
 
-              {SHOW_SOCIAL_LOGIN && (
+              {(SHOW_KAKAO_LOGIN || SHOW_NAVER_LOGIN) && (
                 <>
               <div className="my-4 flex items-center gap-3">
                 <div className="h-px flex-1 bg-line" />
@@ -308,20 +313,24 @@ export default function LoginScreen({
               </div>
 
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleOAuth("kakao")}
-                  className="h-11 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
-                >
-                  카카오로 로그인
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOAuth("naver")}
-                  className="h-11 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
-                >
-                  네이버로 로그인
-                </button>
+                {SHOW_KAKAO_LOGIN && (
+                  <button
+                    type="button"
+                    onClick={() => handleOAuth("kakao")}
+                    className="h-11 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
+                  >
+                    카카오로 로그인
+                  </button>
+                )}
+                {SHOW_NAVER_LOGIN && (
+                  <button
+                    type="button"
+                    onClick={() => handleOAuth("naver")}
+                    className="h-11 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
+                  >
+                    네이버로 로그인
+                  </button>
+                )}
               </div>
                 </>
               )}

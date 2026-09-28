@@ -198,6 +198,12 @@ export async function signInWithEmail(email: string, password: string): Promise<
 // 호출해야 한다 — 대시보드 쪽 identifier를 다르게 등록했다면 아래 NAVER_PROVIDER_ID만 바꾸면 된다.
 const NAVER_PROVIDER_ID = "custom:naver";
 
+// 2026-09-28: owner가 카카오 개발자센터 "동의항목" 화면을 캡처해서 확인해준 실제 설정 —
+// 필수 동의는 닉네임(profile_nickname)·이메일(account_email)뿐이고 나머지(프로필사진·이름·
+// 성별·생일·전화번호·친구목록 등)는 전부 "사용 안 함"/권한 없음이다. scope를 이 둘로 명시해서
+// 실제 앱 설정과 코드가 요청하는 범위를 일치시킨다(공백으로 구분 — 카카오 공식 문서 형식).
+const KAKAO_SCOPES = "profile_nickname account_email";
+
 export async function signInWithOAuth(provider: "kakao" | "naver"): Promise<AuthResult> {
   const supabase = getBrowserClient();
   if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
@@ -205,7 +211,10 @@ export async function signInWithOAuth(provider: "kakao" | "naver"): Promise<Auth
   const { error } = await supabase.auth.signInWithOAuth({
     // 커스텀 provider("custom:naver")는 supabase-js의 내장 Provider 타입에 없어 타입 단언이 필요하다.
     provider: providerId as Parameters<typeof supabase.auth.signInWithOAuth>[0]["provider"],
-    options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+    options: {
+      redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+      ...(provider === "kakao" ? { scopes: KAKAO_SCOPES } : {}),
+    },
   });
   if (error) return { ok: false, error: translateAuthError(error.message) };
   return { ok: true }; // 성공 시 OAuth 페이지로 리다이렉트되므로 이후 코드는 보통 실행되지 않는다.

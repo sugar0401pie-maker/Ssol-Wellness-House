@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import OnboardingFlow from "./OnboardingFlow";
+import OAuthProfileGate from "./OAuthProfileGate";
 import { signOut } from "@/lib/supabase/authClient";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
@@ -41,22 +42,42 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   // dismissed도 false로 초기화돼 온보딩이 자동으로 다시 뜬다 — 완료 전까지 계속.
   const [onboarding, setOnboarding] = useState<OnboardingInfo | "loading" | "error">("loading");
   const [dismissed, setDismissed] = useState(false);
+  // 2026-09-28 신설: 카카오/네이버 가입자는 이름·생년월일이 비어 있을 수 있다 — 온보딩보다
+  // 먼저 확인해서, 필요하면 OAuthProfileGate(회원가입과 비슷한 추가 정보 입력, 닫기 없음)를
+  // 온보딩보다 먼저 띄운다. 이메일 가입자는 needsCompletion이 항상 false라 안 보인다.
+  const [oauthProfile, setOauthProfile] = useState<
+    { needsCompletion: boolean; suggestedName: string | null } | "loading" | "error"
+  >("loading");
 
   useEffect(() => {
     let cancelled = false;
     async function check() {
       const token = await getAccessToken();
       if (!token) {
-        if (!cancelled) setOnboarding("error");
+        if (!cancelled) {
+          setOnboarding("error");
+          setOauthProfile("error");
+        }
         return;
       }
       try {
-        const res = await fetch("/api/onboarding", { headers: authHeaders(token) });
-        if (!res.ok) throw new Error();
-        const json = (await res.json()) as OnboardingInfo;
-        if (!cancelled) setOnboarding(json);
+        const [onboardingRes, profileRes] = await Promise.all([
+          fetch("/api/onboarding", { headers: authHeaders(token) }),
+          fetch("/api/profile", { headers: authHeaders(token) }),
+        ]);
+        if (!onboardingRes.ok) throw new Error();
+        const onboardingJson = (await onboardingRes.json()) as OnboardingInfo;
+        if (!cancelled) setOnboarding(onboardingJson);
+
+        if (!profileRes.ok) throw new Error();
+        const profileJson = (await profileRes.json()) as { needsCompletion: boolean; suggestedName: string | null };
+        if (!cancelled) setOauthProfile(profileJson);
       } catch {
-        if (!cancelled) setOnboarding("error"); // 확인 자체가 실패하면 안전하게 막지 않고 그냥 넘어간다
+        // 확인 자체가 실패하면 안전하게 막지 않고 그냥 넘어간다(각각 독립적으로 실패 처리).
+        if (!cancelled) {
+          setOnboarding((prev) => (prev === "loading" ? "error" : prev));
+          setOauthProfile((prev) => (prev === "loading" ? "error" : prev));
+        }
       }
     }
     void check();
@@ -66,6 +87,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   }, []);
 
   const needsOnboarding = typeof onboarding === "object" && !onboarding.completed;
+  const needsOauthProfile = typeof oauthProfile === "object" && oauthProfile.needsCompletion;
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-white shadow-sm sm:border-x sm:border-line">
@@ -90,9 +112,10 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           온보딩 답변이 저장되기도 전에 "오늘의 실천방법"을 먼저 불러와 버리고, 온보딩 완료
           후에도 다시 안 불러와서 개인화가 반영 안 된 채로 남는 문제가 있었다. 온보딩 확인이
           끝난 뒤에만(로딩 아닐 때) 내용을 그린다 — 보통 아주 짧은 지연이라 체감되지 않는다. */}
-      {onboarding !== "loading" && (!needsOnboarding || dismissed) && (
-        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
-      )}
+      {onboarding !== "loading" &&
+        oauthProfile !== "loading" &&
+        !needsOauthProfile &&
+        (!needsOnboarding || dismissed) && <div className="min-h-0 flex-1 overflow-hidden">{children}</div>}
 
       <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map((t) => (
@@ -106,7 +129,14 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      {needsOnboarding && !dismissed && typeof onboarding === "object" && (
+      {needsOauthProfile && typeof oauthProfile === "object" && (
+        <OAuthProfileGate
+          suggestedName={oauthProfile.suggestedName}
+          onDone={() => setOauthProfile({ ...oauthProfile, needsCompletion: false })}
+        />
+      )}
+
+      {!needsOauthProfile && needsOnboarding && !dismissed && typeof onboarding === "object" && (
         <OnboardingFlow
           mode="gate"
           nickname={onboarding.nickname}

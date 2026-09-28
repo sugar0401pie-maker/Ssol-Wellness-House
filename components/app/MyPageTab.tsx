@@ -9,7 +9,7 @@ import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
 
-type MyPageData = MyInfo & { gender: string | null };
+type MyPageData = MyInfo & { gender: string | null; hasPassword: boolean };
 
 // 2026-09-27: "지금은 보고서가 1개인데 나중에 여러 개를 열람할 수도 있으니" — 응시 기록을
 // 목록으로 보여주고, 각 항목의 "열기"를 누르면 /report/[resultId]에서 전체 심층보고서를 본다.
@@ -259,7 +259,14 @@ export default function MyPageTab() {
             </dl>
             <button
               type="button"
-              onClick={() => setShowPasswordConfirm(true)}
+              onClick={() => {
+                // 2026-09-28 버그 수정: 카카오/네이버로 가입한 사용자는 비밀번호 자체가 없어서
+                // 재확인 단계를 통과할 방법이 없었다(항상 실패) — 그런 계정은 비밀번호 확인
+                // 없이 바로 수정 화면으로 보낸다. 세션이 이미 그 provider의 최근 로그인으로
+                // 확인된 상태라, 이메일/비밀번호 계정과 동등한 수준의 확인이라고 본다.
+                if (data && !data.hasPassword) setShowInfoEdit(true);
+                else setShowPasswordConfirm(true);
+              }}
               className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
             >
               정보 수정

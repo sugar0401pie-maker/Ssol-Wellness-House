@@ -128,6 +128,47 @@ export async function finishSignup(params: {
   return { ok: true };
 }
 
+// 2026-09-28 신설: 카카오/네이버로 가입한 사람이 처음 로그인했을 때(OAuthProfileGate)
+// 이름·생년월일 등을 채워 넣는다 — finishSignup()과 거의 같지만 비밀번호가 없으므로
+// updateUser({password}) 단계가 없다. 세션은 이미 OAuth 로그인으로 만들어져 있다.
+export async function completeOAuthProfile(params: {
+  displayName: string;
+  birthDate: string;
+  nickname?: string;
+  phone?: string;
+  address?: string;
+  marketingConsent?: boolean;
+  agreeTerms: boolean;
+  agreeSensitive: boolean;
+}): Promise<AuthResult> {
+  const supabase = getBrowserClient();
+  if (!supabase) return { ok: false, error: "설정 오류로 저장할 수 없어요." };
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) return { ok: false, error: "세션이 만료됐어요. 새로고침 후 다시 시도해주세요." };
+
+  const { data: updatedRows, error } = await supabase
+    .from("profiles")
+    .update({
+      display_name: params.displayName,
+      birth_date: params.birthDate,
+      terms_agreed_at: new Date().toISOString(),
+      sensitive_data_agreed_at: new Date().toISOString(),
+      nickname: params.nickname || null,
+      phone: params.phone || null,
+      address: params.address || null,
+      marketing_consent: params.marketingConsent ?? false,
+      marketing_consent_at: params.marketingConsent ? new Date().toISOString() : null,
+    })
+    .eq("user_id", userId)
+    .select("user_id");
+  if (error) return { ok: false, error: `저장에 실패했어요: ${error.message}` };
+  if (!updatedRows || updatedRows.length === 0) {
+    return { ok: false, error: "저장에 실패했어요. 새로고침 후 다시 시도해주세요." };
+  }
+  return { ok: true };
+}
+
 // 2026-09-25 owner 요청: 마이페이지에서 이메일을 바꿀 땐 반드시 새 이메일로 인증번호를
 // 받아 확인해야 넘어가도록 한다 — 가입 때(sendSignupOtp/verifySignupOtp)와 같은 패턴이되,
 // type이 "email"이 아니라 "email_change"라는 점만 다르다. 인증에 성공하면 그 자리에서

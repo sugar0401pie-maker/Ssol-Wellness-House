@@ -11,6 +11,41 @@ export const runtime = "nodejs";
 
 const BIRTH_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// 2026-09-28 신설: 카카오/네이버로 가입한 사람은 이메일 회원가입과 달리 이름·생년월일을 직접
+// 입력받는 절차가 없어서 profiles에 그 정보가 아예 비어 있다(버그로 발견 — 홈 인사말에
+// 닉네임이 안 나오는 문제도 같은 원인). AppFrame이 로그인 직후 이 값을 확인해서, OAuth로
+// 가입했는데 아직 채워지지 않았으면 OAuthProfileGate(회원가입 화면과 비슷한 추가 정보 입력
+// 화면)를 띄운다. 이메일 가입자는 finishSignup()이 이미 다 채워놔서 여기 걸리지 않는다.
+export async function GET(req: NextRequest) {
+  if (!checkAccessCode(req.headers.get("x-access-code"))) {
+    return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
+  }
+  const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+
+  const admin = createAdminClient();
+  const [{ data: profile }, { data: authUser }] = await Promise.all([
+    admin.from("profiles").select("display_name, nickname, birth_date").eq("user_id", userId).maybeSingle(),
+    admin.auth.admin.getUserById(userId),
+  ]);
+
+  const isOAuthOnly = !(authUser?.user?.app_metadata?.providers as string[] | undefined)?.includes("email");
+  const needsCompletion = isOAuthOnly && (!profile?.display_name || !profile?.birth_date);
+  // 카카오는 실명/닉네임 후보를 user_metadata.name(또는 full_name)으로 이미 갖고 있어서,
+  // 새로 입력받는 이름 칸에 미리 채워둘 수 있다 — 매번 다시 타이핑하지 않아도 되게.
+  const meta = authUser?.user?.user_metadata as Record<string, unknown> | undefined;
+  const suggestedName =
+    (typeof meta?.name === "string" && meta.name) || (typeof meta?.full_name === "string" && meta.full_name) || null;
+
+  return NextResponse.json({
+    needsCompletion,
+    displayName: profile?.display_name ?? null,
+    nickname: profile?.nickname ?? null,
+    birthDate: profile?.birth_date ?? null,
+    suggestedName,
+  });
+}
+
 export async function PATCH(req: NextRequest) {
   if (!checkAccessCode(req.headers.get("x-access-code"))) {
     return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });

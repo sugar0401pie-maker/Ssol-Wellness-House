@@ -40,5 +40,9 @@ export async function GET(req: NextRequest) {
     marketingConsent: profile?.marketing_consent ?? false,
     email: authUser?.user?.email ?? null,
     gender: ssolProfile?.gender ?? null,
+    // 2026-09-28: 카카오/네이버로 가입한 사용자는 비밀번호 자체가 없어서 "내 정보 수정" 전
+    // 비밀번호 재확인 단계를 통과할 수 없었다(버그 발견) — 이메일 provider가 연결돼 있어야만
+    // 비밀번호가 존재하므로, 그 여부를 내려줘서 프런트가 재확인 단계를 건너뛸지 정한다.
+    hasPassword: authUser?.user?.app_metadata?.providers?.includes("email") ?? true,
   });
 }

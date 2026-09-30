@@ -104,13 +104,14 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
       {data && (
         <>
           <p className="text-[13px] text-slate-400">{formatTestDate(data.createdAt)}</p>
-          <p className="mt-1 text-[19px] font-medium text-foreground">{data.persona.name}</p>
-          <p className="mt-0.5 text-[14px] text-navy">{data.persona.tagline}</p>
 
           {/* 2026-09-28 owner 요청: 형제 사이트(quiz.ssolwellnesshouse.com) 결과 화면처럼
               캐릭터 이미지 + 오각형 그래프를 같이 보여준다. 캐릭터 이미지는 새로 받을 필요 없이
               이미 저장소에 있는 홈 탭과 같은 파일(public/characters/<유형코드>.png)을 그대로
-              재사용한다. */}
+              재사용한다.
+              2026-09-30: 형제 사이트 결과 화면과 같은 순서(이미지 → 기본설명 → 그래프 →
+              줄글 설명)로 맞춰달라는 요청 — 원래는 이름/태그라인 텍스트가 이미지보다 먼저
+              나오고 있었다. */}
           <div className="relative mx-auto mt-3 aspect-square w-full max-w-[220px]">
             <Image
               src={`/characters/${data.persona.dessertCode}.png`}
@@ -120,6 +121,8 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
             />
           </div>
 
+          <p className="mt-3 text-[19px] font-medium text-foreground">{data.persona.name}</p>
+          <p className="mt-0.5 text-[14px] text-navy">{data.persona.tagline}</p>
           <p className="mt-3 text-[16px] leading-7 text-foreground">{data.persona.blurb}</p>
 
           {data.persona.traits.length > 0 && (

@@ -21,8 +21,8 @@ export type QuizPersona = {
   traits: string[];
   domainScores: Record<string, number> | null;
   // 2026-09-25: 유료 심층 리포트(ssol_reports, 결정론적 조립 — AI 자유생성 아님)가 있으면
-  // 그중 "주 고민 영역 해부"/"이번 주 제안" 두 섹션만 채팅 개인화 참고 자료로 함께 준다.
-  // 결제 안 한 사용자는 report가 아예 없으니 null — 정상 케이스, 에러 아님.
+  // 그중 "주목할 만한 부분은"/"바로 지금, 작은 변화를 만들어봐요" 두 섹션만 채팅 개인화
+  // 참고 자료로 함께 준다. 결제 안 한 사용자는 report가 아예 없으니 null — 정상 케이스, 에러 아님.
   reportInsight: string | null;
 };
 
@@ -30,24 +30,39 @@ export type QuizPersona = {
 // sections(배열, {title,body}[]) → assembled(객체, {section2..section7})로 바뀌었다(마스터
 // 스펙 8.2/8.3). 예전 컬럼명으로 select하면 에러가 나는데, 에러를 버리고 data만 구조분해했던
 // 탓에 조용히 reportInsight가 비어 있었다. 그중 실제 문장이 있는 두 섹션만 골라 쓴다 —
-// section2(주 고민 영역 해부, 왜 이 영역이 낮은지)와 section7(이번 주 제안, 바로 해볼 수 있는
-// 것 1개)이 대화에 가장 바로 쓸모 있다. 나머지(프로파일 모양/대처 상세/궁합/특수 플래그)는
-// 채팅 참고용으로는 과해서 뺀다.
+// section2(주목할 만한 부분은, 왜 이 영역이 낮은지)와 section8(바로 지금, 작은 변화를
+// 만들어봐요 — 이번 주에 바로 해볼 수 있는 것 1개)이 대화에 가장 바로 쓸모 있다.
+// 나머지(프로파일 모양/대처 상세/궁합/특수 플래그)는 채팅 참고용으로는 과해서 뺀다.
+//
+// 2026-09-30 재발견: 형제 사이트가 그 뒤로 또 한 번 리포트를 개편하면서(section1·8 추가,
+// 8섹션 전부 항상 string[] — 문단 배열) 두 가지가 깨져 있었다. (1) "이번 주 제안"에
+// 해당하는 실제 내용은 이제 section7(앞으로 나아갈 방향 — 여러 제안)이 아니라 section8
+// (바로 지금, 작은 변화를 만들어봐요 — 이번 주에 할 구체적인 것 하나)에 있는데 계속
+// section7을 읽고 있었다. (2) section7/section8도 이제 항상 배열인데 join(" ") 없이
+// 템플릿 문자열에 바로 넣어서, 배열이 Array.prototype.toString()으로 강제 변환돼
+// 문단 사이에 공백 없이 쉼표로 뭉쳐진 문장이 채팅 참고 자료로 들어가고 있었다.
 const MAX_SECTION_CHARS = 300;
 
 function truncate(body: string): string {
   return body.length > MAX_SECTION_CHARS ? body.slice(0, MAX_SECTION_CHARS) + "…" : body;
 }
 
+// 2026-09-30: 형제 사이트의 GeneratedSectionsV3에서 모든 섹션은 항상 문단 배열(string[])이다 —
+// 예전(문자열 하나였던 시절) 흔적이 남아있을 가능성까지 함께 받아준다.
+function sectionText(value: unknown): string | null {
+  if (Array.isArray(value)) return value.length ? value.join(" ") : null;
+  if (typeof value === "string" && value) return value;
+  return null;
+}
+
 function buildReportInsight(assembled: unknown): string | null {
   if (!assembled || typeof assembled !== "object") return null;
-  // 2026-09-25: section2(주 고민 영역 해부)가 문단 구분을 위해 string -> string[](문단 배열)로
-  // 바뀌었다. 공백으로 합쳐서 기존과 동일하게 처리한다.
-  const a = assembled as { section2?: string | string[]; section7?: string | null };
-  const section2Text = Array.isArray(a.section2) ? a.section2.join(" ") : a.section2;
+  const a = assembled as Record<string, unknown>;
+  const section2Text = sectionText(a.section2);
+  const section8Text = sectionText(a.section8);
   const picked: string[] = [];
-  if (section2Text) picked.push(`주 고민 영역 해부: ${truncate(section2Text)}`);
-  if (a.section7) picked.push(`이번 주 제안: ${truncate(a.section7)}`);
+  if (section2Text) picked.push(`주목할 만한 부분: ${truncate(section2Text)}`);
+  if (section8Text) picked.push(`이번 주 제안: ${truncate(section8Text)}`);
   return picked.length ? picked.join("\n") : null;
 }
 

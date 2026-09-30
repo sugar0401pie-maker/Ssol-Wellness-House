@@ -8,6 +8,7 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import type { ReportSectionData } from "@/lib/mypage/assembledReport";
 import { leadInIndexFor, splitBoldParagraph } from "@/lib/mypage/reportParagraph";
+import { splitSentences } from "@/lib/text/paragraphs";
 import DomainRadarChart from "./DomainRadarChart";
 
 type ReportDetail = {
@@ -32,43 +33,53 @@ function formatTestDate(iso: string): string {
 // 2026-09-30 owner 피드백: "너무 줄글이라서" — 형제 사이트(quiz.ssolwellnesshouse.com)의
 // 결제 후 화면(ReportSectionCard.tsx)과 같은 번호 원 배지 + 제목 카드 모양으로 바꿨다.
 // 이미 마이페이지에서 직접 골라 들어온 화면이라 아코디언 토글 없이 전부 펼쳐서 보여준다.
+// 2026-09-30 추가 피드백: "줄글이 길어서 읽기 불편" — 1번(당신의 웰니스 프로파일)만 기본으로
+// 펼쳐두고 2~8번은 기본 접힘, 제목 아래 첫 문장만 미리보기로 보여준다.
 function ReportSectionCard({ num, section }: { num: number; section: ReportSectionData }) {
+  const [open, setOpen] = useState(num === 1);
   const leadInIdx = leadInIndexFor(section.key, section.paragraphs);
   const isLast8 = section.key === "section8";
+  const preview = section.paragraphs.length > 0 ? splitSentences(section.paragraphs[0])[0] : "";
 
   return (
     <div className="mb-3 rounded-2xl border border-line bg-white p-4">
-      <div className="mb-2 flex items-center gap-2.5">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2.5 text-left">
         <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-navy text-[13px] font-bold text-white">
           {num}
         </span>
-        <p className="text-[15px] font-bold text-foreground">{section.title}</p>
-      </div>
-      <div className="space-y-2">
-        {section.paragraphs.map((p, i) => {
-          const isHighlight = isLast8 && i === section.paragraphs.length - 1;
-          const { boldText, restText } = splitBoldParagraph(p, i === leadInIdx);
-          if (isHighlight) {
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold text-foreground">{section.title}</p>
+          {!open && preview && <p className="mt-0.5 truncate text-[13px] text-slate-400">{preview}</p>}
+        </div>
+        <span className="flex-shrink-0 text-[12px] text-slate-400">{open ? "접기 ▲" : "펼치기 ▼"}</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {section.paragraphs.map((p, i) => {
+            const isHighlight = isLast8 && i === section.paragraphs.length - 1;
+            const { boldText, restText } = splitBoldParagraph(p, i === leadInIdx);
+            if (isHighlight) {
+              return (
+                <div key={i} className="rounded-xl border-[1.5px] border-navy px-3.5 py-3">
+                  <p className="text-[14px] font-bold leading-7 text-foreground">{p}</p>
+                </div>
+              );
+            }
             return (
-              <div key={i} className="rounded-xl border-[1.5px] border-navy px-3.5 py-3">
-                <p className="text-[14px] font-bold leading-7 text-foreground">{p}</p>
-              </div>
+              <p key={i} className="text-[14px] leading-7 text-slate-600">
+                {boldText ? (
+                  <>
+                    <strong className="font-semibold text-foreground">{boldText}</strong>
+                    {restText}
+                  </>
+                ) : (
+                  p
+                )}
+              </p>
             );
-          }
-          return (
-            <p key={i} className="text-[14px] leading-7 text-slate-600">
-              {boldText ? (
-                <>
-                  <strong className="font-semibold text-foreground">{boldText}</strong>
-                  {restText}
-                </>
-              ) : (
-                p
-              )}
-            </p>
-          );
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -131,8 +142,9 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
 
           <p className="mt-3 text-[19px] font-medium text-foreground">{data.persona.name}</p>
           <p className="mt-0.5 text-[14px] text-navy">{data.persona.tagline}</p>
-          <p className="mt-3 text-[16px] leading-7 text-foreground">{data.persona.blurb}</p>
 
+          {/* 2026-09-30 owner 요청: 형제 사이트 순서(캐릭터설명 → 특징 → 그래프 → 줄글)에 맞춰
+              traits(특징 뱃지)를 태그라인 바로 다음, blurb(줄글)를 그래프 다음으로 옮겼다. */}
           {data.persona.traits.length > 0 && (
             <ul className="mt-3 list-inside list-disc space-y-0.5 text-[16px] leading-7 text-slate-600">
               {data.persona.traits.map((t) => (
@@ -152,6 +164,8 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
               </p>
             </div>
           )}
+
+          <p className="mt-5 text-[16px] leading-7 text-foreground">{data.persona.blurb}</p>
 
           {data.report ? (
             <div className="mt-6 border-t border-line pt-5">

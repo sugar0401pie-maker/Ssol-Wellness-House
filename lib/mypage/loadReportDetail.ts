@@ -1,7 +1,8 @@
 import "server-only";
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
+import { assembledToSections, type AssembledReportV3, type ReportSectionData } from "./assembledReport";
 import { TYPE_KEY_TO_DESSERT } from "./dessertTypeMap";
-import { assembledToSections, type AssembledReportV2 } from "./assembledReport";
 
 export type ReportDetail = {
   createdAt: string;
@@ -13,7 +14,7 @@ export type ReportDetail = {
     traits: string[];
     domainScores: Record<string, number> | null;
   };
-  report: { sections: { title: string; body: string }[] } | null;
+  report: { sections: ReportSectionData[] } | null;
 };
 
 // /report/[resultId] 상세 페이지 전용 — 특정 응시 기록 하나(resultId = ssol_quiz_results.id)의
@@ -38,6 +39,10 @@ export async function loadReportDetail(
   const dessertCode = TYPE_KEY_TO_DESSERT[result.type_key];
   if (!dessertCode) return null; // v1 시절 결과 — 목록에서도 이미 걸러지므로 정상 경로로는 도달하지 않음
 
+  // "CAR-primary" -> "CAR" -> "커리어"(3·5번 섹션 제목에 들어감, quiz 앱의 확정 영역 이름과 같은 자리).
+  const confirmedAxisKey = result.type_key.split("-")[0];
+  const axisKR = DOMAIN_LABELS[confirmedAxisKey] ?? "고민";
+
   const [{ data: rich, error: richError }, { data: reportRow, error: reportError }] = await Promise.all([
     admin.from("persona_profiles").select("name, tagline, blurb, traits").eq("code", dessertCode).maybeSingle(),
     admin
@@ -53,7 +58,7 @@ export async function loadReportDetail(
   if (reportError) console.error("ssol_reports(resultId) 조회 실패:", reportError.message);
   if (!rich) return null;
 
-  const sections = assembledToSections(reportRow?.assembled as AssembledReportV2 | undefined);
+  const sections = assembledToSections(reportRow?.assembled as AssembledReportV3 | undefined, axisKR);
   return {
     createdAt: result.created_at,
     persona: {

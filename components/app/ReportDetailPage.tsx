@@ -6,10 +6,10 @@ import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
-import { groupIntoParagraphs } from "@/lib/text/paragraphs";
+import type { ReportSectionData } from "@/lib/mypage/assembledReport";
+import { leadInIndexFor, splitBoldParagraph } from "@/lib/mypage/reportParagraph";
 import DomainRadarChart from "./DomainRadarChart";
 
-type ReportSection = { title: string; body: string };
 type ReportDetail = {
   createdAt: string;
   persona: {
@@ -20,7 +20,7 @@ type ReportDetail = {
     traits: string[];
     domainScores: Record<string, number> | null;
   };
-  report: { sections: ReportSection[] } | null;
+  report: { sections: ReportSectionData[] } | null;
 };
 
 // "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY년 M월 D일 응시" (표시용)
@@ -29,40 +29,48 @@ function formatTestDate(iso: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 응시`;
 }
 
-function renderBoldParts(content: string) {
-  return content.split(/(\*\*[^*]+\*\*)/g).map((chunk, j) =>
-    chunk.startsWith("**") && chunk.endsWith("**") ? (
-      <strong key={j} className="font-semibold text-foreground">
-        {chunk.slice(2, -2)}
-      </strong>
-    ) : (
-      <span key={j}>{chunk}</span>
-    ),
-  );
-}
+// 2026-09-30 owner 피드백: "너무 줄글이라서" — 형제 사이트(quiz.ssolwellnesshouse.com)의
+// 결제 후 화면(ReportSectionCard.tsx)과 같은 번호 원 배지 + 제목 카드 모양으로 바꿨다.
+// 이미 마이페이지에서 직접 골라 들어온 화면이라 아코디언 토글 없이 전부 펼쳐서 보여준다.
+function ReportSectionCard({ num, section }: { num: number; section: ReportSectionData }) {
+  const leadInIdx = leadInIndexFor(section.key, section.paragraphs);
+  const isLast8 = section.key === "section8";
 
-// 결과보고서 본문은 마크다운 스타일(**굵게**, - 목록)로 와서, 기호를 그대로 노출하지 않도록
-// 아주 가벼운 렌더링만 한다(별도 마크다운 라이브러리 없이) — MyPageTab.tsx에 있던 것을 그대로
-// 옮겨왔다(보고서 본문이 이 페이지로 옮겨왔으므로).
-// 2026-09-28 owner 피드백: 문장 구분 없이 줄글이 길게 이어져서 읽기 불편했다 — 목록이 아닌
-// 줄은 문장 단위로 3개씩 묶어 문단으로 나누고, 문단 사이에 빈 줄만큼 여백을 준다.
-function renderLiteMarkdown(text: string) {
-  return text.split("\n").flatMap((line, i) => {
-    const trimmed = line.trim();
-    if (!trimmed) return [<div key={`sp-${i}`} className="h-2" />];
-    if (trimmed.startsWith("- ")) {
-      return [
-        <p key={i} className="pl-3 before:mr-1.5 before:content-['·']">
-          {renderBoldParts(trimmed.slice(2))}
-        </p>,
-      ];
-    }
-    return groupIntoParagraphs(trimmed, 3).map((paragraph, j) => (
-      <p key={`${i}-${j}`} className={j > 0 ? "mt-3" : ""}>
-        {renderBoldParts(paragraph)}
-      </p>
-    ));
-  });
+  return (
+    <div className="mb-3 rounded-2xl border border-line bg-white p-4">
+      <div className="mb-2 flex items-center gap-2.5">
+        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-navy text-[13px] font-bold text-white">
+          {num}
+        </span>
+        <p className="text-[15px] font-bold text-foreground">{section.title}</p>
+      </div>
+      <div className="space-y-2">
+        {section.paragraphs.map((p, i) => {
+          const isHighlight = isLast8 && i === section.paragraphs.length - 1;
+          const { boldText, restText } = splitBoldParagraph(p, i === leadInIdx);
+          if (isHighlight) {
+            return (
+              <div key={i} className="rounded-xl border-[1.5px] border-navy px-3.5 py-3">
+                <p className="text-[14px] font-bold leading-7 text-foreground">{p}</p>
+              </div>
+            );
+          }
+          return (
+            <p key={i} className="text-[14px] leading-7 text-slate-600">
+              {boldText ? (
+                <>
+                  <strong className="font-semibold text-foreground">{boldText}</strong>
+                  {restText}
+                </>
+              ) : (
+                p
+              )}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function ReportDetailPage({ resultId }: { resultId: string }) {
@@ -148,14 +156,9 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
           {data.report ? (
             <div className="mt-6 border-t border-line pt-5">
               <p className="mb-3 text-[13px] font-medium text-slate-400">결과보고서</p>
-              <div className="space-y-5 text-[16px] leading-7 text-slate-600">
-                {data.report.sections.map((s, i) => (
-                  <div key={i}>
-                    <p className="text-[16px] font-medium text-foreground">{s.title}</p>
-                    <div className="mt-1.5 space-y-1.5">{renderLiteMarkdown(s.body)}</div>
-                  </div>
-                ))}
-              </div>
+              {data.report.sections.map((section, i) => (
+                <ReportSectionCard key={section.key} num={i + 1} section={section} />
+              ))}
             </div>
           ) : (
             <p className="mt-6 border-t border-line pt-5 text-[13px] leading-5 text-slate-400">

@@ -89,5 +89,5 @@ export async function POST(req: NextRequest) {
   });
   if (!sent.ok) console.warn("결제 완료 알림 이메일 발송 실패:", sent.reason);
 
-  return NextResponse.json({ ok: true, expiresAt: expiresAt.toISOString() });
+  return NextResponse.json({ ok: true, expiresAt: expiresAt.toISOString(), plan });
 }

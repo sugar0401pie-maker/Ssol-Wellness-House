@@ -7,22 +7,20 @@ import { usePathname } from "next/navigation";
 import OnboardingFlow from "./OnboardingFlow";
 import OAuthProfileGate from "./OAuthProfileGate";
 import OAuthProfileReminder from "./OAuthProfileReminder";
+import TrialExpiringReminder, { type TrialExpiringVariant } from "./TrialExpiringReminder";
 import { signOut } from "@/lib/supabase/authClient";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
-import { PROMO_ANNUAL_PRICE, PROMO_LABEL, PROMO_MONTHLY_PRICE, PROMO_PERIOD_LABEL, isPromoActive } from "@/lib/billing/pricing";
 
 // 2026-10-01: "오늘 하루 보지 않기"를 기억하는 로컬 키. 값은 그날의 todayKeyKST() 문자열 —
 // 오늘 날짜와 같으면 오늘은 리마인더를 또 띄우지 않는다(다음 날이면 자동으로 다시 뜸).
 const OAUTH_REMINDER_DISMISS_KEY = "oauthProfileReminderDismissedDate";
 
-// 2026-10-01 owner 요청: 홈/채팅/마이페이지(이 세 탭을 감싸는 AppFrame) 공통으로 보이는
-// 할인 프로모션 배너 — 지금까지 PricingPage(/pricing)에만 가격이 반영돼 있어서, 그 페이지에
-// 직접 들어가지 않으면 할인 중인 걸 알 방법이 없었다. 가격은 lib/billing/pricing.ts 하나만
-// 보고 표시한다(결제 금액과 다른 숫자를 적어두는 사고 방지). OAuth 리마인더와 같은 패턴으로
-// "오늘 하루 보지 않기"를 지원한다.
-const PROMO_BANNER_DISMISS_KEY = "promoBannerDismissedDate";
+// 2026-10-01 owner 요청: 무료체험 종료 이틀 전(D-2)·하루 전(D-1) 구독 유도 팝업 — 계정별
+// trialDaysLeft(이미 app/api/billing/status가 계산해서 주는 값, lib/billing/access.ts의
+// computeAccess 하나만 보는 단일 기준)를 그대로 써서 "오늘이 며칠째인지" 따로 계산하지 않는다.
+const TRIAL_REMINDER_DISMISS_KEY = "trialExpiringReminderDismissedDate";
 
 // 2026-09-28: owner 요청으로 홈/채팅/마이페이지를 "/home", "/chat", "/mypage" 개별 주소로
 // 분리했다(예전엔 AppShell.tsx가 세 탭을 전부 마운트해두고 CSS로만 보이기/숨기기 — 그래서
@@ -84,22 +82,30 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
     setOauthReminderDismissedToday(true);
   }
 
-  const [promoBannerDismissedToday, setPromoBannerDismissedToday] = useState(() => {
+  // 2026-10-01: 무료체험 종료 D-2/D-1 구독 유도 팝업. billing은 /api/billing/status를 그대로
+  // 받아두고(마이페이지의 "이용권 정보"와 같은 값), reason이 "trial"일 때만(이미 구독 중이거나
+  // 체험이 끝난 계정에는 안 보임) trialDaysLeft로 변형(variant)을 정한다.
+  const [billing, setBilling] = useState<{ reason: "entitlement" | "trial" | "expired"; trialDaysLeft: number } | null>(
+    null,
+  );
+  const [trialReminderSessionDismissed, setTrialReminderSessionDismissed] = useState(false);
+  const [trialReminderDismissedToday, setTrialReminderDismissedToday] = useState(() => {
     try {
-      return localStorage.getItem(PROMO_BANNER_DISMISS_KEY) === todayKeyKST();
+      return localStorage.getItem(TRIAL_REMINDER_DISMISS_KEY) === todayKeyKST();
     } catch {
       return false;
     }
   });
-  function dismissPromoBannerToday() {
+  function dismissTrialReminderToday() {
     try {
-      localStorage.setItem(PROMO_BANNER_DISMISS_KEY, todayKeyKST());
+      localStorage.setItem(TRIAL_REMINDER_DISMISS_KEY, todayKeyKST());
     } catch {
       // localStorage를 못 쓰는 환경이면 이번 세션만 안 보이게 한다.
     }
-    setPromoBannerDismissedToday(true);
+    setTrialReminderDismissedToday(true);
   }
-  const showPromoBanner = isPromoActive() && !promoBannerDismissedToday;
+  const trialReminderVariant: TrialExpiringVariant | null =
+    billing?.reason === "trial" ? (billing.trialDaysLeft === 2 ? "d2" : billing.trialDaysLeft === 1 ? "d1" : null) : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +137,17 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           setOauthProfile((prev) => (prev === "loading" ? "error" : prev));
         }
       }
+      // 무료체험 D-2/D-1 리마인더용 — 부가 기능이라 실패해도(네트워크 등) 조용히 건너뛴다
+      // (billing이 null로 남아 리마인더가 안 뜰 뿐, 다른 화면 동작엔 영향 없다).
+      try {
+        const billingRes = await fetch("/api/billing/status", { headers: authHeaders(token) });
+        if (billingRes.ok) {
+          const billingJson = (await billingRes.json()) as { reason: "entitlement" | "trial" | "expired"; trialDaysLeft: number };
+          if (!cancelled) setBilling(billingJson);
+        }
+      } catch {
+        // 무시 — 위 주석 참고.
+      }
     }
     void check();
     return () => {
@@ -144,6 +161,12 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
     needsOauthProfile && !showOauthForm && !oauthReminderSessionDismissed && !oauthReminderDismissedToday;
   const showOauthGateForm = needsOauthProfile && showOauthForm;
   const oauthFlowActive = showOauthReminder || showOauthGateForm;
+  const showTrialReminder =
+    trialReminderVariant !== null &&
+    !oauthFlowActive &&
+    !(needsOnboarding && !dismissed) &&
+    !trialReminderSessionDismissed &&
+    !trialReminderDismissedToday;
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-white shadow-sm sm:border-x sm:border-line">
@@ -163,24 +186,6 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           로그아웃
         </button>
       </div>
-
-      {showPromoBanner && (
-        <div className="flex items-center gap-2 bg-navy px-4 py-2 text-white">
-          <Link href="/pricing" className="min-w-0 flex-1 text-[12.5px] leading-5">
-            <span className="font-bold">{PROMO_LABEL}</span> · 월간 {PROMO_MONTHLY_PRICE.toLocaleString()}원 · 연간{" "}
-            {PROMO_ANNUAL_PRICE.toLocaleString()}원
-            <span className="ml-1 text-white/70">{PROMO_PERIOD_LABEL.replace("프로모션 기간: ", "")}</span>
-          </Link>
-          <button
-            type="button"
-            onClick={dismissPromoBannerToday}
-            aria-label="오늘 하루 보지 않기"
-            className="flex-shrink-0 px-1 text-white/70"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* 2026-09-24 버그 수정: 온보딩 확인이 끝나기 전에 탭 내용을 먼저 그리면, 홈 탭이
           온보딩 답변이 저장되기도 전에 "오늘의 실천방법"을 먼저 불러와 버리고, 온보딩 완료
@@ -227,6 +232,14 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           title={onboarding.title}
           onDone={() => setOnboarding({ ...onboarding, completed: true })}
           onClose={() => setDismissed(true)}
+        />
+      )}
+
+      {showTrialReminder && trialReminderVariant && (
+        <TrialExpiringReminder
+          variant={trialReminderVariant}
+          onDismissToday={dismissTrialReminderToday}
+          onClose={() => setTrialReminderSessionDismissed(true)}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import type { ReportSectionData } from "@/lib/mypage/assembledReport";
 import { leadInIndexFor, splitBoldParagraph } from "@/lib/mypage/reportParagraph";
 import { splitSentences } from "@/lib/text/paragraphs";
+import { pickRandomVariant } from "@/lib/characters/variants";
 import DomainRadarChart from "./DomainRadarChart";
 
 type ReportDetail = {
@@ -88,6 +89,9 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
   const router = useRouter();
   const [data, setData] = useState<ReportDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 2026-10-01: 페이지가 열릴 때 한 번만 뽑는다 — 홈 탭과는 별도로 독립적으로 뽑히므로
+  // 같은 유형이어도 홈과 심층보고서의 캐릭터 그림이 서로 다를 수 있다(owner가 원한 동작).
+  const [variant] = useState(pickRandomVariant);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,15 +129,16 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
           <p className="text-[13px] text-slate-400">{formatTestDate(data.createdAt)}</p>
 
           {/* 2026-09-28 owner 요청: 형제 사이트(quiz.ssolwellnesshouse.com) 결과 화면처럼
-              캐릭터 이미지 + 오각형 그래프를 같이 보여준다. 캐릭터 이미지는 새로 받을 필요 없이
-              이미 저장소에 있는 홈 탭과 같은 파일(public/characters/<유형코드>.png)을 그대로
-              재사용한다.
+              캐릭터 이미지 + 오각형 그래프를 같이 보여준다.
               2026-09-30: 형제 사이트 결과 화면과 같은 순서(이미지 → 기본설명 → 그래프 →
               줄글 설명)로 맞춰달라는 요청 — 원래는 이름/태그라인 텍스트가 이미지보다 먼저
-              나오고 있었다. */}
-          <div className="relative mx-auto mt-3 aspect-square w-full max-w-[220px]">
+              나오고 있었다.
+              2026-10-01 owner 요청: 유형별 5가지 변형 이미지 중 하나를 랜덤으로 보여주고
+              (이 화면은 항상 결과가 있는 상태에서만 보이므로 홈 탭과 달리 분기 없음), 화면
+              크기도 키운다(220px -> 280px). */}
+          <div className="relative mx-auto mt-3 aspect-square w-full max-w-[280px]">
             <Image
-              src={`/characters/${data.persona.dessertCode}.png`}
+              src={`/characters/${data.persona.dessertCode}/${variant}.png`}
               alt={data.persona.name}
               fill
               className="object-contain"

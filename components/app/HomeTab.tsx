@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
+import { pickRandomVariant } from "@/lib/characters/variants";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -36,6 +37,9 @@ function splitAtFirstComma(text: string): [string, string | null] {
 export default function HomeTab() {
   const [data, setData] = useState<DailyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 2026-10-01: 탭이 마운트될 때 한 번만 뽑는다 — 화면을 다시 불러올 때마다(새로고침, 재방문)
+  // 바뀌지만, 같은 화면을 보는 동안에는 바뀌지 않는다("로딩할 때마다 랜덤").
+  const [variant] = useState(pickRandomVariant);
 
   // 2026-09-26: 테스트를 새로 마치고 돌아오면 캐릭터도 바로 바뀌도록 창이 다시 보일 때 재조회한다.
   useEffect(() => {
@@ -89,9 +93,17 @@ export default function HomeTab() {
 
         {data?.character && (
           <div className="mt-4 flex flex-col items-center">
-            <div className="relative aspect-[4/3] w-full">
+            {/* 2026-10-01 owner 요청: 유형별 5가지 변형 이미지 중 하나를 랜덤으로 보여준다
+                (결과가 있는 사용자만 — 결과 없는 사용자의 placeholder는 seed로 고정된 단일
+                이미지를 그대로 쓴다). 정사각형 원본(1080×1080)에 맞춰 컨테이너도
+                aspect-[4/3]에서 aspect-square로 바꿔 레터박스 없이 꽉 차게, 더 크게 보이도록 함. */}
+            <div className="relative aspect-square w-full">
               <Image
-                src={`/characters/${data.character.code}.png`}
+                src={
+                  data.character.hasResult
+                    ? `/characters/${data.character.code}/${variant}.png`
+                    : `/characters/${data.character.code}.png`
+                }
                 alt={data.character.name ?? "웰니스 캐릭터"}
                 fill
                 className={`object-contain ${data.character.hasResult ? "" : "opacity-40"}`}

@@ -84,10 +84,12 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
 
   // 2026-10-01: 무료체험 종료 D-2/D-1 구독 유도 팝업. billing은 /api/billing/status를 그대로
   // 받아두고(마이페이지의 "이용권 정보"와 같은 값), reason이 "trial"일 때만(이미 구독 중이거나
-  // 체험이 끝난 계정에는 안 보임) trialDaysLeft로 변형(variant)을 정한다.
-  const [billing, setBilling] = useState<{ reason: "entitlement" | "trial" | "expired"; trialDaysLeft: number } | null>(
-    null,
-  );
+  // 체험이 끝난 계정에는 안 보임) trialDaysLeft로 변형(variant)을 정한다. trialDays(7 또는 3)로
+  // hasReport를 역산한다 — 서버가 이미 심층보고서 보유 여부로 trialDays를 정해서 내려주므로
+  // 따로 다시 조회하지 않는다.
+  const [billing, setBilling] = useState<
+    { reason: "entitlement" | "trial" | "expired"; trialDaysLeft: number; trialDays: number } | null
+  >(null);
   const [trialReminderSessionDismissed, setTrialReminderSessionDismissed] = useState(false);
   const [trialReminderDismissedToday, setTrialReminderDismissedToday] = useState(() => {
     try {
@@ -106,6 +108,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   }
   const trialReminderVariant: TrialExpiringVariant | null =
     billing?.reason === "trial" ? (billing.trialDaysLeft === 2 ? "d2" : billing.trialDaysLeft === 1 ? "d1" : null) : null;
+  const trialReminderHasReport = billing?.trialDays === 7;
 
   useEffect(() => {
     let cancelled = false;
@@ -142,7 +145,11 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
       try {
         const billingRes = await fetch("/api/billing/status", { headers: authHeaders(token) });
         if (billingRes.ok) {
-          const billingJson = (await billingRes.json()) as { reason: "entitlement" | "trial" | "expired"; trialDaysLeft: number };
+          const billingJson = (await billingRes.json()) as {
+            reason: "entitlement" | "trial" | "expired";
+            trialDaysLeft: number;
+            trialDays: number;
+          };
           if (!cancelled) setBilling(billingJson);
         }
       } catch {
@@ -238,6 +245,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
       {showTrialReminder && trialReminderVariant && (
         <TrialExpiringReminder
           variant={trialReminderVariant}
+          hasReport={trialReminderHasReport}
           onDismissToday={dismissTrialReminderToday}
           onClose={() => setTrialReminderSessionDismissed(true)}
         />

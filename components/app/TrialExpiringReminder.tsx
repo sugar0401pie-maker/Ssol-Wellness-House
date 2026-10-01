@@ -6,6 +6,12 @@ import Link from "next/link";
 // 팝업 — 종료 이틀 전(D-2)과 하루 전(D-1)에 서로 다른 문구로 보여준다. OAuthProfileReminder와
 // 같은 패턴으로 "닫기"(이번 세션만 안 보임)와 "오늘 하루 보지 않기"(오늘은 다시 안 뜸) 둘 다
 // 지원한다. 문구는 owner가 준 텍스트 그대로.
+//
+// 2026-10-01 추가: 심층보고서가 없는 사용자(3일 체험)의 D-1(=3일째, 마지막 날)에는 "보고서를
+// 보면 7일 더 무료"라는 더 구체적인 유도 문구로 바꾼다 — 보고서가 생기면 체험이 7일로
+// 늘어나는 실제 동작(lib/billing/access.ts)과 정확히 맞는 안내라서, 이 경우에만 일반 D-1
+// 문구 대신 쓴다. 보고서가 이미 있는 사용자(7일 체험)의 D-1(=7일째)에는 해당 없음 — 그
+// 사람에게는 "보고서 보면 더 받는다"는 말이 의미가 없으므로 기존 문구 그대로.
 export type TrialExpiringVariant = "d2" | "d1";
 
 const COPY: Record<TrialExpiringVariant, { lead: string; body: string }> = {
@@ -19,16 +25,23 @@ const COPY: Record<TrialExpiringVariant, { lead: string; body: string }> = {
   },
 };
 
+const D1_NO_REPORT_COPY = {
+  lead: "심리테스트 심층보고서를 보시면 7일 더 무료로 쓸 수 있어요!",
+  body: "아니면 1달권을 지금 바로 구독하셔도 돼요. 😉",
+};
+
 export default function TrialExpiringReminder({
   variant,
+  hasReport,
   onDismissToday,
   onClose,
 }: {
   variant: TrialExpiringVariant;
+  hasReport: boolean;
   onDismissToday: () => void;
   onClose: () => void;
 }) {
-  const copy = COPY[variant];
+  const copy = variant === "d1" && !hasReport ? D1_NO_REPORT_COPY : COPY[variant];
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-6">
       <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">

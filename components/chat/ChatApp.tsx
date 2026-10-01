@@ -224,6 +224,25 @@ export default function ChatApp() {
     }
   }
 
+  // 2026-10-01 owner 요청: "지난 대화" 목록에서 삭제 — 실제로는 소프트 삭제라 DB에는 그대로
+  // 남고(owner 지정) 이 목록에서만 사라진다.
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  async function deleteSession(id: string) {
+    if (deletingSessionId) return;
+    setDeletingSessionId(id);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch(`/api/chat/sessions/${id}`, { method: "DELETE", headers: authHeaders(token) });
+      if (!res.ok) throw new Error();
+      setSessions((prev) => prev?.filter((s) => s.sessionId !== id) ?? prev);
+    } catch {
+      setHistoryError("삭제하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setDeletingSessionId(null);
+    }
+  }
+
   async function loadSession(id: string) {
     if (loadingSessionId) return;
     setLoadingSessionId(id);
@@ -448,18 +467,27 @@ export default function ChatApp() {
               {sessions && sessions.length > 0 && (
                 <div className="divide-y divide-line rounded-xl border border-line">
                   {sessions.map((s) => (
-                    <button
-                      key={s.sessionId}
-                      type="button"
-                      onClick={() => loadSession(s.sessionId)}
-                      disabled={loadingSessionId === s.sessionId}
-                      className="block w-full px-3.5 py-3 text-left active:bg-background disabled:opacity-60"
-                    >
-                      <p className="text-[12px] text-slate-400">{formatSessionDate(s.startedAt)}</p>
-                      <p className="mt-0.5 truncate text-[14px] leading-5 text-foreground">
-                        {s.topicTag ?? "(내용 없음)"}
-                      </p>
-                    </button>
+                    <div key={s.sessionId} className="flex items-center gap-2 px-3.5 py-3">
+                      <button
+                        type="button"
+                        onClick={() => loadSession(s.sessionId)}
+                        disabled={loadingSessionId === s.sessionId}
+                        className="min-w-0 flex-1 text-left disabled:opacity-60"
+                      >
+                        <p className="text-[12px] text-slate-400">{formatSessionDate(s.startedAt)}</p>
+                        <p className="mt-0.5 truncate text-[14px] leading-5 text-foreground">
+                          {s.topicTag ?? "(내용 없음)"}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteSession(s.sessionId)}
+                        disabled={deletingSessionId === s.sessionId}
+                        className="shrink-0 rounded-full px-2.5 py-1.5 text-[12.5px] text-red-500 disabled:opacity-40"
+                      >
+                        {deletingSessionId === s.sessionId ? "삭제 중…" : "삭제"}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -471,7 +499,19 @@ export default function ChatApp() {
       {memoryPrompt !== "idle" && (
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
-            <p className="text-[15px] font-medium leading-6 text-foreground">이번 대화를 기억해 둘까요?</p>
+            {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다. */}
+            <div className="flex items-start justify-between">
+              <p className="text-[15px] font-medium leading-6 text-foreground">이번 대화를 기억해 둘까요?</p>
+              <button
+                type="button"
+                onClick={() => setMemoryPrompt("idle")}
+                disabled={memoryPrompt === "saving"}
+                aria-label="닫기"
+                className="shrink-0 text-[12px] text-slate-400 disabled:opacity-40"
+              >
+                닫기
+              </button>
+            </div>
             <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
               다음에 대화할 때 참고할 수 있어요. 위기·폭력 관련 내용은 저장하지 않아요.
             </p>
@@ -491,14 +531,6 @@ export default function ChatApp() {
                 className="h-10 rounded-xl border border-line text-sm font-medium text-foreground disabled:opacity-60"
               >
                 기억하지 않기
-              </button>
-              <button
-                type="button"
-                onClick={() => setMemoryPrompt("idle")}
-                disabled={memoryPrompt === "saving"}
-                className="mt-1 text-[13px] text-slate-500 underline disabled:opacity-60"
-              >
-                취소
               </button>
             </div>
           </div>

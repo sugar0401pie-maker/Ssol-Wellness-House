@@ -37,7 +37,19 @@ export default function PasswordConfirmModal({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-6">
       <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
-        <p className="text-[15px] font-medium leading-6 text-foreground">비밀번호 확인</p>
+        {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다. */}
+        <div className="flex items-start justify-between">
+          <p className="text-[15px] font-medium leading-6 text-foreground">비밀번호 확인</p>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            aria-label="닫기"
+            className="shrink-0 text-[12px] text-slate-400 disabled:opacity-40"
+          >
+            닫기
+          </button>
+        </div>
         <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
           개인정보 보호를 위해 정보를 수정하기 전 비밀번호를 다시 확인할게요.
         </p>
@@ -57,9 +69,6 @@ export default function PasswordConfirmModal({
             className="mt-1 h-11 rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-40"
           >
             {submitting ? "확인하는 중…" : "확인"}
-          </button>
-          <button type="button" onClick={onCancel} disabled={submitting} className="h-9 text-[13px] text-slate-500">
-            취소
           </button>
         </form>
       </div>

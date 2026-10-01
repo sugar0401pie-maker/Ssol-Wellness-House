@@ -22,6 +22,8 @@ export async function GET(req: NextRequest) {
     // topic_tag는 첫 메시지가 저장된 직후에만 채워진다 — null이면 메시지가 아직 없는(또는
     // 만들어지자마자 끊긴) 빈 세션이라 목록에서 뺀다.
     .not("topic_tag", "is", null)
+    // 2026-10-01: "삭제"는 소프트 삭제(deleted_at만 세움, 데이터는 보존) — 목록에서만 뺀다.
+    .is("deleted_at", null)
     .order("last_message_at", { ascending: false })
     .limit(50);
 

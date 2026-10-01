@@ -6,9 +6,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import OnboardingFlow from "./OnboardingFlow";
 import OAuthProfileGate from "./OAuthProfileGate";
+import OAuthProfileReminder from "./OAuthProfileReminder";
 import { signOut } from "@/lib/supabase/authClient";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
+import { todayKeyKST } from "@/lib/safety/dailyLimit";
+
+// 2026-10-01: "오늘 하루 보지 않기"를 기억하는 로컬 키. 값은 그날의 todayKeyKST() 문자열 —
+// 오늘 날짜와 같으면 오늘은 리마인더를 또 띄우지 않는다(다음 날이면 자동으로 다시 뜸).
+const OAUTH_REMINDER_DISMISS_KEY = "oauthProfileReminderDismissedDate";
 
 // 2026-09-28: owner 요청으로 홈/채팅/마이페이지를 "/home", "/chat", "/mypage" 개별 주소로
 // 분리했다(예전엔 AppShell.tsx가 세 탭을 전부 마운트해두고 CSS로만 보이기/숨기기 — 그래서
@@ -43,11 +49,32 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   const [onboarding, setOnboarding] = useState<OnboardingInfo | "loading" | "error">("loading");
   const [dismissed, setDismissed] = useState(false);
   // 2026-09-28 신설: 카카오/네이버 가입자는 이름·생년월일이 비어 있을 수 있다 — 온보딩보다
-  // 먼저 확인해서, 필요하면 OAuthProfileGate(회원가입과 비슷한 추가 정보 입력, 닫기 없음)를
-  // 온보딩보다 먼저 띄운다. 이메일 가입자는 needsCompletion이 항상 false라 안 보인다.
+  // 먼저 확인해서, 필요하면 OAuthProfileGate(회원가입과 비슷한 추가 정보 입력)를 온보딩보다
+  // 먼저 띄운다. 이메일 가입자는 needsCompletion이 항상 false라 안 보인다.
+  // 2026-10-01 owner 요청으로 변경: 더 이상 서비스 이용 자체를 막지 않는다(필수 아님) — 대신
+  // 작은 리마인더(OAuthProfileReminder)를 먼저 보여주고, "확인"을 눌러야 이 입력 폼이 뜬다.
+  // "오늘 하루 보지 않기"를 누르면 오늘은 리마인더 자체가 안 뜬다.
   const [oauthProfile, setOauthProfile] = useState<
     { needsCompletion: boolean; suggestedName: string | null } | "loading" | "error"
   >("loading");
+  const [showOauthForm, setShowOauthForm] = useState(false);
+  const [oauthReminderSessionDismissed, setOauthReminderSessionDismissed] = useState(false);
+  const [oauthReminderDismissedToday, setOauthReminderDismissedToday] = useState(() => {
+    try {
+      return localStorage.getItem(OAUTH_REMINDER_DISMISS_KEY) === todayKeyKST();
+    } catch {
+      return false;
+    }
+  });
+
+  function dismissOauthReminderToday() {
+    try {
+      localStorage.setItem(OAUTH_REMINDER_DISMISS_KEY, todayKeyKST());
+    } catch {
+      // localStorage를 못 쓰는 환경(사생활 보호 모드 등)이면 이번 세션만 안 보이게 한다.
+    }
+    setOauthReminderDismissedToday(true);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +115,10 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
 
   const needsOnboarding = typeof onboarding === "object" && !onboarding.completed;
   const needsOauthProfile = typeof oauthProfile === "object" && oauthProfile.needsCompletion;
+  const showOauthReminder =
+    needsOauthProfile && !showOauthForm && !oauthReminderSessionDismissed && !oauthReminderDismissedToday;
+  const showOauthGateForm = needsOauthProfile && showOauthForm;
+  const oauthFlowActive = showOauthReminder || showOauthGateForm;
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-white shadow-sm sm:border-x sm:border-line">
@@ -112,10 +143,11 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           온보딩 답변이 저장되기도 전에 "오늘의 실천방법"을 먼저 불러와 버리고, 온보딩 완료
           후에도 다시 안 불러와서 개인화가 반영 안 된 채로 남는 문제가 있었다. 온보딩 확인이
           끝난 뒤에만(로딩 아닐 때) 내용을 그린다 — 보통 아주 짧은 지연이라 체감되지 않는다. */}
-      {onboarding !== "loading" &&
-        oauthProfile !== "loading" &&
-        !needsOauthProfile &&
-        (!needsOnboarding || dismissed) && <div className="min-h-0 flex-1 overflow-hidden">{children}</div>}
+      {/* 2026-10-01: needsOauthProfile이어도 더 이상 내용 자체를 막지 않는다 — 아래 리마인더/
+          입력 폼은 다른 팝업처럼 이 내용 위에 겹쳐서(오버레이) 뜬다. */}
+      {onboarding !== "loading" && oauthProfile !== "loading" && (!needsOnboarding || dismissed) && (
+        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      )}
 
       <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">
         {TABS.map((t) => (
@@ -129,14 +161,23 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      {needsOauthProfile && typeof oauthProfile === "object" && (
-        <OAuthProfileGate
-          suggestedName={oauthProfile.suggestedName}
-          onDone={() => setOauthProfile({ ...oauthProfile, needsCompletion: false })}
+      {showOauthReminder && (
+        <OAuthProfileReminder
+          onConfirm={() => setShowOauthForm(true)}
+          onDismissToday={dismissOauthReminderToday}
+          onClose={() => setOauthReminderSessionDismissed(true)}
         />
       )}
 
-      {!needsOauthProfile && needsOnboarding && !dismissed && typeof onboarding === "object" && (
+      {showOauthGateForm && typeof oauthProfile === "object" && (
+        <OAuthProfileGate
+          suggestedName={oauthProfile.suggestedName}
+          onDone={() => setOauthProfile({ ...oauthProfile, needsCompletion: false })}
+          onClose={() => setShowOauthForm(false)}
+        />
+      )}
+
+      {!oauthFlowActive && needsOnboarding && !dismissed && typeof onboarding === "object" && (
         <OnboardingFlow
           mode="gate"
           nickname={onboarding.nickname}

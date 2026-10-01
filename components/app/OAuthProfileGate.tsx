@@ -13,9 +13,11 @@ import { openAddressSearch } from "@/lib/address/daumPostcode";
 export default function OAuthProfileGate({
   suggestedName,
   onDone,
+  onClose,
 }: {
   suggestedName: string | null;
   onDone: () => void;
+  onClose?: () => void;
 }) {
   const [name, setName] = useState(suggestedName ?? "");
   const [nickname, setNickname] = useState("");
@@ -66,7 +68,18 @@ export default function OAuthProfileGate({
   return (
     <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl">
-        <p className="font-serif text-[18px] font-bold text-foreground">몇 가지만 더 알려주세요</p>
+        <div className="flex items-start justify-between">
+          <p className="font-serif text-[18px] font-bold text-foreground">몇 가지만 더 알려주세요</p>
+          {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다 —
+              이 화면은 이제 더 이상 필수(mandatory)가 아니라 리마인더(OAuthProfileReminder)에서
+              "확인"을 눌러야만 뜨고, 여기서 닫으면 그냥 지금은 건너뛰는 것뿐이다(서버에
+              저장 안 됨 — 다음에 다시 리마인더가 뜬다). */}
+          {onClose && (
+            <button type="button" onClick={onClose} aria-label="닫기" className="shrink-0 text-[12px] text-slate-400">
+              닫기
+            </button>
+          )}
+        </div>
         <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
           카카오·네이버 계정으로는 확인되지 않는 정보예요.
           <br />

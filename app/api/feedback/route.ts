@@ -10,7 +10,9 @@ import { FEEDBACK_CATEGORIES } from "@/lib/feedback/categories";
 // 시점의 profiles/auth.users 값을 그대로 스냅샷해서 저장한다.
 export const runtime = "nodejs";
 
-const NOTIFY_EMAIL = process.env.COUNSELOR_NOTIFY_EMAIL ?? "junseok@ssolwellness.com";
+// 2026-10-01 owner 지정: 상담 예약 알림(COUNSELOR_NOTIFY_EMAIL)과 다른 수신자 — 고객 의견은
+// contact@ssolwellness.com으로 보낸다.
+const NOTIFY_EMAIL = process.env.FEEDBACK_NOTIFY_EMAIL ?? "contact@ssolwellness.com";
 const CONTENT_MAX = 2000;
 
 export async function POST(req: NextRequest) {

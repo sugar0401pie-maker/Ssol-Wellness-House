@@ -394,7 +394,13 @@ export default function ChatApp() {
               placeholder="마음에 있는 이야기를 적어주세요"
               aria-label="메시지 입력"
               disabled={sending}
-              className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none focus:border-navy disabled:opacity-60"
+              // 2026-10-01 owner 요청: placeholder가 좁은 입력창 폭(옆에 "추천 질문"·"보내기"
+              // 버튼이 있어서) 때문에 2줄로 잘려 보였다 — 1단계(15->14px) 줄여도 여전히
+              // 2줄이라 1단계 더(14->13px) 줄였다. 13px에서도 여전히 2줄로 넘치긴 하지만
+              // (글자 수 자체가 길어서 버튼 폭을 더 줄이지 않는 한 완전히 1줄로는 안 들어감),
+              // 입력한 실제 텍스트 크기(text-[15px])는 그대로 두고 placeholder:text-[13px]로
+              // placeholder에만 적용했다.
+              className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-background px-4 py-2.5 text-[15px] leading-6 outline-none placeholder:text-[13px] focus:border-navy disabled:opacity-60"
             />
             <button
               type="button"

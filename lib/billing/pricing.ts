@@ -1,6 +1,10 @@
 // 요금 상수 — 화면(가격 표시)과 결제 신청(app/api/billing/checkout)이 같은 값을 쓰도록 한 곳에 모은다.
 // 2026-09-27 결정: 가입 후 7일 무료체험, 이후 월간 7,900원 또는 연간 60,000원(월 환산 5,000원).
-export const TRIAL_DAYS = 7;
+// 2026-10-01 owner 결정: 무료체험 기간을 심층보고서(ssol_reports, status='ready') 보유 여부로
+// 차등 적용 — 보고서가 있으면 7일, 없으면 3일. 보고서가 체험 중간에 생기면(퀴즈를 나중에
+// 완료) 다음 접근 판정부터 바로 7일 기준으로 다시 계산된다(lib/billing/access.ts 참고).
+export const TRIAL_DAYS_WITH_REPORT = 7;
+export const TRIAL_DAYS_WITHOUT_REPORT = 3;
 
 export const MONTHLY_PRICE = 7900;
 export const ANNUAL_PRICE = 60000;

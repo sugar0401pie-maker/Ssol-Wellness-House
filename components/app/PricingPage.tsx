@@ -159,7 +159,7 @@ export default function PricingPage() {
         <>
           <h1 className="text-[19px] font-medium text-foreground">이용권 안내</h1>
           <p className="mt-1.5 text-[14px] leading-6 text-slate-500">
-            가입 후 7일은 무료로 이용하실 수 있어요. 이후에는 이용권 결제가 필요해요.
+            가입 후 심층보고서가 있으면 7일, 없으면 3일 무료로 이용하실 수 있어요. 이후에는 이용권 결제가 필요해요.
           </p>
         </>
       )}

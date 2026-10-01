@@ -48,6 +48,8 @@ type BillingStatus = {
   reason: "entitlement" | "trial" | "expired";
   trialEndsAt: string;
   entitlementExpiresAt: string | null;
+  // 2026-10-01: 심층보고서 보유 여부로 7일/3일 갈리는 실제 무료체험 일수.
+  trialDays: number;
 };
 
 function SectionRow({
@@ -282,7 +284,10 @@ export default function MyPageTab() {
                     {billing.entitlementExpiresAt ? ` (만료일: ${formatDateTimeKR(billing.entitlementExpiresAt)})` : " (만료일 없음)"}
                   </p>
                 ) : (
-                  <p>채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (가입일로부터 +7일, 가입일 포함)</p>
+                  <p>
+                    채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (가입일로부터 +{billing.trialDays}일,
+                    가입일 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
+                  </p>
                 )}
                 <p className="mt-1.5 text-slate-500">만료 이후에도 기존 대화내역과 심층 보고서는 볼 수 있어요.</p>
                 <button

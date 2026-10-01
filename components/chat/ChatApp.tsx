@@ -63,6 +63,9 @@ export default function ChatApp() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [paywallBlocked, setPaywallBlocked] = useState(false);
+  // 2026-10-01: 무료체험 일수가 심층보고서 보유 여부로 7일/3일 갈리므로, 안내 문구에 실제
+  // 적용된 일수를 보여주기 위해 함께 받아둔다(기본값 7 — 조회 실패 시에도 문구가 비지 않게).
+  const [trialDays, setTrialDays] = useState(7);
   // 2026-09-28 owner 요청: 온보딩을 "닫기"로 건너뛴 사용자가 채팅에 들어오면, 첫 인사말
   // 바로 아래에 온보딩을 다시 열 수 있는 안내+버튼을 보여준다. 완료한 사용자에겐 안 보인다 —
   // 단, "완료" 처리는 됐어도 모든 문항을 건너뛰기만 해서 실제 답변이 하나도 없는 사람은
@@ -99,8 +102,10 @@ export default function ChatApp() {
       try {
         const res = await fetch("/api/billing/status", { headers: authHeaders(token) });
         if (!res.ok) return;
-        const data = (await res.json()) as { allowed: boolean };
-        if (!cancelled && !data.allowed) setPaywallBlocked(true);
+        const data = (await res.json()) as { allowed: boolean; trialDays: number };
+        if (cancelled) return;
+        if (!data.allowed) setPaywallBlocked(true);
+        if (typeof data.trialDays === "number") setTrialDays(data.trialDays);
       } catch {
         // 조회 실패 시엔 막지 않는다 — 실제 차단은 서버가 메시지를 보낼 때 한 번 더 확인한다.
       }
@@ -388,7 +393,7 @@ export default function ChatApp() {
       </main>
 
       {paywallBlocked ? (
-        <TrialPaywallOverlay />
+        <TrialPaywallOverlay trialDays={trialDays} />
       ) : (
         <footer className="border-t border-line bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
           <form

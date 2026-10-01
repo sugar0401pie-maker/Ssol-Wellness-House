@@ -1,5 +1,5 @@
 // 순수 함수로 분리해 네트워크 없이 단위 테스트한다 (access.test.ts).
-import { TRIAL_DAYS } from "./pricing.ts";
+import { TRIAL_DAYS_WITH_REPORT, TRIAL_DAYS_WITHOUT_REPORT } from "./pricing.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -10,15 +10,23 @@ export type AccessResult = {
   reason: "entitlement" | "trial" | "expired";
   trialDaysLeft: number;
   // 2026-09-28: 마이페이지에 "채팅 무료체험 만료일"을 실제 날짜로 보여주기 위해 추가.
-  // trialEndsAt은 결제 여부와 무관하게 항상 계산해서 준다(가입일 + 7일). entitlementExpiresAt은
+  // trialEndsAt은 결제 여부와 무관하게 항상 계산해서 준다(가입일 + trialDays). entitlementExpiresAt은
   // 지금 접근을 허용해준 활성 이용권의 만료일 — 이용권이 없으면(무료체험 중/만료) null이고,
   // 이용권은 있지만 만료일 자체가 없으면(수동 부여한 무제한 계정 등)도 null이다.
   trialEndsAt: string;
   entitlementExpiresAt: string | null;
+  // 2026-10-01 신설: 이번 판정에 실제로 쓰인 무료체험 일수(7 또는 3) — 화면에서 "왜 7일/3일인지"
+  // 설명할 때 trialStartedAt을 다시 들고 날짜 차이를 계산하지 않고 이 값을 그대로 쓴다.
+  trialDays: number;
 };
 
 // entitlements 중 하나라도 지금 유효하게 활성 상태면(만료일이 없거나 아직 안 지났으면) 그걸로 허용한다.
-// 아니면 가입일(trialStartedAt) 기준 7일 무료체험이 아직 안 끝났는지 본다.
+// 아니면 가입일(trialStartedAt) 기준 무료체험이 아직 안 끝났는지 본다.
+//
+// 2026-10-01 owner 결정: 무료체험 기간은 심층보고서(hasReport) 보유 여부로 차등 적용된다 —
+// 보고서가 있으면 7일, 없으면 3일. 매 호출마다 다시 계산하므로(고정된 값을 저장해두지
+// 않음), 체험 중간에 보고서가 생기면(퀴즈를 나중에 완료) 다음 호출부터 바로 7일 기준으로
+// 늘어난다 — 반대로 보고서가 사라지는 경우는 실제로 없으므로 줄어드는 경우는 없다.
 //
 // 중요: 이 함수는 오직 "채팅(메시지 생성)을 허용할지"만 결정한다 — 계정 자체나 지난 대화 기록,
 // 심층보고서 열람은 이 판정과 완전히 무관하다(app/api/chat/route.ts에서만 이 결과로 채팅 생성을
@@ -27,10 +35,12 @@ export type AccessResult = {
 export function computeAccess(params: {
   trialStartedAt: string;
   entitlements: Entitlement[];
+  hasReport: boolean;
   now: Date;
 }): AccessResult {
-  const { trialStartedAt, entitlements, now } = params;
-  const trialEnd = new Date(trialStartedAt).getTime() + TRIAL_DAYS * DAY_MS;
+  const { trialStartedAt, entitlements, hasReport, now } = params;
+  const trialDays = hasReport ? TRIAL_DAYS_WITH_REPORT : TRIAL_DAYS_WITHOUT_REPORT;
+  const trialEnd = new Date(trialStartedAt).getTime() + trialDays * DAY_MS;
   const trialEndsAt = new Date(trialEnd).toISOString();
 
   const activeEntitlement = entitlements.find(
@@ -43,13 +53,14 @@ export function computeAccess(params: {
       trialDaysLeft: 0,
       trialEndsAt,
       entitlementExpiresAt: activeEntitlement.expiresAt,
+      trialDays,
     };
   }
 
   if (now.getTime() < trialEnd) {
     const trialDaysLeft = Math.max(1, Math.ceil((trialEnd - now.getTime()) / DAY_MS));
-    return { allowed: true, reason: "trial", trialDaysLeft, trialEndsAt, entitlementExpiresAt: null };
+    return { allowed: true, reason: "trial", trialDaysLeft, trialEndsAt, entitlementExpiresAt: null, trialDays };
   }
 
-  return { allowed: false, reason: "expired", trialDaysLeft: 0, trialEndsAt, entitlementExpiresAt: null };
+  return { allowed: false, reason: "expired", trialDaysLeft: 0, trialEndsAt, entitlementExpiresAt: null, trialDays };
 }

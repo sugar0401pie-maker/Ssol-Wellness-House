@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import CounselorBookingModal from "./CounselorBookingModal";
+import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
@@ -78,15 +79,20 @@ export default function MyPageTab() {
   const [reports, setReports] = useState<ReportListItem[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | null>(null);
+  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [showInfoEdit, setShowInfoEdit] = useState(false);
 
-  // 상담사 연결 — 2026-09-24: 간단한 문의 폼 대신 실제 예약 페이지와 같은 신청 팝업으로 교체.
+  // 상담사 연결(현재 "웰니스 상담 신청하기") — 2026-09-24: 간단한 문의 폼 대신 실제 예약
+  // 페이지와 같은 신청 팝업으로 교체. 2026-10-01: 제목을 owner 요청대로 바꿨다(내부 상태 키는
+  // 그대로 "counselor" 유지 — 화면에 보이는 라벨만 바뀜).
   const [showBooking, setShowBooking] = useState(false);
+
+  // 고객의 의견 — 2026-10-01 신설: 건의/제안을 받아 접수만 해둔다(owner가 수동 확인).
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // 2026-09-26: 다른 창(심리테스트 사이트)에서 테스트를 마치고 이 앱으로 돌아오면 자동으로 다시
   // 불러온다 — 탭은 계속 마운트돼 있어서 마운트 시 1회 조회만으로는 새 결과가 반영되지 않았다.
@@ -312,7 +318,7 @@ export default function MyPageTab() {
           </SectionRow>
 
           <SectionRow
-            title="상담사 연결"
+            title="웰니스 상담 신청하기"
             open={open === "counselor"}
             onToggle={() => setOpen(open === "counselor" ? null : "counselor")}
           >
@@ -325,10 +331,27 @@ export default function MyPageTab() {
               상담 예약 신청하기
             </button>
           </SectionRow>
+
+          <SectionRow
+            title="고객의 의견"
+            open={open === "feedback"}
+            onToggle={() => setOpen(open === "feedback" ? null : "feedback")}
+          >
+            <p>쏘웰라 이용에 불편이 있거나 제안사항이 있으실 경우 편하게 알려주세요.</p>
+            <button
+              type="button"
+              onClick={() => setShowFeedback(true)}
+              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+            >
+              건의하기
+            </button>
+          </SectionRow>
         </div>
       )}
 
       {showBooking && <CounselorBookingModal onClose={() => setShowBooking(false)} />}
+
+      {showFeedback && <CustomerFeedbackModal onClose={() => setShowFeedback(false)} />}
 
       {editingOnboarding && (
         <OnboardingFlow

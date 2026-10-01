@@ -13,11 +13,36 @@ export const ANNUAL_SAVINGS_PERCENT = Math.round((ANNUAL_SAVINGS_AMOUNT / (MONTH
 export type PlanId = "monthly" | "annual";
 
 export const PLAN_LABELS: Record<PlanId, string> = {
-  monthly: "월간 이용권",
-  annual: "연간 이용권",
+  monthly: "월간 멤버십",
+  annual: "연간 멤버십",
 };
 
 export const PLAN_PRICES: Record<PlanId, number> = {
   monthly: MONTHLY_PRICE,
   annual: ANNUAL_PRICE,
 };
+
+// 2026-10-01 owner 결정: "10월 한정 · 오픈 기념 이용권 할인" 프로모션 — 월간 7,900원->2,900원,
+// 연간 60,000원->22,800원(월 환산 1,900원), 2026년 10월 한 달간. 실제 결제 금액(체크아웃)과
+// 가격 페이지 표시가 항상 같은 값을 보도록 currentPrice() 한 곳에서만 계산해서 양쪽이 쓴다 —
+// 둘 중 하나만 프로모션가를 반영하면 "화면엔 2,900원인데 실제로는 7,900원 결제됨" 같은 금액
+// 불일치 사고가 난다.
+export const PROMO_MONTHLY_PRICE = 2900;
+export const PROMO_ANNUAL_PRICE = 22800;
+export const PROMO_ANNUAL_MONTHLY_EQUIVALENT = Math.round(PROMO_ANNUAL_PRICE / 12); // 1,900원
+export const PROMO_LABEL = "10월 오픈 기념 특별가";
+export const PROMO_PERIOD_LABEL = "프로모션 기간: 2026년 10월 1일 ~ 10월 31일";
+
+// KST(UTC+9) 기준 2026-10-01 00:00:00 ~ 2026-11-01 00:00:00(=10/31 23:59:59.999까지 포함).
+const PROMO_START = new Date("2026-10-01T00:00:00+09:00");
+const PROMO_END = new Date("2026-11-01T00:00:00+09:00");
+
+export function isPromoActive(now: Date = new Date()): boolean {
+  return now >= PROMO_START && now < PROMO_END;
+}
+
+// 실제로 결제될(또는 화면에 보여줄) 금액. 프로모션 기간이 아니면 평소 정가.
+export function currentPrice(plan: PlanId, now: Date = new Date()): number {
+  if (!isPromoActive(now)) return PLAN_PRICES[plan];
+  return plan === "monthly" ? PROMO_MONTHLY_PRICE : PROMO_ANNUAL_PRICE;
+}

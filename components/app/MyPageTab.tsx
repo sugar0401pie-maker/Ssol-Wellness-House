@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import CounselorBookingModal from "./CounselorBookingModal";
 import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
@@ -85,11 +84,6 @@ export default function MyPageTab() {
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [showInfoEdit, setShowInfoEdit] = useState(false);
-
-  // 상담사 연결(현재 "웰니스 상담 신청하기") — 2026-09-24: 간단한 문의 폼 대신 실제 예약
-  // 페이지와 같은 신청 팝업으로 교체. 2026-10-01: 제목을 owner 요청대로 바꿨다(내부 상태 키는
-  // 그대로 "counselor" 유지 — 화면에 보이는 라벨만 바뀜).
-  const [showBooking, setShowBooking] = useState(false);
 
   // 고객의 의견 — 2026-10-01 신설: 건의/제안을 받아 접수만 해둔다(owner가 수동 확인).
   const [showFeedback, setShowFeedback] = useState(false);
@@ -325,7 +319,7 @@ export default function MyPageTab() {
             <p>전문 상담사와의 면담·세션을 신청할 수 있어요. 프로그램, 날짜, 가능한 시간을 골라 신청서를 작성해주세요.</p>
             <button
               type="button"
-              onClick={() => setShowBooking(true)}
+              onClick={() => router.push("/session-reserve")}
               className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
             >
               상담 예약 신청하기
@@ -348,8 +342,6 @@ export default function MyPageTab() {
           </SectionRow>
         </div>
       )}
-
-      {showBooking && <CounselorBookingModal onClose={() => setShowBooking(false)} />}
 
       {showFeedback && <CustomerFeedbackModal onClose={() => setShowFeedback(false)} />}
 

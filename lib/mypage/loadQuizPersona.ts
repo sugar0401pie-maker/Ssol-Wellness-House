@@ -21,8 +21,12 @@ export type QuizPersona = {
   traits: string[];
   domainScores: Record<string, number> | null;
   // 2026-09-25: 유료 심층 리포트(ssol_reports, 결정론적 조립 — AI 자유생성 아님)가 있으면
-  // 그중 "주목할 만한 부분은"/"바로 지금, 작은 변화를 만들어봐요" 두 섹션만 채팅 개인화
-  // 참고 자료로 함께 준다. 결제 안 한 사용자는 report가 아예 없으니 null — 정상 케이스, 에러 아님.
+  // 채팅 개인화 참고 자료로 함께 준다. 결제 안 한 사용자는 report가 아예 없으니 null — 정상
+  // 케이스, 에러 아님.
+  // 2026-10-02 owner 요청: 예전엔 8개 섹션 중 section2·section8 두 개만 뽑아 썼는데(채팅에
+  // "과한" 내용이라 판단), 유형 정보를 포함한 전체 내용을 전달하도록 범위를 넓혔다 — 아래
+  // buildReportInsight() 참고. 동시에 prompt.ts 쪽 지침도 "리포트를 그대로 인용하면 안 된다"에서
+  // "인용해도 된다"로 바뀌었다(이 둘은 같은 결정의 두 축이라 항상 같이 움직여야 한다).
   reportInsight: string | null;
 };
 
@@ -41,11 +45,23 @@ export type QuizPersona = {
 // section7을 읽고 있었다. (2) section7/section8도 이제 항상 배열인데 join(" ") 없이
 // 템플릿 문자열에 바로 넣어서, 배열이 Array.prototype.toString()으로 강제 변환돼
 // 문단 사이에 공백 없이 쉼표로 뭉쳐진 문장이 채팅 참고 자료로 들어가고 있었다.
-const MAX_SECTION_CHARS = 300;
+// 2026-10-02: 채팅이 리포트를 "참고만" 하던 데서 "직접 인용 가능"으로 바뀌면서, 섹션별
+// 300자 자르기는 의미가 없어졌다(인용하라고 해놓고 문장을 중간에 끊으면 모순). 대신 전체
+// 길이에만 안전장치를 둔다 — 8섹션 전부 합쳐도 보통 리포트 한 편이 이 안에 들어온다.
+const MAX_TOTAL_CHARS = 6000;
 
-function truncate(body: string): string {
-  return body.length > MAX_SECTION_CHARS ? body.slice(0, MAX_SECTION_CHARS) + "…" : body;
-}
+// 섹션 순서·라벨은 report_builder.py/reportV3의 제목과 맞춘다(둘 다 같은 8섹션 구조).
+const SECTION_LABELS: Record<string, string> = {
+  section1: "1. 당신의 웰니스 프로파일",
+  section2: "2. 주목할 만한 부분은",
+  section3: "3. 고민을 다루는 나의 방식",
+  section4: "4. 한 겹 더 들여다보기",
+  section5: "5. 이런 순간, 익숙하지 않나요?",
+  section6: "6. 다른 유형과의 궁합",
+  section7: "7. 앞으로 나아갈 방향",
+  section8: "8. 이번 주 제안",
+};
+const SECTION_ORDER = Object.keys(SECTION_LABELS);
 
 // 2026-09-30: 형제 사이트의 GeneratedSectionsV3에서 모든 섹션은 항상 문단 배열(string[])이다 —
 // 예전(문자열 하나였던 시절) 흔적이 남아있을 가능성까지 함께 받아준다.
@@ -55,15 +71,21 @@ function sectionText(value: unknown): string | null {
   return null;
 }
 
+// 2026-10-02: 유형 정보(section1)를 포함해 8개 섹션 전부를 전달한다 — 결제한 사람의 리포트
+// 전체를 채팅이 참고·인용할 수 있게 하자는 owner 결정. 비결제 사용자는 ssol_reports 조회
+// 자체가 비어서(loadQuizPersona 참고) 이 함수에 애초에 null이 들어오고, 그대로 null을
+// 반환한다 — 심층보고서 없는 사용자는 자연히 아무 영향도 받지 않는다.
 function buildReportInsight(assembled: unknown): string | null {
   if (!assembled || typeof assembled !== "object") return null;
   const a = assembled as Record<string, unknown>;
-  const section2Text = sectionText(a.section2);
-  const section8Text = sectionText(a.section8);
   const picked: string[] = [];
-  if (section2Text) picked.push(`주목할 만한 부분: ${truncate(section2Text)}`);
-  if (section8Text) picked.push(`이번 주 제안: ${truncate(section8Text)}`);
-  return picked.length ? picked.join("\n") : null;
+  for (const key of SECTION_ORDER) {
+    const text = sectionText(a[key]);
+    if (text) picked.push(`[${SECTION_LABELS[key]}] ${text}`);
+  }
+  if (!picked.length) return null;
+  const joined = picked.join("\n");
+  return joined.length > MAX_TOTAL_CHARS ? joined.slice(0, MAX_TOTAL_CHARS) + "…" : joined;
 }
 
 // 2026-09-28: 마이페이지에서 "대표 유형으로 선택"한 응시 기록이 있으면 그걸 쓰고, 없으면

@@ -155,8 +155,9 @@ describe("buildSystemPrompt", () => {
     assert.match(p, /당신은 이 유형이라서/); // subtle 모드의 기존 경고문은 여전히 있어야 함
   });
 
-  test("subtle 모드에서 reportInsight가 있으면 심층 리포트 참고 블록이 들어가고, 그대로 인용 금지 지침도 함께 들어간다", () => {
+  test("subtle 모드에서 reportInsight가 있으면 심층 리포트 참고 블록이 들어가고, 직접 인용·출처 언급을 허용하는 지침도 함께 들어간다", () => {
     // 2026-09-25: 유료 심층 리포트(결정론적 조립) 내용을 채팅 개인화에 반영.
+    // 2026-10-02: owner 결정으로 "그대로 인용 금지" → "인용 허용"으로 정책이 바뀌었다.
     const p = buildSystemPrompt({
       sections: SECTIONS,
       matchedRules: [],
@@ -166,12 +167,13 @@ describe("buildSystemPrompt", () => {
         label: "바스크 치즈케이크",
         axis: "나 자신",
         reportInsight:
-          "주 고민 영역 해부: 오각형에서 가장 안쪽으로 들어온 꼭짓점은 나 자신(2.94)이에요.\n이번 주 제안: 결과와 상관없이, 이번 주 내가 들인 노력 하나를 스스로 인정해보기",
+          "[2. 주목할 만한 부분은] 오각형에서 가장 안쪽으로 들어온 꼭짓점은 나 자신(2.94)이에요.\n[8. 이번 주 제안] 결과와 상관없이, 이번 주 내가 들인 노력 하나를 스스로 인정해보기",
       },
     });
     assert.match(p, /가장 안쪽으로 들어온 꼭짓점은 나 자신/);
-    assert.match(p, /그대로 읽어주거나/);
-    assert.match(p, /지금 사용자가 하는 말이 이 내용과 실제로 관련 있을 때만/);
+    assert.match(p, /직접 인용하거나/);
+    assert.match(p, /한 번 더 읽어보는 것도 도움이 될 것 같아요/);
+    assert.match(p, /지금 사용자가 하는 말이 이 내용과 실제로 관련 있을 때 적극적으로 활용/);
   });
 
   test("reportInsight가 없으면 심층 리포트 참고 블록이 들어가지 않는다", () => {

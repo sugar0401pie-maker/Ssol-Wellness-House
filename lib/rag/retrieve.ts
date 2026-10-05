@@ -5,7 +5,7 @@ import { findKeywordHits } from "@/lib/safety/keywordCheck.ts";
 import type { SafetyRule } from "@/lib/safety/rules.ts";
 import type { RouteId } from "@/lib/safety/types.ts";
 
-const EMBEDDING_MODEL = "text-embedding-3-small"; // knowledge_chunks.embedding과 같은 모델·차원(1536)이어야 함
+export const EMBEDDING_MODEL = "text-embedding-3-small"; // knowledge_chunks.embedding과 같은 모델·차원(1536)이어야 함
 
 export type RetrievedChunk = {
   chunk_id: string;
@@ -38,7 +38,7 @@ function categoryOf(value: string): RouteId | null {
   return null;
 }
 
-function shouldExclude(chunk: { do_not_apply_when: string[] | null }, activeCategories: Set<RouteId>): boolean {
+export function shouldExclude(chunk: { do_not_apply_when: string[] | null }, activeCategories: Set<RouteId>): boolean {
   if (!chunk.do_not_apply_when?.length) return false;
   return chunk.do_not_apply_when.some((v) => {
     const cat = categoryOf(v);

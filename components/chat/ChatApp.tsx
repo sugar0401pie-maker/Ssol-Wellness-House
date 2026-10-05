@@ -8,8 +8,19 @@ import { SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/p
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
+import { OFFER_CHOICES, isOfferMessage } from "@/lib/theory/offer";
+import type { Choice, ChoiceId } from "@/lib/theory/types";
 
-type Message = { id: number; role: "user" | "assistant"; content: string };
+// choices: 이 말풍선 아래에 보여줄 선택 칩("행동 제안받기"/"내 고민 더 알아보기" — lib/theory).
+// 대화의 맨 마지막 말풍선이고 아직 답하지 않았을 때만 화면에 나온다.
+type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[] };
+
+// 저장된 대화를 다시 불러올 때(서버는 role/content만 준다), 마지막 말이 선택 안내이면 칩을 되살린다.
+function withOfferChoices(list: Message[]): Message[] {
+  const last = list[list.length - 1];
+  if (!last || last.role !== "assistant" || !isOfferMessage(last.content)) return list;
+  return [...list.slice(0, -1), { ...last, choices: OFFER_CHOICES }];
+}
 type SessionSummary = {
   sessionId: string;
   topicTag: string | null;
@@ -153,16 +164,22 @@ export default function ChatApp() {
   }
 
   // 완성된(이미 안전 검사를 통과한) 답변을 타이핑되듯 보여준다.
-  function revealAssistantMessage(fullText: string) {
+  function revealAssistantMessage(fullText: string, onDone?: () => void) {
     const id = nextId.current++;
     setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
     cancelReveal.current?.();
-    cancelReveal.current = revealText(fullText, (partial) => {
-      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: partial } : m)));
-    });
+    cancelReveal.current = revealText(
+      fullText,
+      (partial) => {
+        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: partial } : m)));
+      },
+      undefined,
+      undefined,
+      onDone,
+    );
   }
 
-  async function send(text: string, options?: { isPersonaQuestion?: boolean }) {
+  async function send(text: string, options?: { isPersonaQuestion?: boolean; choiceId?: ChoiceId }) {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
     setInput("");
@@ -183,6 +200,7 @@ export default function ChatApp() {
           message: trimmed,
           sessionId: sessionId.current,
           isPersonaQuestion: options?.isPersonaQuestion ?? false,
+          ...(options?.choiceId ? { choiceId: options.choiceId } : {}),
         }),
       });
 
@@ -198,11 +216,23 @@ export default function ChatApp() {
         reply: string | null;
         note?: string;
         paywallBlocked?: boolean;
+        followUp?: { text: string; choices: Choice[] };
       };
       sessionId.current = data.sessionId;
       saveActiveSessionId(data.sessionId);
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
-      revealAssistantMessage(data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`);
+      const followUp = data.followUp;
+      revealAssistantMessage(
+        data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`,
+        // 답변이 다 보인 다음에 선택 안내 말풍선과 칩이 이어서 나온다(서버에는 이미 저장돼 있다).
+        followUp
+          ? () =>
+              setMessages((prev) => [
+                ...prev,
+                { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices },
+              ])
+          : undefined,
+      );
       if (data.paywallBlocked) setPaywallBlocked(true);
       return;
     } catch {
@@ -259,7 +289,7 @@ export default function ChatApp() {
       const data = (await res.json()) as { messages: { role: "user" | "assistant"; content: string }[] };
       cancelReveal.current?.();
       nextId.current = 1;
-      setMessages(data.messages.map((m) => ({ id: nextId.current++, role: m.role, content: m.content })));
+      setMessages(withOfferChoices(data.messages.map((m) => ({ id: nextId.current++, role: m.role, content: m.content }))));
       sessionId.current = id;
       saveActiveSessionId(id);
       setInput("");
@@ -385,8 +415,24 @@ export default function ChatApp() {
             ))}
           </div>
         )}
-        {messages.map((m) => (
-          <Bubble key={m.id} role={m.role} content={m.content} />
+        {messages.map((m, i) => (
+          <div key={m.id} className="space-y-2">
+            <Bubble role={m.role} content={m.content} />
+            {m.choices && i === messages.length - 1 && !sending && (
+              <div className="flex flex-wrap gap-1.5 pl-1">
+                {m.choices.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => void send(c.label, { choiceId: c.id })}
+                    className="rounded-full border border-navy bg-white px-3.5 py-2 text-[13px] font-medium text-navy active:bg-navy-soft"
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
         {sending && <ThinkingBubble />}
         <div ref={endRef} />

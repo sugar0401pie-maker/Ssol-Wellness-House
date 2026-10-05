@@ -312,4 +312,60 @@ describe("buildSystemPrompt", () => {
     assert.match(p, /SAFE-002/);
     assert.match(p, /결정을 대신 내리지 않는다/);
   });
+
+  // 2026-10-05: "행동 제안받기 / 내 고민 더 알아보기" 선택 흐름(lib/theory) 전용 지시.
+  describe("dialogueMode (이론 질문 선택 흐름)", () => {
+    const base = { sections: SECTIONS, matchedRules: [], route: "wellness" as const, usedClinicalChunk: false };
+
+    test("dialogueMode가 없으면 기존 동작과 완전히 같다 — 선택 흐름 지시가 하나도 들어가지 않는다", () => {
+      const p = buildSystemPrompt({ ...base, turnCount: 1 });
+      assert.doesNotMatch(p, /내 고민 더 알아보기/);
+      assert.doesNotMatch(p, /행동 제안받기/);
+      assert.match(p, /이번이 이 대화의 2번째 답변입니다/); // 기본 페이싱은 그대로
+    });
+
+    test("offer_follows: 질문으로 끝내지 말고 행동 제안은 미루라는 지시가 들어가고, 기본 페이싱은 빠진다", () => {
+      const p = buildSystemPrompt({ ...base, turnCount: 1, dialogueMode: "offer_follows" });
+      assert.match(p, /선택 안내를 이어서 붙입니다/);
+      assert.match(p, /질문이나 확인 요청으로 끝내지 말고/);
+      assert.doesNotMatch(p, /이번이 이 대화의 2번째 답변입니다/);
+    });
+
+    test("action: 확인 질문 없이 단기+중장기 3가지를 제안하라는 지시가 들어간다", () => {
+      const p = buildSystemPrompt({ ...base, turnCount: 3, dialogueMode: "action" });
+      assert.match(p, /'행동 제안받기'를 직접 선택/);
+      assert.match(p, /단기적인 것 1~2개/);
+      assert.doesNotMatch(p, /이미 이 대화에서 몇 차례 들었습니다/); // 서로 반대 지시가 섞이지 않는다
+    });
+
+    test("explore + 이론 가이드: 초점·단계·의도·참고 질문이 들어가고, 이론 이름·진단·이름 붙이기를 금지한다", () => {
+      const p = buildSystemPrompt({
+        ...base,
+        turnCount: 3,
+        dialogueMode: "explore",
+        theoryGuide: {
+          plainFocus: "생각이 감정에 어떻게 이어지는지 살펴보기",
+          stage: "CLARIFY",
+          question: "그 상황에서 가장 먼저 떠오른 생각은 무엇이었나요?",
+          intent: "자동적으로 떠오른 생각 알아차리기",
+        },
+      });
+      assert.match(p, /'내 고민 더 알아보기'를 직접 선택/);
+      assert.match(p, /생각이 감정에 어떻게 이어지는지 살펴보기/);
+      assert.match(p, /핵심을 구분해보는 단계/);
+      assert.match(p, /자동적으로 떠오른 생각 알아차리기/);
+      assert.match(p, /가장 먼저 떠오른 생각은 무엇이었나요/);
+      assert.match(p, /이론 이름이나 전문용어는 쓰지 마세요/);
+      assert.match(p, /평가하거나 진단하지 말고/);
+      assert.match(p, /질문은 딱 하나만/);
+      assert.doesNotMatch(p, /이미 이 대화에서 몇 차례 들었습니다/); // 3가지 제안 페이싱과 섞이면 안 된다
+    });
+
+    test("explore인데 이론 가이드가 없으면(DB 미준비 등) 일반 탐색 지시로 대체된다", () => {
+      const p = buildSystemPrompt({ ...base, turnCount: 3, dialogueMode: "explore", theoryGuide: null });
+      assert.match(p, /'내 고민 더 알아보기'를 직접 선택/);
+      assert.match(p, /아직 덜 다뤄진 부분/);
+      assert.doesNotMatch(p, /참고 질문:/);
+    });
+  });
 });

@@ -6,7 +6,8 @@ import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
 import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
 import { searchWellnessPractices } from "@/lib/rag/practicesSearch";
 import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
-import { buildSystemPrompt, type PersonaHint } from "@/lib/rag/prompt.ts";
+import { buildSystemPrompt, type DialogueMode, type PersonaHint } from "@/lib/rag/prompt.ts";
+import type { TheoryGuide } from "@/lib/theory/types";
 import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
@@ -108,6 +109,9 @@ export async function generateAnswer(params: {
   userId: string;
   sessionId: string;
   isPersonaQuestion?: boolean;
+  // 2026-10-05: 이론 질문 선택 흐름(lib/theory)에서만 넘어온다. 없으면 이전과 완전히 같게 동작한다.
+  dialogueMode?: DialogueMode;
+  theoryGuide?: TheoryGuide | null;
 }): Promise<{
   reply: string;
   retrievedChunkIds: string[];
@@ -150,8 +154,12 @@ export async function generateAnswer(params: {
   // 실천방법 DB(owner 제공, 375개)에서 상황에 맞는 후보를 가져온다. "무엇을 해볼지" 제안이
   // 실제로 의미 있는 route(wellness/life_decision/clinical_distress)에서만, 그리고 성향 질문
   // 모드(캐릭터 해석)에서는 성격이 다른 대화라 쓰지 않는다.
+  // 선택 안내 직전 턴(offer_follows)과 탐색 턴(explore)에서는 행동 제안을 하지 않으므로 실천법 후보도
+  // 가져오지 않는다(불필요한 조회 방지 + 프롬프트에 서로 반대되는 지시가 섞이지 않게).
   const wantsPractices =
     !params.isPersonaQuestion &&
+    params.dialogueMode !== "offer_follows" &&
+    params.dialogueMode !== "explore" &&
     (params.route === "wellness" || params.route === "life_decision" || params.route === "clinical_distress");
 
   // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
@@ -182,6 +190,8 @@ export async function generateAnswer(params: {
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
+    dialogueMode: params.dialogueMode,
+    theoryGuide: params.theoryGuide,
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
     // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에
     // 요약·제안으로 넘어가야 하는지 판단하는 데 쓴다.

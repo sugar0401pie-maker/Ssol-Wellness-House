@@ -10,6 +10,8 @@ import { checkAccessCode } from "@/lib/security/accessCode";
 import type { RouteId } from "@/lib/safety/types";
 import { makeTopicTag } from "@/lib/chat/topicTag";
 import { loadAccessStatus } from "@/lib/billing/loadAccess";
+import { planDialogue } from "@/lib/theory/orchestrate";
+import { isChoiceId } from "@/lib/theory/dialogueState";
 
 // C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
 // 위기(route 1)·폭력(route 2)은 아래에서 이 제한 검사보다 먼저 처리되어, 제한과 무관하게 항상 응답한다.
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown };
+  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -45,6 +47,8 @@ export async function POST(req: NextRequest) {
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
   const isPersonaQuestion = body.isPersonaQuestion === true;
+  // "행동 제안받기 / 내 고민 더 알아보기" 칩(THEORY_OFFER_ENABLED가 켜졌을 때만 의미가 있다).
+  const choiceId = isChoiceId(body.choiceId) ? body.choiceId : null;
   if (!message) return NextResponse.json({ error: "메시지를 입력해주세요." }, { status: 400 });
   if (message.length > MAX_MESSAGE_LENGTH) {
     return NextResponse.json({ error: `메시지가 너무 길어요 (최대 ${MAX_MESSAGE_LENGTH}자).` }, { status: 400 });
@@ -179,6 +183,18 @@ export async function POST(req: NextRequest) {
 
   // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
   const { rules: safetyRules } = await getSafetyData();
+  // 이론 질문 선택 흐름(준비 단계). 기능이 꺼져 있으면(기본값) 즉시 빈 계획을 돌려주고 아무 조회도 하지 않는다.
+  const dialogue = await planDialogue({
+    admin,
+    userId,
+    sessionId,
+    route: decision.route,
+    isPersonaQuestion,
+    choiceId,
+    message,
+    recentMessages,
+    safetyRules,
+  });
   const result = await generateAnswer({
     route: decision.route,
     matchedRuleIds: decision.matchedRuleIds,
@@ -188,6 +204,7 @@ export async function POST(req: NextRequest) {
     userId,
     sessionId,
     isPersonaQuestion,
+    ...dialogue.generationExtras,
   });
 
   await admin.from("chat_messages").insert({
@@ -200,6 +217,9 @@ export async function POST(req: NextRequest) {
     framework_id: result.frameworkId,
   });
 
+  // 이번 답변이 저장된 뒤에야 상태를 저장하고, 선택 안내를 보낼 차례면 그 메시지를 이어서 저장한다.
+  const { followUp } = await dialogue.finalize();
+
   const usageTotals = result.usage.reduce(
     (acc, u) => ({ inputTokens: acc.inputTokens + u.inputTokens, outputTokens: acc.outputTokens + u.outputTokens }),
     { inputTokens: 0, outputTokens: 0 },
@@ -211,6 +231,7 @@ export async function POST(req: NextRequest) {
     reply: result.reply,
     done: true,
     remainingToday: Math.max(DAILY_MESSAGE_LIMIT - (todayCount ?? 0), 0),
+    ...(followUp ? { followUp } : {}),
     ...routingMeta,
     // 사용량 정보(민감정보 아님) — 비용 시뮬레이션(scripts/cost-simulation.mjs)이 이 값을 읽는다.
     usage: {

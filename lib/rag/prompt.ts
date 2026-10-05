@@ -1,6 +1,7 @@
 // 시스템 프롬프트를 실제 텍스트로 조립하는 순수 함수. DB·네트워크 호출이 없어서 네트워크 없이
 // 테스트할 수 있다 (route.ts의 combine.ts와 같은 이유로 분리했다).
 import type { RouteId } from "../safety/types.ts";
+import type { TheoryGuide, TheoryStage } from "../theory/types.ts";
 
 type SectionLike = { section_name: string; prompt_text: string; priority: string };
 type RuleLike = { rule_id: string; category: string; rule_text: string };
@@ -32,6 +33,39 @@ export type PersonaHint = {
   reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
+export type DialogueMode = "offer_follows" | "action" | "explore";
+
+const STAGE_GUIDE: Record<TheoryStage, string> = {
+  OPEN: "상황과 감정을 사용자의 말로 풀어내도록 돕는 단계",
+  CLARIFY: "핵심을 구분해보는 단계(사실과 해석, 원하는 것과 걱정되는 것 등)",
+  REFRAME: "다른 관점이나 예외, 이미 가진 강점을 살펴보는 단계",
+  COMMIT: "탐색을 정리하고 작은 다음 걸음 하나를 사용자가 스스로 정해보는 단계",
+};
+
+// 선택 흐름의 모드별 지시. 이 모드들에서는 턴 수 기반 기본 페이싱(2턴째 방향 제시/3턴째~ 3가지
+// 제안)을 쓰지 않는다 — 서로 반대되는 지시가 한 프롬프트에 같이 들어가면 안 되기 때문.
+function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null | undefined): string {
+  if (mode === "offer_follows") {
+    return "이번 답변 바로 뒤에 시스템이 '지금 당장 해볼 수 있는 방법을 알려드릴까요, 아니면 고민을 더 깊게 알아볼까요?'라는 선택 안내를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 지금까지 들은 마음을 따뜻하게 반영하고 짧게 정리하는 것으로 마무리하세요. 구체적인 행동 제안은 사용자가 고른 뒤에 하므로 이번에는 하지 마세요. 선택 안내 문구 자체는 쓰지 마세요.";
+  }
+  if (mode === "action") {
+    return "사용자가 '행동 제안받기'를 직접 선택했습니다. 더 이상 확인 질문을 하지 말고, 지금까지 들은 내용을 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 단기적인 것 1~2개와 꾸준히 이어가면 좋을 중장기적인 것 1개를 총 3가지 안팎으로 구체적으로 제안하세요. 여러 감정이 함께 드러나 있다면 각각에 짝지어 제안하세요. 마지막에는 새 질문 대신 조정이 필요한 부분이 있는지 물어보며 마무리하세요.";
+  }
+  const base =
+    "사용자가 '내 고민 더 알아보기'를 직접 선택했습니다. 이제부터는 해결책이나 행동 제안을 먼저 내놓지 말고, 사용자가 자신의 고민을 스스로 더 깊이 들여다보도록 돕는 탐색 대화를 합니다. 사용자의 대답을 평가하거나 진단하지 말고, '~패턴이네요' 같은 이름 붙이기도 하지 마세요. 이론 이름이나 전문용어는 쓰지 마세요. 먼저 방금 한 말에 담긴 마음을 반영한 뒤, 질문은 딱 하나만 물으며 마무리하세요.";
+  if (!guide) {
+    return `${base} 지금까지 이야기에서 아직 덜 다뤄진 부분(상황, 감정, 원하는 것 중 하나)을 한 가지만 골라 자연스럽게 물어보세요.`;
+  }
+  return [
+    base,
+    `이번 탐색의 초점: ${guide.plainFocus}`,
+    `이번 단계: ${STAGE_GUIDE[guide.stage]}`,
+    guide.intent ? `이 단계 질문의 의도: ${guide.intent}` : "",
+    `참고 질문: "${guide.question}" — 이 문장을 그대로 읽지 말고, 사용자가 방금 한 말에 맞게 자연스럽게 바꿔서 한 번만 물으세요.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 // frameworks.steps는 "WANT: 정말 원하는가" 처럼 영문 약어가 붙어 있다. 사용자에게 영어 약어가
 // 그대로 노출되지 않도록 앞부분(영문+콜론)만 떼어내고 한국어 설명만 남긴다.
@@ -80,6 +114,10 @@ export function buildSystemPrompt(params: {
   personaHint?: PersonaHint | null;
   personaMode?: PersonaMode;
   turnCount?: number;
+  // 2026-10-05: "행동 제안받기 / 내 고민 더 알아보기" 선택 흐름(lib/theory, THEORY_OFFER_ENABLED가
+  // 켜졌을 때만 넘어온다). 값이 없으면 아래 모든 동작이 이전과 완전히 같다.
+  dialogueMode?: DialogueMode;
+  theoryGuide?: TheoryGuide | null;
 }): string {
   const parts: string[] = [];
 
@@ -233,18 +271,23 @@ export function buildSystemPrompt(params: {
   //             각각에 실질적 해결책을 짝지어 한 번에 전부)
   // ("1~2회 정도만 구체화하고 이후부터는 구체적인 답변을" → "2번째부터는 대략 안내하고
   // 구체적으로 원하는지 물은 뒤, 3번째부터는 무조건 실질적으로" 로 owner가 재조정한 기준.)
-  if ((params.turnCount ?? 0) === 1) {
+  const dialoguePacing = params.dialogueMode !== undefined; // 선택 흐름이 페이싱을 대신한다
+  if (!dialoguePacing && (params.turnCount ?? 0) === 1) {
     parts.push(
       "이번이 이 대화의 2번째 답변입니다. 아직 완전히 구체화하지 않아도 되니, 지금까지 들은 내용을 바탕으로 대략적인 방향이나 일반적인 수준의 도움말을 먼저 이야기하세요. 상황을 더 파악하기 위한 확인 질문(예: 언제·누가·어떤 식으로 그러는지)은 이번 턴에서 하지 마세요 — 그런 질문은 다음 턴에서 구체적으로 제안할 때 필요하면 자연스럽게 녹여서 쓰면 됩니다. 이번 턴은 반드시 '지금 말한 정도의 방향이면 괜찮은지, 아니면 더 구체적으로 알려줄지'를 묻는 것으로만 마무리하세요.",
     );
   }
-  if ((params.turnCount ?? 0) >= 2) {
+  if (!dialoguePacing && (params.turnCount ?? 0) >= 2) {
     parts.push(
       "이미 이 대화에서 몇 차례 들었습니다. 더 이상 새로운 확인 질문만 반복하지 말고, 지금까지 들은 내용을 바탕으로 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 단기적인 것과 꾸준히 이어가면 좋을 중장기적인 것을 구분해서 총 3가지 안팎으로 구체적으로 제안하세요. 마지막에는 새 질문 하나 대신, 추가로 궁금하거나 다르게 다루고 싶은 부분이 있는지 물어보며 마무리하세요.",
     );
     parts.push(
       "사용자의 말에서 '배제감', '부당함', '무력감'처럼 여러 감정이나 어려움이 동시에 드러난다면, 그중 하나만 골라 확인 질문을 이어가지 마세요. 대부분의 고민은 여러 감정이 섞여 있는 게 자연스러우니, 그렇게 확인하려 들 필요 없이 드러난 감정·어려움 각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어 한 번의 답변에서 한꺼번에 제시하세요. (예: 배제감에는 이렇게, 부당하다고 느껴질 땐 이렇게, 무력감이 들 땐 이렇게 — 식으로 각각에 대한 대응을 모아서)",
     );
+  }
+
+  if (params.dialogueMode) {
+    parts.push(dialogueModeInstruction(params.dialogueMode, params.theoryGuide));
   }
 
   // 2026-09-22 ground rule: "저는 ~할 수 없어요/~하지 않아요" 같은 부정형·거절형 문장 대신,

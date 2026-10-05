@@ -9,7 +9,7 @@
 -- (practice_eligibility.q7_focus_codes 등)와는 별개다 — 이 마이그레이션은 그 태그를 건드리지 않는다.
 --
 -- 지금까지 '삶의 방향'이 1순위인 실천은 0개였다. 그래서 내용을 보고 고른 30개를 2순위로 지정한다
--- (가볍게 시작 7 / 꾸준히 이어가기 12 / 장기 습관 11). 1순위 domain·조건표·id·제목·설명 등은 전혀 바꾸지 않는다.
+-- (가볍게 시작 6 / 꾸준히 이어가기 13 / 장기 습관 11). 1순위 domain·조건표·id·제목·설명 등은 전혀 바꾸지 않는다.
 -- 목록을 바꾸고 싶으면 아래 ARRAY 안의 id만 고쳐서 다시 실행하면 된다(여러 번 실행해도 안전, 아래 설명 참고).
 --
 -- 실행 후 맨 아래 확인용 조회 결과가 30이어야 한다.
@@ -27,10 +27,10 @@ comment on column public.wellness_practices.secondary_domains is
 -- 목록에 없는 행의 '삶의 방향'은 빼고, 목록에 있는 행은 넣는다(다른 2순위 값이 있으면 그대로 둔다).
 with picked(id) as (
   select unnest(array[
-    -- 가볍게 시작 (7)
+    -- 가볍게 시작 (6)
     'NEW-SELF-VALUES-02', 'NEW-SELF-VALUES-06', 'NEW-SELF-VALUES-10',
     'SELF-HELP-L1-01', 'NEW-SELF-CREATE-09', 'NEW-WORK-LEARN-05', 'NEW-WORK-CONTEXT-09',
-    -- 꾸준히 이어가기 (12)
+    -- 꾸준히 이어가기 (13)
     'NEW-SELF-VALUES-01', 'NEW-SELF-VALUES-03', 'NEW-SELF-VALUES-04', 'NEW-SELF-VALUES-05',
     'NEW-SELF-VALUES-07', 'NEW-SELF-VALUES-08', 'SELF-HELP-L2-03',
     'WORK-MIND-L2-03', 'WORK-MIND-L2-05', 'NEW-WORK-LEARN-02', 'NEW-WORK-LEARN-09', 'NEW-WORK-LEARN-10',

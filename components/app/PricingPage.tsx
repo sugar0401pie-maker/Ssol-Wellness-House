@@ -209,7 +209,7 @@ export default function PricingPage() {
             }
             features={promoActive ? ANNUAL_FEATURES : undefined}
             highlight
-            ctaLabel={promoActive ? `월 ${PROMO_ANNUAL_MONTHLY_EQUIVALENT.toLocaleString()}원으로 1년 시작하기` : undefined}
+            ctaLabel="연간 멤버십으로 가장 저렴하게 이용하기"
             onApply={() => startCheckout("annual")}
             submitting={submitting === "annual"}
             disabled={submitting !== null}

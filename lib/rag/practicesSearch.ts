@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { domainRankScore, pickDailyPool } from "@/lib/rag/domainRank";
 import { passesHardFilter, scoreSoftPreference, type OnboardingPrefs, type PracticeEligibility } from "@/lib/onboarding/practiceFilter";
 
 // wellness_practices(owner가 만든 실천방법 DB, 375개: domain x category x tier)에서 지금
@@ -25,19 +26,37 @@ export type PracticeResult = {
   detail: string;
 };
 
-let cache: { rows: PracticeResult[]; loadedAt: number } | null = null;
+// 내부용 행: 화면·프롬프트로 나가는 PracticeResult에 "2순위 이하 영역"(순위 계산용)을 더한 것.
+type PracticeRow = PracticeResult & { secondaryDomains: string[] };
+
+function toResult(p: PracticeResult): PracticeResult {
+  return { id: p.id, domain: p.domain, category: p.category, tier: p.tier, title: p.title, detail: p.detail };
+}
+
+let cache: { rows: PracticeRow[]; loadedAt: number } | null = null;
 let eligibilityCache: { map: Map<string, PracticeEligibility>; loadedAt: number } | null = null;
 const TTL_MS = 5 * 60 * 1000;
 
-async function loadPractices(): Promise<PracticeResult[]> {
+async function loadPractices(): Promise<PracticeRow[]> {
   if (cache && Date.now() - cache.loadedAt < TTL_MS) return cache.rows;
   const admin = createAdminClient();
-  const { data, error } = await admin.from("wellness_practices").select("id,domain,category,tier,title,detail");
+  const base = "id,domain,category,tier,title,detail";
+  let res = await admin.from("wellness_practices").select(`${base},secondary_domains`);
+  if (res.error) {
+    // 2순위 영역 칸(secondary_domains, migration 20261006000000)을 아직 안 만들었으면 칸 없이 다시 읽는다 —
+    // 이 칸 하나 때문에 실천방법 제안 전체가 사라지면 안 되므로, 2순위 없이 1순위 영역만으로 동작한다.
+    res = await admin.from("wellness_practices").select(base);
+  }
+  const { data, error } = res;
   if (error) {
     console.error("wellness_practices 조회 실패:", error.message);
     return cache?.rows ?? [];
   }
-  cache = { rows: data ?? [], loadedAt: Date.now() };
+  const rows: PracticeRow[] = (data ?? []).map((r) => ({
+    ...(r as PracticeResult),
+    secondaryDomains: ((r as { secondary_domains?: string[] | null }).secondary_domains ?? []) as string[],
+  }));
+  cache = { rows, loadedAt: Date.now() };
   return cache.rows;
 }
 
@@ -110,6 +129,9 @@ const DOMAIN_KEYWORDS: Record<string, string[]> = {
   커리어: ["회사", "직장", "상사", "팀장", "동료", "업무", "이직", "퇴사", "커리어", "야근", "면접"],
   육아: ["아이", "아기", "육아", "자녀", "아들", "딸"],
   관계: ["친구", "인간관계", "지인", "동창", "선후배", "모임", "가족", "부모님"],
+  // 2026-10-06: '삶의 방향'은 가장 일반적인 단어들이라 맨 뒤에 둔다(앞 영역 키워드가 먼저 이긴다).
+  // 순위 가산점일 뿐이라 빗나가도 큰 문제는 없지만, 흔한 단어("꿈이" 등)는 일부러 뺐다.
+  "삶의 방향": ["삶의 방향", "인생", "진로", "뭘 해야 할지", "뭘 하고 싶", "하고 싶은 게", "꿈이 없", "가치관", "살아가는 의미"],
 };
 
 function guessDomain(text: string): string {
@@ -120,7 +142,7 @@ function guessDomain(text: string): string {
 }
 
 function stripScore(p: PracticeResult & { score: number }): PracticeResult {
-  return { id: p.id, domain: p.domain, category: p.category, tier: p.tier, title: p.title, detail: p.detail };
+  return toResult(p);
 }
 
 export async function searchWellnessPractices(
@@ -143,7 +165,7 @@ export async function searchWellnessPractices(
 
   const scored = rows.map((p) => ({
     ...p,
-    score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + (p.domain === domain ? 5 : 0),
+    score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + domainRankScore(p, domain),
   }));
 
   // 2026-09-22 결정: "단기(가볍게 시작)와 중장기(꾸준히 이어가기·장기 습관)를 섞어서 ~3개
@@ -212,14 +234,13 @@ export async function getDailyPractice(
     // 동점자 사이에서는 날짜에 따라 자연스럽게 바뀐다).
     const topPool = scored.filter((p) => p.score === topScore);
     const idx = simpleHash(`${dateKey}:${userId}`) % topPool.length;
-    return topPool[idx];
+    return toResult(topPool[idx]);
   }
 
-  const { category, domain } = preference ?? {};
-  const bothMatch = category && domain ? pool0.filter((p) => p.category === category && p.domain === domain) : [];
-  const domainOnly = domain ? pool0.filter((p) => p.domain === domain) : [];
-  const pool = bothMatch.length ? bothMatch : domainOnly.length ? domainOnly : pool0;
+  // 2026-10-06: 1순위 영역 → 2순위 영역(secondary_domains) → 전체 순으로 넓힌다(lib/rag/domainRank.ts).
+  // 1순위 후보가 있는 영역은 예전과 똑같이 동작하고, 1순위 후보가 0개인 "삶의 방향"만 2순위 항목을 쓴다.
+  const pool = pickDailyPool(pool0, preference ?? {});
 
   const idx = simpleHash(`${dateKey}:${userId}`) % pool.length;
-  return pool[idx];
+  return toResult(pool[idx]);
 }

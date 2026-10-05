@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
-import { PLAN_LABELS, currentPrice, type PlanId } from "@/lib/billing/pricing";
+import { PLAN_LABELS, currentPrice, isPlanId } from "@/lib/billing/pricing";
 
 // 2026-09-27: 토스페이먼츠 결제창을 열기 전, "이 결제가 어떤 신청 건인지"를 먼저 우리
 // DB에 status='pending'으로 남겨 orderId(=이 행의 id)를 만든다. 실제 승인은
@@ -24,11 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "요청 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const plan = body.plan;
-  if (plan !== "monthly" && plan !== "annual") {
+  const planId = body.plan;
+  if (!isPlanId(planId)) {
     return NextResponse.json({ error: "이용권 종류를 선택해주세요." }, { status: 400 });
   }
-  const planId = plan as PlanId;
 
   const admin = createAdminClient();
   const { data: authUser } = await admin.auth.admin.getUserById(userId);
@@ -38,6 +37,10 @@ export async function POST(req: NextRequest) {
   // chat_entitlements.amount에 고정해둔다(결제 중간에 자정을 넘겨 프로모션이 끝나도 이미
   // 생성된 주문 금액은 안 바뀐다 — 토스 결제창에도 이미 그 금액으로 떴을 것이기 때문).
   const amount = currentPrice(planId);
+  // 3개월권처럼 프로모션 기간에만 파는 이용권은 기간이 지나면 price가 null — 주문 자체를 만들지 않는다.
+  if (amount === null) {
+    return NextResponse.json({ error: "지금은 선택할 수 없는 이용권이에요." }, { status: 400 });
+  }
 
   const { data: inserted, error } = await admin
     .from("chat_entitlements")

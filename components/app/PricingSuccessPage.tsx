@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-
-type PlanId = "monthly" | "annual";
+import { isPlanId, type PlanId } from "@/lib/billing/pricing";
 
 // 2026-10-01 owner 요청: 결제 완료 화면에 "며칠 연장됐는지"를 구체적으로 보여준다.
-// 월간/연간 두 요금제뿐이라 날짜 계산 없이 상수로 고정(월간=30일, 연간=365일) — 실제
-// 만료일은 lib/billing/toss.ts의 computeExpiryFor()가 달력 기준(월/연 단위)으로 계산하며,
+// 요금제가 정해져 있어 날짜 계산 없이 상수로 고정(월간=30일, 3개월=90일, 연간=365일) — 실제
+// 만료일은 lib/billing/expiry.ts의 computeExpiryFor()가 달력 기준(월/연 단위)으로 계산하며,
 // 이 문구는 그 결과를 그대로 보여주는 게 아니라 "대략 몇 일" 정도의 안내용 요약이다.
 const PLAN_EXTEND_LABEL: Record<PlanId, string> = {
   monthly: "30일(1달 결제)",
+  quarterly: "90일(3개월 결제)",
   annual: "365일(1년 결제)",
 };
 
@@ -55,7 +55,7 @@ export default function PricingSuccessPage() {
         const data = await res.json();
         if (!cancelled) {
           if (res.ok) {
-            if (data?.plan === "monthly" || data?.plan === "annual") setPlan(data.plan);
+            if (isPlanId(data?.plan)) setPlan(data.plan);
             setStatus("done");
           } else {
             setStatus("error");

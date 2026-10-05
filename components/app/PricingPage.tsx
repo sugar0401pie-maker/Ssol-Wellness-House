@@ -10,6 +10,8 @@ import {
   ANNUAL_MONTHLY_EQUIVALENT,
   ANNUAL_SAVINGS_PERCENT,
   PROMO_MONTHLY_PRICE,
+  PROMO_QUARTERLY_PRICE,
+  PROMO_QUARTERLY_MONTHLY_EQUIVALENT,
   PROMO_ANNUAL_PRICE,
   PROMO_ANNUAL_MONTHLY_EQUIVALENT,
   PROMO_LABEL,
@@ -52,6 +54,14 @@ const MONTHLY_FEATURES = [
   "개인화된 일일 작은 제안",
   "온보딩 정보 기반 맞춤 대화",
   "부담 없이 한 달 단위로 이용",
+];
+
+// 2026-10-05: 10월 한정 3개월권(월 1,900원 x 3개월 = 5,700원 일시 결제).
+const QUARTERLY_FEATURES = [
+  "SSOL AI 웰니스 채팅 3개월 이용",
+  "개인화된 일일 작은 제안",
+  "온보딩 정보 기반 맞춤 대화",
+  "10월 한정 3개월 특가 적용",
 ];
 
 const ANNUAL_FEATURES = [
@@ -182,16 +192,35 @@ export default function PricingPage() {
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
+          {/* 2026-10-05 owner 요청: 10월 한정 3개월권을 맨 위에 — "월 1,900원"으로 보이되 실제 청구는 3개월
+              합계(5,700원)라서, 바로 아래 줄에 실제 결제 금액을 같이 적는다. 프로모션 기간 밖에는 이 카드가
+              아예 없고(서버 checkout도 같은 기준으로 막는다), 아래 월간·연간 카드만 남는다. */}
+          {promoActive && (
+            <PlanCard
+              title="3개월 멤버십"
+              originalPrice={`${won(MONTHLY_PRICE)} (월 기준)`}
+              price={won(PROMO_QUARTERLY_MONTHLY_EQUIVALENT)}
+              priceUnit="/ 월 · 3개월 결제 시"
+              badgeLabel={PROMO_LABEL}
+              sub={`3개월 ${won(PROMO_QUARTERLY_PRICE)} 결제 (월 ${PROMO_QUARTERLY_MONTHLY_EQUIVALENT.toLocaleString()}원 × 3개월)`}
+              features={QUARTERLY_FEATURES}
+              highlight={false}
+              ctaLabel={`월 ${PROMO_QUARTERLY_MONTHLY_EQUIVALENT.toLocaleString()}원으로 3개월 시작하기`}
+              onApply={() => startCheckout("quarterly")}
+              submitting={submitting === "quarterly"}
+              disabled={submitting !== null}
+            />
+          )}
           <PlanCard
-            title="월간 멤버십"
+            title={promoActive ? "1개월권" : "월간 멤버십"}
             originalPrice={promoActive ? won(MONTHLY_PRICE) : undefined}
             price={promoActive ? won(PROMO_MONTHLY_PRICE) : won(MONTHLY_PRICE)}
-            priceUnit="/ 월"
+            priceUnit={promoActive ? "/ 1개월" : "/ 월"}
             badgeLabel={promoActive ? PROMO_LABEL : undefined}
             sub={promoActive ? undefined : "매달 결제"}
             features={promoActive ? MONTHLY_FEATURES : undefined}
             highlight={false}
-            ctaLabel={promoActive ? `월 ${PROMO_MONTHLY_PRICE.toLocaleString()}원으로 시작하기` : undefined}
+            ctaLabel={promoActive ? `${won(PROMO_MONTHLY_PRICE)}으로 1개월 시작하기` : undefined}
             onApply={() => startCheckout("monthly")}
             submitting={submitting === "monthly"}
             disabled={submitting !== null}

@@ -32,10 +32,5 @@ export async function confirmTossPayment(params: {
   }
 }
 
-// 이용권 종류별 만료일 계산 — 결제 승인 성공 시점(now) 기준.
-export function computeExpiryFor(plan: "monthly" | "annual", now: Date): Date {
-  const expires = new Date(now);
-  if (plan === "monthly") expires.setMonth(expires.getMonth() + 1);
-  else expires.setFullYear(expires.getFullYear() + 1);
-  return expires;
-}
+// 만료일 계산(computeExpiryFor)은 단위 테스트를 할 수 있도록 순수 모듈 lib/billing/expiry.ts로 옮겼다
+// (이 파일은 "server-only"라 테스트에서 가져올 수 없다).

@@ -3,8 +3,9 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { sendEmail } from "@/lib/email/resend";
-import { confirmTossPayment, computeExpiryFor } from "@/lib/billing/toss";
-import { PLAN_LABELS } from "@/lib/billing/pricing";
+import { confirmTossPayment } from "@/lib/billing/toss";
+import { computeExpiryFor } from "@/lib/billing/expiry";
+import { PLAN_LABELS, isPlanId } from "@/lib/billing/pricing";
 
 // 2026-09-27: 토스 결제창에서 결제가 끝나면 브라우저가 successUrl로 돌아오면서
 // paymentKey/orderId/amount를 넘겨준다. 이걸 그대로 믿지 않고, 여기서 시크릿 키로
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "결제 금액이 일치하지 않아요." }, { status: 400 });
   }
 
+  // 토스에 돈을 확정(confirm)하기 *전에* 이용권 종류가 우리가 아는 값인지 먼저 확인한다 — 결제만 되고
+  // 만료일을 못 정하는 상황을 막는다(예: 수동 부여용 offline_package 행은 이 경로로 올 수 없다).
+  const plan = entitlement.plan;
+  if (!isPlanId(plan)) {
+    return NextResponse.json({ error: "결제할 수 없는 이용권 종류예요." }, { status: 400 });
+  }
+
   const result = await confirmTossPayment({ paymentKey, orderId, amount });
   if (!result.ok) {
     await admin.from("chat_entitlements").update({ status: "canceled", updated_at: new Date().toISOString() }).eq("id", orderId);
@@ -61,7 +69,6 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date();
-  const plan = entitlement.plan as "monthly" | "annual";
   const expiresAt = computeExpiryFor(plan, now);
   await admin
     .from("chat_entitlements")

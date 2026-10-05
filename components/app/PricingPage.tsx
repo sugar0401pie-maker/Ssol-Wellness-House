@@ -146,6 +146,44 @@ export default function PricingPage() {
     }
   }
 
+  const monthlyCard = (
+    <PlanCard
+      title={promoActive ? "1개월권" : "월간 멤버십"}
+      originalPrice={promoActive ? won(MONTHLY_PRICE) : undefined}
+      price={promoActive ? won(PROMO_MONTHLY_PRICE) : won(MONTHLY_PRICE)}
+      priceUnit={promoActive ? "/ 1개월" : "/ 월"}
+      badgeLabel={promoActive ? PROMO_LABEL : undefined}
+      sub={promoActive ? undefined : "매달 결제"}
+      features={promoActive ? MONTHLY_FEATURES : undefined}
+      highlight={false}
+      ctaLabel={promoActive ? `${won(PROMO_MONTHLY_PRICE)}으로 1개월 시작하기` : undefined}
+      onApply={() => startCheckout("monthly")}
+      submitting={submitting === "monthly"}
+      disabled={submitting !== null}
+    />
+  );
+
+  const annualCard = (
+    <PlanCard
+      title="연간 멤버십"
+      highlightLabel="가장 큰 혜택"
+      originalPrice={promoActive ? won(ANNUAL_PRICE) : undefined}
+      price={promoActive ? won(PROMO_ANNUAL_PRICE) : won(ANNUAL_PRICE)}
+      priceUnit="/ 1년"
+      sub={
+        promoActive
+          ? `월 ${PROMO_ANNUAL_MONTHLY_EQUIVALENT.toLocaleString()}원 × 12개월`
+          : `월 환산 ${won(ANNUAL_MONTHLY_EQUIVALENT)} · 월간 대비 약 ${ANNUAL_SAVINGS_PERCENT}% 절약`
+      }
+      features={promoActive ? ANNUAL_FEATURES : undefined}
+      highlight
+      ctaLabel="연간 멤버십으로 가장 저렴하게 이용하기"
+      onApply={() => startCheckout("annual")}
+      submitting={submitting === "annual"}
+      disabled={submitting !== null}
+    />
+  );
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-white px-5 py-8">
       <button
@@ -211,38 +249,19 @@ export default function PricingPage() {
               disabled={submitting !== null}
             />
           )}
-          <PlanCard
-            title={promoActive ? "1개월권" : "월간 멤버십"}
-            originalPrice={promoActive ? won(MONTHLY_PRICE) : undefined}
-            price={promoActive ? won(PROMO_MONTHLY_PRICE) : won(MONTHLY_PRICE)}
-            priceUnit={promoActive ? "/ 1개월" : "/ 월"}
-            badgeLabel={promoActive ? PROMO_LABEL : undefined}
-            sub={promoActive ? undefined : "매달 결제"}
-            features={promoActive ? MONTHLY_FEATURES : undefined}
-            highlight={false}
-            ctaLabel={promoActive ? `${won(PROMO_MONTHLY_PRICE)}으로 1개월 시작하기` : undefined}
-            onApply={() => startCheckout("monthly")}
-            submitting={submitting === "monthly"}
-            disabled={submitting !== null}
-          />
-          <PlanCard
-            title="연간 멤버십"
-            highlightLabel="가장 큰 혜택"
-            originalPrice={promoActive ? won(ANNUAL_PRICE) : undefined}
-            price={promoActive ? won(PROMO_ANNUAL_PRICE) : won(ANNUAL_PRICE)}
-            priceUnit="/ 1년"
-            sub={
-              promoActive
-                ? `월 ${PROMO_ANNUAL_MONTHLY_EQUIVALENT.toLocaleString()}원 × 12개월`
-                : `월 환산 ${won(ANNUAL_MONTHLY_EQUIVALENT)} · 월간 대비 약 ${ANNUAL_SAVINGS_PERCENT}% 절약`
-            }
-            features={promoActive ? ANNUAL_FEATURES : undefined}
-            highlight
-            ctaLabel="연간 멤버십으로 가장 저렴하게 이용하기"
-            onApply={() => startCheckout("annual")}
-            submitting={submitting === "annual"}
-            disabled={submitting !== null}
-          />
+          {/* 2026-10-05 owner 요청: 프로모션 중에는 3개월권 → 연간 → 1개월권 순서. 프로모션이 아닐 때는
+              기존 순서(월간 → 연간)를 그대로 둔다. */}
+          {promoActive ? (
+            <>
+              {annualCard}
+              {monthlyCard}
+            </>
+          ) : (
+            <>
+              {monthlyCard}
+              {annualCard}
+            </>
+          )}
         </div>
       )}
 

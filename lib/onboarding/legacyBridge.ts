@@ -21,7 +21,7 @@ const FOCUS_DOMAIN_TO_DOMAIN: Record<string, string> = {
   human_relationships: "관계",
   romance: "연애",
   work_career: "커리어",
-  parenting_care: "관계", // wellness_practices 재분류(20260924000400)와 동일하게 육아→관계
+  parenting_care: "육아", // 2026-10-05: 육아는 '관계'에 합치지 않고 별도 영역(20261005000200)
   life_direction: "삶의 방향",
   joy: "나 자신",
 };

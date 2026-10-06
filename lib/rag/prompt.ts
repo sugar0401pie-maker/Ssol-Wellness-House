@@ -3,6 +3,7 @@
 import type { RouteId } from "../safety/types.ts";
 import type { TheoryGuide, TheoryStage } from "../theory/types.ts";
 import { selectReportSections, splitReportInsight } from "./reportSelect.ts";
+import type { TraumaStage } from "../safety/traumaStage.ts";
 
 type SectionLike = { section_name: string; prompt_text: string; priority: string };
 type RuleLike = { rule_id: string; category: string; rule_text: string };
@@ -135,6 +136,8 @@ export function buildSystemPrompt(params: {
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
   personaMode?: PersonaMode;
+  // 트라우마 단계별 대응(lib/safety/traumaStage.ts). 없으면 아래 블록이 들어가지 않는다.
+  traumaStage?: TraumaStage | null;
   // 심층 리포트 중 관련 섹션만 고르기 위한 현재 대화 내용(lib/rag/reportSelect.ts). 없으면 전체를 넣는다.
   reportQuery?: { message: string; recentUserMessages?: string[] };
   turnCount?: number;
@@ -268,6 +271,17 @@ export function buildSystemPrompt(params: {
         "아래는 SSOL이 정리한 구체적인 실천 방법 후보 목록입니다(대괄호 안이 카테고리/난이도·기간). 지금 해볼 수 있는 것을 제안할 때는 이 안에서 상황에 맞는 걸 우선 골라 자연스러운 말투로 녹여 쓰세요(목록 형식이나 원문 그대로 옮기지 말 것). 가능하면 '가볍게 시작'(지금 당장 해볼 수 있는 단기) 1~2개와 '꾸준히 이어가기'·'장기 습관·정체성으로'(중장기로 이어갈 수 있는 것) 1개 정도를 섞어서, 총 3개 안팎으로 단기/중장기를 구분해 제안하세요. 맞는 게 없으면 상식 수준에서 제안해도 되지만, 이 목록에 있는데 무시하지는 마세요. 이건 치료나 처방이 아니라 일상적인 실천 아이디어일 뿐입니다.",
         ...params.practiceResults.map(formatPractice),
       ].join("\n"),
+    );
+  }
+
+  if (params.traumaStage === "T1") {
+    // 2026-10-06 owner 결정(약한 트라우마 기준, 문서 4-6-1 T1): 지금 압도되는 신호가 보이면 탐색을 멈추고 안정화를 먼저 한다.
+    parts.push(
+      "[트라우마 안정화 우선] 사용자가 지금 압도되는 신호(장면이 계속 떠오름, 몸 떨림, 숨 막힘, 멍함·현실감 저하)를 보이고 있습니다. 사건이 어땠는지 자세히 묻거나 더 깊이 탐색하지 마세요. 먼저 지금 이 순간으로 돌아오도록 돕는 안정화 방법 1~2가지를 짧고 부드럽게 안내하세요(실천 후보가 있으면 그중에서). 질문은 하지 않거나 '지금은 좀 어떠세요?' 정도의 짧은 확인 하나만 하세요. 마지막에 진정된 뒤에 전문가와 이야기해보는 것도 도움이 될 수 있다고 한 번만 부드럽게 제안하세요. 진단하거나 약물을 언급하지 마세요.",
+    );
+  } else if (params.traumaStage === "T0") {
+    parts.push(
+      "[트라우마 일상어] 사용자가 '트라우마'라는 말을 일상적인 의미로 쓰고 있습니다. 그때의 사건을 자세히 묻거나 다시 떠올려 적게 하지 마세요. 과거 장면을 되짚는 방법이나 불편한 감정에 일부러 머무르는 연습은 권하지 마세요. 지금 상황에서 해볼 수 있는 대처에 초점을 맞추고, 안정감을 주는 방법을 먼저 이야기하세요.",
     );
   }
 

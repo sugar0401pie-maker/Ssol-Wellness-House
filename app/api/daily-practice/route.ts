@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDailyPractice } from "@/lib/rag/practicesSearch";
+import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { getGreetingLine, holidayPracticeDomain } from "@/lib/home/greeting";
@@ -47,6 +48,8 @@ export async function GET(req: NextRequest) {
     },
     onboardingPrefs,
     hasConsentedData,
+    // 이론 기반 실천 노출 제한: after_explore는 홈에 안 나가고, exposure는 위기 이력 계정에 안 나간다(lib/onboarding/servingRules.ts).
+    { hasCrisisHistory: await hasCrisisHistory(admin, userId) },
   );
 
   // 홈 화면 캐릭터: 심리테스트 결과가 있으면 그 유형 캐릭터를, 없으면 사람마다 고정된

@@ -13,6 +13,8 @@ import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
+import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
+import { detectTraumaStage } from "@/lib/safety/traumaStage";
 
 // 출력 검사를 두 번 다 통과하지 못했을 때만 쓰는 마지막 안전망. 이 문장 자체는 규칙을 어길 수
 // 없도록 고정 문구로 두었다 (진단·약물 지시·효과 보장이 전혀 없음). 문구는 "~할 수 없지만" 같은
@@ -167,11 +169,18 @@ export async function generateAnswer(params: {
   // 2026-09-25: 관계/육아/업무 하드 필터는 온보딩 여부와 무관하게 채팅 실천방법 제안에도
   // 항상 적용한다(파트너 없는데 "연인과 함께" 제안이 나가지 않도록) — practicesSearch.ts.
   const onboardingPrefs = wantsPractices ? await loadOnboardingPrefs(admin, params.userId) : null;
+  // 트라우마 말이 나왔을 때의 단계별 대응(lib/safety/traumaStage.ts, 2026-10-06): 라우터는 건드리지 않고, 일반 경로로 통과한
+  // 대화에서 답변만 더 조심스럽게 만든다. 성향 질문 모드(캐릭터 해석)에는 적용하지 않는다.
+  const traumaStage = params.isPersonaQuestion
+    ? null
+    : detectTraumaStage(params.message, params.recentMessages.filter((m) => m.role === "user").map((m) => m.content));
+  // 이론 기반 실천 노출 제한(위기 이력 계정에는 exposure 제외) — 실천 후보를 쓰는 경로에서만 조회한다.
+  const serving = { hasCrisisHistory: wantsPractices ? await hasCrisisHistory(admin, params.userId) : true };
   const [{ data: memoryRow }, { data: sessionMeta }, practiceResults] = await Promise.all([
     admin.from("user_memory").select("summary").eq("user_id", params.userId).maybeSingle(),
     admin.from("chat_sessions").select("clinical_boundary_stated_at").eq("session_id", params.sessionId).maybeSingle(),
     wantsPractices && onboardingPrefs
-      ? searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs)
+      ? searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, serving, traumaStage)
       : Promise.resolve([]),
   ]);
 
@@ -198,6 +207,7 @@ export async function generateAnswer(params: {
     dialogueMode: params.dialogueMode,
     theoryGuide: params.theoryGuide,
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
+    traumaStage,
     // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에
     // 요약·제안으로 넘어가야 하는지 판단하는 데 쓴다.
     turnCount: params.recentMessages.filter((m) => m.role === "assistant").length,

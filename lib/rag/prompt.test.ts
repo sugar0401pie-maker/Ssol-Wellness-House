@@ -225,6 +225,24 @@ describe("buildSystemPrompt", () => {
     assert.match(p, /심층 리포트 전체 내용/);
   });
 
+  test("트라우마 단계: T1이면 안정화 우선(사건을 캐묻지 않기), T0이면 사건 되짚기·exposure 금지, 없으면 블록이 없다", () => {
+    const base = { sections: SECTIONS, matchedRules: [], route: "wellness" as const, usedClinicalChunk: false };
+    const t1 = buildSystemPrompt({ ...base, traumaStage: "T1" });
+    assert.match(t1, /트라우마 안정화 우선/);
+    assert.match(t1, /자세히 묻거나 더 깊이 탐색하지 마세요/);
+    assert.match(t1, /안정화 방법 1~2가지/);
+    assert.match(t1, /전문가와 이야기해보는 것도/);
+    assert.doesNotMatch(t1, /트라우마 일상어/);
+
+    const t0 = buildSystemPrompt({ ...base, traumaStage: "T0" });
+    assert.match(t0, /트라우마 일상어/);
+    assert.match(t0, /다시 떠올려 적게 하지 마세요/);
+    assert.doesNotMatch(t0, /트라우마 안정화 우선/);
+
+    const none = buildSystemPrompt({ ...base });
+    assert.doesNotMatch(none, /트라우마 안정화 우선|트라우마 일상어/);
+  });
+
   test("reportInsight가 없으면 심층 리포트 참고 블록이 들어가지 않는다", () => {
     const p = buildSystemPrompt({
       sections: SECTIONS,

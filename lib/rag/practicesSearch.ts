@@ -2,6 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { domainRankScore, pickDailyPool } from "@/lib/rag/domainRank";
 import { passesHardFilter, scoreSoftPreference, type OnboardingPrefs, type PracticeEligibility } from "@/lib/onboarding/practiceFilter";
+import { passesServingRules, type ServingContext } from "@/lib/onboarding/servingRules";
+import { STABILIZATION_PRACTICE_IDS, type TraumaStage } from "@/lib/safety/traumaStage";
 
 // wellness_practices(owner가 만든 실천방법 DB, 375개: domain x category x tier)에서 지금
 // 대화 상황에 맞을 만한 몇 개를 골라 답변 재료로 준다. 진단이나 처방이 아니라 "지금 해볼 수
@@ -26,8 +28,13 @@ export type PracticeResult = {
   detail: string;
 };
 
-// 내부용 행: 화면·프롬프트로 나가는 PracticeResult에 "2순위 이하 영역"(순위 계산용)을 더한 것.
-type PracticeRow = PracticeResult & { secondaryDomains: string[] };
+// 내부용 행: 화면·프롬프트로 나가는 PracticeResult에 "2순위 이하 영역"(순위 계산용)과 노출 제한 칸(이론 기반 실천용)을 더한 것.
+type PracticeRow = PracticeResult & {
+  secondaryDomains: string[];
+  availability: string | null;
+  exposureFlag: boolean | null;
+  exposureStep: number | null;
+};
 
 function toResult(p: PracticeResult): PracticeResult {
   return { id: p.id, domain: p.domain, category: p.category, tier: p.tier, title: p.title, detail: p.detail };
@@ -41,20 +48,27 @@ async function loadPractices(): Promise<PracticeRow[]> {
   if (cache && Date.now() - cache.loadedAt < TTL_MS) return cache.rows;
   const admin = createAdminClient();
   const base = "id,domain,category,tier,title,detail";
-  let res = await admin.from("wellness_practices").select(`${base},secondary_domains`);
-  if (res.error) {
-    // 2순위 영역 칸(secondary_domains, migration 20261006000000)을 아직 안 만들었으면 칸 없이 다시 읽는다 —
-    // 이 칸 하나 때문에 실천방법 제안 전체가 사라지면 안 되므로, 2순위 없이 1순위 영역만으로 동작한다.
-    res = await admin.from("wellness_practices").select(base);
-  }
+  // 칸을 새로 추가한 마이그레이션(2순위 영역 20261006000000, 이론 실천 노출 제한 20261006000200)을 아직 안 돌렸어도
+  // 실천방법 제안 전체가 사라지지 않게, 새 칸이 있는 조회부터 시도하고 실패하면 칸을 줄여 다시 읽는다.
+  const attempts = [`${base},secondary_domains,availability,exposure_flag,exposure_step`, `${base},secondary_domains`, base];
+  let res = await admin.from("wellness_practices").select(attempts[0]);
+  for (let i = 1; res.error && i < attempts.length; i++) res = await admin.from("wellness_practices").select(attempts[i]);
   const { data, error } = res;
   if (error) {
     console.error("wellness_practices 조회 실패:", error.message);
     return cache?.rows ?? [];
   }
-  const rows: PracticeRow[] = (data ?? []).map((r) => ({
-    ...(r as PracticeResult),
-    secondaryDomains: ((r as { secondary_domains?: string[] | null }).secondary_domains ?? []) as string[],
+  const rows: PracticeRow[] = ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    domain: r.domain as string,
+    category: r.category as string,
+    tier: r.tier as string,
+    title: r.title as string,
+    detail: r.detail as string,
+    secondaryDomains: ((r.secondary_domains as string[] | null | undefined) ?? []) as string[],
+    availability: (r.availability as string | null | undefined) ?? null,
+    exposureFlag: (r.exposure_flag as boolean | null | undefined) ?? null,
+    exposureStep: (r.exposure_step as number | null | undefined) ?? null,
   }));
   cache = { rows, loadedAt: Date.now() };
   return cache.rows;
@@ -149,9 +163,17 @@ export async function searchWellnessPractices(
   message: string,
   recentMessages: { role: "user" | "assistant"; content: string }[],
   onboardingPrefs: OnboardingPrefs,
+  serving: ServingContext,
+  traumaStage: TraumaStage | null = null,
 ): Promise<PracticeResult[]> {
-  let rows = await loadPractices();
+  // 이론 기반 실천 노출 제한(after_explore·exposure·위기 이력) — 트라우마 대화(T0/T1)에서는 exposure를 전부 뺀다.
+  const ctx: ServingContext = traumaStage ? { ...serving, excludeExposure: true } : serving;
+  let rows = (await loadPractices()).filter((p) => passesServingRules(p, ctx));
   if (!rows.length) return [];
+
+  // 트라우마 T1(지금 압도): 탐색·일반 제안을 멈추고 안정화 실천 1~2개만 후보로 준다(문서 4-6-1). 아직 데이터에 없으면 아래 일반 검색으로.
+  const stabilization = STABILIZATION_PRACTICE_IDS.map((id) => rows.find((p) => p.id === id)).filter((p): p is PracticeRow => !!p);
+  if (traumaStage === "T1" && stabilization.length) return stabilization.slice(0, 2).map(toResult);
 
   {
     const eligibilityMap = await loadEligibilityMap();
@@ -179,6 +201,13 @@ export async function searchWellnessPractices(
     ...byTier("꾸준히 이어가기").slice(0, 1),
     ...byTier("장기 습관·정체성으로").slice(0, 1),
   ];
+
+  // 트라우마 T0(일상어): 안정화 실천을 추천 앞쪽에 둔다(문서 4-6-1). 이미 뽑힌 항목과 겹치면 중복 없이.
+  if (traumaStage === "T0" && stabilization.length) {
+    const front = stabilization.slice(0, 2).map(toResult);
+    const rest = picked.map(stripScore).filter((p) => !front.some((f) => f.id === p.id));
+    return [...front, ...rest];
+  }
 
   return picked.map(stripScore);
 }
@@ -214,9 +243,11 @@ export async function getDailyPractice(
   preference: { category?: string | null; domain?: string | null } | undefined,
   onboardingPrefs: OnboardingPrefs,
   hasConsentedData: boolean,
+  serving: ServingContext,
 ): Promise<PracticeResult | null> {
   const rows = await loadPractices();
-  const base = rows.filter((p) => p.tier === "가볍게 시작");
+  // 이론 기반 실천 노출 제한: 홈에서도 after_explore는 안 나가고, exposure는 위기 이력 계정에 안 나간다(1단계만).
+  const base = rows.filter((p) => p.tier === "가볍게 시작" && passesServingRules(p, serving));
   if (!base.length) return null;
 
   const eligibilityMap = await loadEligibilityMap();

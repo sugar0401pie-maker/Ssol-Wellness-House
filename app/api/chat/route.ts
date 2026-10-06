@@ -6,6 +6,7 @@ import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
+import { SESSION_LIMIT_REPLY, sessionLimitState } from "@/lib/chat/sessionLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import type { RouteId } from "@/lib/safety/types";
 import { makeTopicTag } from "@/lib/chat/topicTag";
@@ -181,6 +182,31 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // route 3~7만 "한 대화당 사용자 메시지 20개" 상한을 적용한다(위기·폭력·분류기 장애 응답은 이미 위에서
+  // 반환되었고, 아래 집계에서도 그 두 route는 제외한다 — 위기 대응은 상한과 무관하게 항상 동작).
+  // 상한을 넘은 메시지는 AI 호출 없이 고정 안내만 돌려준다(비용 없음). 클라이언트는 sessionLimitReached를 보고
+  // 새 대화 안내 팝업을 띄운다.
+  const { count: sessionUserCount } = await admin
+    .from("chat_messages")
+    .select("*", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .eq("role", "user")
+    .not("route", "in", "(crisis,violence)");
+  const sessionLimit = sessionLimitState(sessionUserCount ?? 0);
+  if (sessionLimit.blocked) {
+    await admin
+      .from("chat_messages")
+      .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: SESSION_LIMIT_REPLY, route: decision.route });
+    return NextResponse.json({
+      sessionId,
+      route: decision.route,
+      reply: SESSION_LIMIT_REPLY,
+      done: true,
+      sessionLimitReached: true,
+      ...routingMeta,
+    });
+  }
+
   // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
   const { rules: safetyRules } = await getSafetyData();
   // 이론 질문 선택 흐름(준비 단계). 기능이 꺼져 있으면(기본값) 즉시 빈 계획을 돌려주고 아무 조회도 하지 않는다.
@@ -231,6 +257,8 @@ export async function POST(req: NextRequest) {
     reply: result.reply,
     done: true,
     remainingToday: Math.max(DAILY_MESSAGE_LIMIT - (todayCount ?? 0), 0),
+    // 이번이 이 대화의 마지막으로 허용되는 메시지(20번째)면 true — 답변이 다 보인 뒤 새 대화 안내 팝업을 띄운다.
+    ...(sessionLimit.reached ? { sessionLimitReached: true } : {}),
     ...(followUp ? { followUp } : {}),
     ...routingMeta,
     // 사용량 정보(민감정보 아님) — 비용 시뮬레이션(scripts/cost-simulation.mjs)이 이 값을 읽는다.

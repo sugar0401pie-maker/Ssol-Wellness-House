@@ -74,6 +74,8 @@ export default function ChatApp() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [paywallBlocked, setPaywallBlocked] = useState(false);
+  // 2026-10-06 owner 결정: 한 대화에서 사용자 메시지 20개가 상한 — 도달하면 새 대화 안내 팝업을 띄운다.
+  const [showSessionLimit, setShowSessionLimit] = useState(false);
   // 2026-10-01: 무료체험 일수가 심층보고서 보유 여부로 7일/3일 갈리므로, 안내 문구에 실제
   // 적용된 일수를 보여주기 위해 함께 받아둔다(기본값 7 — 조회 실패 시에도 문구가 비지 않게).
   const [trialDays, setTrialDays] = useState(7);
@@ -216,21 +218,28 @@ export default function ChatApp() {
         reply: string | null;
         note?: string;
         paywallBlocked?: boolean;
+        sessionLimitReached?: boolean;
         followUp?: { text: string; choices: Choice[] };
       };
       sessionId.current = data.sessionId;
       saveActiveSessionId(data.sessionId);
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
       const followUp = data.followUp;
+      const limitReached = data.sessionLimitReached === true;
       revealAssistantMessage(
         data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`,
-        // 답변이 다 보인 다음에 선택 안내 말풍선과 칩이 이어서 나온다(서버에는 이미 저장돼 있다).
-        followUp
-          ? () =>
-              setMessages((prev) => [
-                ...prev,
-                { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices },
-              ])
+        // 답변이 다 보인 다음에 선택 안내 말풍선과 칩이 이어서 나오고(서버에는 이미 저장돼 있다),
+        // 대화 상한에 도달했다면 새 대화 안내 팝업이 뜬다.
+        followUp || limitReached
+          ? () => {
+              if (followUp) {
+                setMessages((prev) => [
+                  ...prev,
+                  { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices },
+                ]);
+              }
+              if (limitReached) setShowSessionLimit(true);
+            }
           : undefined,
       );
       if (data.paywallBlocked) setPaywallBlocked(true);
@@ -542,6 +551,40 @@ export default function ChatApp() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSessionLimit && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
+            {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다. */}
+            <div className="flex items-start justify-between">
+              <p className="text-[15px] font-medium leading-6 text-foreground">새로운 대화로 시작해보세요</p>
+              <button
+                type="button"
+                onClick={() => setShowSessionLimit(false)}
+                aria-label="닫기"
+                className="shrink-0 text-[12px] text-slate-400"
+              >
+                닫기
+              </button>
+            </div>
+            <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
+              원활한 대화를 위해 새로운 대화로 다시 시작해보세요. 지금까지의 대화는 &lsquo;지난 대화&rsquo;에서 다시 볼 수 있어요.
+            </p>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSessionLimit(false);
+                  requestNewChat();
+                }}
+                className="h-10 w-full rounded-xl bg-navy text-sm font-medium text-white"
+              >
+                새 대화 시작
+              </button>
             </div>
           </div>
         </div>

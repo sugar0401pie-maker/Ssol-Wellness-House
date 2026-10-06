@@ -176,6 +176,55 @@ describe("buildSystemPrompt", () => {
     assert.match(p, /지금 사용자가 하는 말이 이 내용과 실제로 관련 있을 때 적극적으로 활용/);
   });
 
+  test("reportQuery가 있으면 리포트 전체가 아니라 제목 목록 + 기본·관련 섹션만 들어가고, 없는 섹션은 지어내지 말라는 안내가 붙는다", () => {
+    const report = [
+      "[1. 프로파일] 첫째 섹션 고유문장입니다.",
+      "[2. 주목할 만한 부분은] 둘째 섹션 고유문장입니다.",
+      "[3. 고민을 다루는 방식] 셋째 섹션 고유문장입니다.",
+      "[4. 한 겹 더] 직장 상사와 회사 평가에 대한 넷째 섹션 고유문장입니다.",
+      "[5. 익숙한 순간] 다섯째 섹션 고유문장입니다.",
+      "[6. 궁합] 여섯째 섹션 고유문장입니다.",
+      "[7. 방향] 일곱째 섹션 고유문장입니다.",
+      "[8. 이번 주 제안] 여덟째 섹션 고유문장입니다.",
+    ].join("\n");
+    const base = {
+      sections: SECTIONS,
+      matchedRules: [],
+      route: "wellness" as const,
+      usedClinicalChunk: false,
+      personaHint: { label: "바스크 치즈케이크", axis: "나 자신", reportInsight: report },
+    };
+    const sliced = buildSystemPrompt({ ...base, reportQuery: { message: "직장 상사와 회사 평가가 너무 신경 쓰여요" } });
+    assert.match(sliced, /총 8개 섹션/);
+    assert.match(sliced, /1\. 프로파일 \/ 2\. 주목할 만한 부분은/); // 제목 목록은 전부
+    assert.match(sliced, /둘째 섹션 고유문장/); // 기본
+    assert.match(sliced, /여덟째 섹션 고유문장/); // 기본
+    assert.match(sliced, /넷째 섹션 고유문장/); // 관련
+    assert.doesNotMatch(sliced, /첫째 섹션 고유문장/);
+    assert.doesNotMatch(sliced, /여섯째 섹션 고유문장/);
+    assert.match(sliced, /추측하거나 지어내지 마세요/);
+    assert.match(sliced, /직접 인용하거나/); // 기존 인용 허용 지침은 그대로
+
+    // reportQuery가 없으면(이전 호출 방식) 예전처럼 전체가 들어간다.
+    const full = buildSystemPrompt(base);
+    assert.match(full, /첫째 섹션 고유문장/);
+    assert.match(full, /여섯째 섹션 고유문장/);
+    assert.match(full, /심층 리포트 전체 내용/);
+  });
+
+  test("섹션 형식이 아닌 예전 리포트 문자열이면 reportQuery가 있어도 전체를 그대로 넣는다(안전한 되돌아가기)", () => {
+    const p = buildSystemPrompt({
+      sections: SECTIONS,
+      matchedRules: [],
+      route: "wellness",
+      usedClinicalChunk: false,
+      personaHint: { label: "x", axis: "y", reportInsight: "줄글 한 덩어리 리포트입니다." },
+      reportQuery: { message: "안녕하세요" },
+    });
+    assert.match(p, /줄글 한 덩어리 리포트입니다/);
+    assert.match(p, /심층 리포트 전체 내용/);
+  });
+
   test("reportInsight가 없으면 심층 리포트 참고 블록이 들어가지 않는다", () => {
     const p = buildSystemPrompt({
       sections: SECTIONS,

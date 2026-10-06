@@ -190,6 +190,11 @@ export async function generateAnswer(params: {
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
+    // 심층 리포트는 전체가 아니라 지금 이야기와 관련 있어 보이는 섹션만 넣는다(prompt.ts/reportSelect.ts).
+    reportQuery: {
+      message: params.message,
+      recentUserMessages: params.recentMessages.filter((m) => m.role === "user").map((m) => m.content),
+    },
     dialogueMode: params.dialogueMode,
     theoryGuide: params.theoryGuide,
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",

@@ -2,6 +2,7 @@
 // 테스트할 수 있다 (route.ts의 combine.ts와 같은 이유로 분리했다).
 import type { RouteId } from "../safety/types.ts";
 import type { TheoryGuide, TheoryStage } from "../theory/types.ts";
+import { selectReportSections, splitReportInsight } from "./reportSelect.ts";
 
 type SectionLike = { section_name: string; prompt_text: string; priority: string };
 type RuleLike = { rule_id: string; category: string; rule_text: string };
@@ -96,6 +97,27 @@ function formatService(s: ServiceLike): string {
   return lines.join("\n");
 }
 
+// 심층 리포트를 프롬프트에 넣는 본문. reportQuery가 있으면 섹션 제목 목록 + 지금 이야기와 관련 있어
+// 보이는 섹션만 넣는다(2026-10-06 owner 결정: 전체 6,000자를 매번 넣으면 보유자는 메시지당 약 1원이 더 듦 —
+// 선택 방식은 reportSelect.ts). 섹션으로 나눠지지 않는 예전 형식이면 안전하게 전체를 그대로 넣는다.
+function reportBody(
+  insight: string,
+  query: { message: string; recentUserMessages?: string[] } | undefined,
+  mode: PersonaMode | undefined,
+): string[] {
+  const sections = query ? splitReportInsight(insight) : [];
+  if (!query || sections.length < 3) {
+    return ["[참고] 이 사용자가 결제한 심층 리포트 전체 내용(섹션 제목이 [ ] 안에 표시됨):", insight];
+  }
+  const sel = selectReportSections(sections, query, mode === "characterization" ? "characterization" : "subtle");
+  const lines = sel.selected.map((x) => `[${x.label}] ${x.body}`);
+  return [
+    `[참고] 이 사용자가 결제한 심층 리포트입니다. 리포트는 총 ${sections.length}개 섹션(${sel.labels.join(" / ")})인데, 지금 이야기와 관련 있어 보이는 섹션만 아래에 옮겼습니다(섹션 제목이 [ ] 안에 표시됨):`,
+    lines.join("\n"),
+    "아래에 옮기지 않은 섹션의 구체적인 내용은 지금 알 수 없으니 추측하거나 지어내지 마세요. 필요하면 해당 섹션 제목을 말하며 리포트에서 다시 읽어보길 권해도 됩니다.",
+  ];
+}
+
 function formatPractice(p: PracticeLike): string {
   return `- [${p.category}/${p.tier}] ${p.title} — ${p.detail}`;
 }
@@ -113,6 +135,8 @@ export function buildSystemPrompt(params: {
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
   personaMode?: PersonaMode;
+  // 심층 리포트 중 관련 섹션만 고르기 위한 현재 대화 내용(lib/rag/reportSelect.ts). 없으면 전체를 넣는다.
+  reportQuery?: { message: string; recentUserMessages?: string[] };
   turnCount?: number;
   // 2026-10-05: "행동 제안받기 / 내 고민 더 알아보기" 선택 흐름(lib/theory, THEORY_OFFER_ENABLED가
   // 켜졌을 때만 넘어온다). 값이 없으면 아래 모든 동작이 이전과 완전히 같다.
@@ -182,8 +206,7 @@ export function buildSystemPrompt(params: {
       // 이제 section2·8 두 개가 아니라 8개 섹션 전체(유형 정보 포함)가 들어온다.
       parts.push(
         [
-          "[참고] 이 사용자가 결제한 심층 리포트 전체 내용(섹션 제목이 [ ] 안에 표시됨):",
-          params.personaHint.reportInsight,
+          ...reportBody(params.personaHint.reportInsight, params.reportQuery, params.personaMode),
           "이 내용은 진단이 아니라 자기 이해를 돕는 참고 자료다. 지금 사용자가 하는 말이 이 내용과 실제로 관련 있을 때 적극적으로 활용하고, 관련 없으면 무시한다.",
           "이제는 사용자에게 심층 리포트가 있다는 사실 자체를 자연스럽게 언급해도 되고, 리포트 문장을 직접 인용하거나 '리포트에서 보면', '전에 받은 심층 리포트에 따르면'처럼 출처를 밝히며 말해도 된다.",
           "맥락이 맞으면 '심층 리포트를 한 번 더 읽어보는 것도 도움이 될 것 같아요'처럼 다시 읽어보길 자연스럽게 권해도 된다.",

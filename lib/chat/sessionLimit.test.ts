@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { SESSION_LIMIT_REPLY, SESSION_USER_MESSAGE_LIMIT, sessionLimitState } from "./sessionLimit.ts";
+import { HISTORY_MESSAGE_LIMIT, SESSION_LIMIT_REPLY, SESSION_USER_MESSAGE_LIMIT, sessionLimitState } from "./sessionLimit.ts";
 
 describe("sessionLimitState — 사용자 메시지 20개 상한", () => {
   test("기본 상한은 20개", () => {
@@ -30,4 +30,8 @@ describe("sessionLimitState — 사용자 메시지 20개 상한", () => {
     assert.match(SESSION_LIMIT_REPLY, /원활한 대화를 위해 새로운 대화로 다시 시작해보세요/);
     assert.doesNotMatch(SESSION_LIMIT_REPLY, /할 수 없어요|못해요/);
   });
+});
+
+test("대화 기록 문맥은 20개(사용자 상한과 같은 규모)", () => {
+  assert.equal(HISTORY_MESSAGE_LIMIT, 20);
 });

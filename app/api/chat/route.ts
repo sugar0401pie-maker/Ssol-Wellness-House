@@ -6,7 +6,7 @@ import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
-import { SESSION_LIMIT_REPLY, sessionLimitState } from "@/lib/chat/sessionLimit";
+import { HISTORY_MESSAGE_LIMIT, SESSION_LIMIT_REPLY, sessionLimitState } from "@/lib/chat/sessionLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import type { RouteId } from "@/lib/safety/types";
 import { makeTopicTag } from "@/lib/chat/topicTag";
@@ -75,13 +75,13 @@ export async function POST(req: NextRequest) {
   }
   if (!sessionId) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 }); // TS 안전망(도달 안 함)
 
-  // 최근 대화(최대 10개)를 분류기 문맥으로 사용
+  // 최근 대화(최대 20개, HISTORY_MESSAGE_LIMIT)를 답변 생성 문맥으로 사용(분류기는 그중 최근 4개만 쓴다)
   const { data: recentRows } = await admin
     .from("chat_messages")
     .select("role, content")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(HISTORY_MESSAGE_LIMIT);
   const recentMessages = (recentRows ?? []).reverse() as { role: "user" | "assistant"; content: string }[];
 
   const decision = await determineRoute(message, recentMessages);

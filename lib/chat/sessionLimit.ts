@@ -9,6 +9,12 @@
 // 상한을 셀 때도 그 두 route의 메시지는 세지 않는다(하루 한도와 같은 방식).
 export const SESSION_USER_MESSAGE_LIMIT = Number(process.env.SESSION_USER_MESSAGE_LIMIT || 20);
 
+// 답변 생성·안전 분류 문맥으로 쓰는 "최근 대화" 메시지 수(사용자+AI 합쳐서). 2026-10-06 owner 결정으로
+// 10 -> 20개로 늘렸다(대화당 사용자 메시지 상한 20개 = 전체 약 40개 중 최근 20개를 AI가 본다).
+// 늘리면 긴 대화에서 메시지당 입력이 약 1,000토큰(약 0.3원) 더 든다. 안전 분류기·실천 검색은 이 중
+// 최근 4개만 쓰므로 영향이 없다.
+export const HISTORY_MESSAGE_LIMIT = 20;
+
 // 상한을 넘긴 메시지에 대해 AI 호출 없이(비용 없음) 돌려주는 고정 안내. "~할 수 없어요" 같은 거절형이
 // 아니라 제안형으로 쓴다(2026-09-22 ground rule).
 export const SESSION_LIMIT_REPLY =

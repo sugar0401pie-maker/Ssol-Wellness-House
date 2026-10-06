@@ -26,14 +26,14 @@ describe("프로모션 기간(KST 10/1 00:00 ~ 10/31 23:59:59)", () => {
 });
 
 describe("currentPrice — 실제 청구 금액", () => {
-  test("프로모션 중: 3개월권 5,700원 / 1개월권 3,500원 / 연간 22,800원", () => {
-    assert.equal(currentPrice("quarterly", IN_PROMO), 5700);
-    assert.equal(currentPrice("monthly", IN_PROMO), 3500);
+  test("프로모션 중: 3개월권 8,700원 / 1개월권 4,500원 / 연간 22,800원", () => {
+    assert.equal(currentPrice("quarterly", IN_PROMO), 8700);
+    assert.equal(currentPrice("monthly", IN_PROMO), 4500);
     assert.equal(currentPrice("annual", IN_PROMO), 22800);
   });
 
-  test("3개월권의 '월 1,900원' 표시와 실제 청구(5,700원)가 정확히 맞는다 — 월 환산 x 3 = 청구액", () => {
-    assert.equal(PROMO_QUARTERLY_MONTHLY_EQUIVALENT, 1900);
+  test("3개월권의 '월 2,900원' 표시와 실제 청구(8,700원)가 정확히 맞는다 — 월 환산 x 3 = 청구액", () => {
+    assert.equal(PROMO_QUARTERLY_MONTHLY_EQUIVALENT, 2900);
     assert.equal(PROMO_QUARTERLY_MONTHLY_EQUIVALENT * 3, PROMO_QUARTERLY_PRICE);
     assert.equal(PROMO_QUARTERLY_PRICE, currentPrice("quarterly", IN_PROMO));
   });

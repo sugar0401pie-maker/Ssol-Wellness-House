@@ -44,9 +44,11 @@ export const PLAN_PRICES: Record<"monthly" | "annual", number> = {
 // 3개월 한 번에 결제하는 실제 청구 금액 5,700원(월 1,900원 x 3개월). owner가 처음 "실제 결제 8,700원"
 // 이라고 했지만 월 1,900원 표시와 합계가 맞지 않아(8,700원은 월 2,900원 x 3) 확인을 거쳐 5,700원으로
 // 확정했다 — 화면의 "월 1,900원"과 실제 청구가 어긋나지 않게 하기 위함.
-export const PROMO_MONTHLY_PRICE = 3500;
-export const PROMO_QUARTERLY_PRICE = 5700;
-export const PROMO_QUARTERLY_MONTHLY_EQUIVALENT = Math.round(PROMO_QUARTERLY_PRICE / 3); // 1,900원
+// 2026-10-06 owner 재변경: 3개월권 5,700원 -> 8,700원(월 2,900원 x 3개월), 1개월권 3,500원 -> 4,500원.
+// 3개월권 표시("월 2,900원")와 실제 청구(8,700원)가 정확히 맞는다 — pricing.test.ts가 이 관계를 고정한다.
+export const PROMO_MONTHLY_PRICE = 4500;
+export const PROMO_QUARTERLY_PRICE = 8700;
+export const PROMO_QUARTERLY_MONTHLY_EQUIVALENT = Math.round(PROMO_QUARTERLY_PRICE / 3); // 2,900원
 export const PROMO_ANNUAL_PRICE = 22800;
 export const PROMO_ANNUAL_MONTHLY_EQUIVALENT = Math.round(PROMO_ANNUAL_PRICE / 12); // 1,900원
 export const PROMO_LABEL = "10월 오픈 기념 특별가";

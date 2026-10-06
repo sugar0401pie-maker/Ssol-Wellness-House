@@ -3,7 +3,10 @@
 // 모두 upsert(같은 ID면 덮어씀)라 여러 번 실행해도 안전하다. 기존 575개 실천(origin ≠ THEORY_KB)은 절대 건드리지 않는다.
 //
 // 사용법:
-//   node --env-file=.env.local scripts/import_theory_library.mjs <json> --reviewer "쏠 운영 회의" --reviewed-at 2026-10-06 [--dry-run]
+//   node --env-file=.env.local scripts/import_theory_library.mjs <json> --reviewer "쏠 운영 회의" --reviewed-at 2026-10-06 [--dry-run] [--skip-practices | --only-practices]
+//   --skip-practices: 이론 데이터만(이론·개념·기법·질문·판별 문장·연결·테스트 문장). 실천 342개는 넣지 않는다.
+//   --only-practices: 이론 기반 실천(+조건표)만 넣는다. 실천은 넣는 즉시 홈·채팅 추천 후보가 되므로, 노출 제한 코드가
+//                     배포된 것을 확인한 뒤에 실행한다.
 //
 // --reviewer/--reviewed-at은 필수다: 가져오는 모든 줄을 "검수 완료(APPROVED)"로 기록하는 것이라, 누가 언제 검수했는지
 // 반드시 함께 남긴다(문서 4-10 운영 원칙). --dry-run이면 DB에 아무것도 쓰지 않고 검증만 한다.
@@ -15,6 +18,8 @@ const args = process.argv.slice(2);
 const jsonPath = args.find((a) => !a.startsWith("--") && !args[args.indexOf(a) - 1]?.startsWith("--"));
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const dryRun = args.includes("--dry-run");
+const skipPractices = args.includes("--skip-practices"), onlyPractices = args.includes("--only-practices");
+if (skipPractices && onlyPractices) { console.error("--skip-practices와 --only-practices는 같이 쓸 수 없습니다."); process.exit(1); }
 const reviewer = opt("--reviewer"), reviewedAt = opt("--reviewed-at");
 if (!jsonPath || !reviewer || !reviewedAt) {
   console.error('사용법: node --env-file=.env.local scripts/import_theory_library.mjs <json> --reviewer "쏠 운영 회의" --reviewed-at 2026-10-06 [--dry-run]');
@@ -73,6 +78,7 @@ if (dryRun) { console.log("--dry-run: DB에 쓰지 않고 끝냅니다."); proce
 
 // ---- 저장 --------------------------------------------------------------------------------------
 console.log("저장 시작 (검수자:", reviewer, reviewedAt + ")");
+if (!onlyPractices) {
 await upsert("counseling_theories", D.theories.map((t) => ({ ...t, ...stamp })), "theory_id");
 await upsert("theory_concepts", D.concepts.map((c) => ({ ...c, ...stamp })), "concept_id");
 await upsert("theory_techniques", D.techniques.map((t) => ({ ...t, ...stamp })), "technique_id");
@@ -85,9 +91,12 @@ for (const part of chunks(D.signals, 100)) {
   const res = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: part.map((s) => s.utterance), encoding_format: "float" });
   embeddings.push(...res.data.map((d) => d.embedding));
 }
+
 await upsert("theory_signals", D.signals.map((s, i) => ({ ...s, embedding: JSON.stringify(embeddings[i]), ...stamp })), "signal_id");
+}
 
 // 이론 기반 실천(+ 조건표)
+if (!skipPractices) {
 const origin = "THEORY_KB";
 await upsert("wellness_practices", D.practices.map((p) => ({
   id: p.id, domain: p.domain, category: p.category, tier: p.tier, title: p.title, detail: p.detail, origin,
@@ -102,9 +111,10 @@ await upsert("practice_eligibility", D.practices.map((p) => ({
   safety_tags: p.exposure_flag ? ["theory_kb", `exposure_step_${p.exposure_step}`] : ["theory_kb"],
   review_status: "APPROVED", review_note: REVIEW_NOTE, reviewed_by: reviewer, reviewed_at: stamp.reviewed_at,
 })), "practice_id");
+}
 
 // 연결(이 이론들의 기존 연결을 지우고 다시 넣는다 — 같은 파일을 다시 가져와도 중복되지 않게)
-{
+if (!onlyPractices) {
   const ids = [...theoryIds];
   const { error } = await admin.from("theory_practice_links").delete().in("theory_id", ids);
   if (error) fail("연결 삭제 실패: " + error.message);
@@ -114,5 +124,5 @@ await upsert("practice_eligibility", D.practices.map((p) => ({
   }
   console.log(`  theory_practice_links: ${D.links.length}행 저장`);
 }
-await upsert("matching_eval_set", D.eval, "eval_id");
+if (!onlyPractices) await upsert("matching_eval_set", D.eval, "eval_id");
 console.log("✅ 완료");

@@ -12,6 +12,8 @@ import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
+import { loadTarotReadings } from "@/lib/tarot/loadTarotReadings";
+import { buildTarotHint } from "@/lib/tarot/readings";
 import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
 import { detectTraumaStage } from "@/lib/safety/traumaStage";
@@ -56,19 +58,29 @@ function summarizeThemeScores(scores: unknown): string | undefined {
 //
 // 세션당 1회만 조회하고 그 결과를 chat_sessions.persona_snapshot에 캐시해 재사용한다
 // (2026-09-22 결정). 새 대화를 시작해야 최신 정보로 다시 조회된다.
+type PersonaSnapshot = { label: string | null; hint: PersonaHint | null; tarot?: string | null };
+
 async function loadPersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   sessionId: string,
-): Promise<{ label: string | null; hint: PersonaHint | null }> {
+): Promise<PersonaSnapshot> {
   const { data: session } = await admin.from("chat_sessions").select("persona_snapshot").eq("session_id", sessionId).maybeSingle();
-  if (session?.persona_snapshot) {
-    return session.persona_snapshot as { label: string | null; hint: PersonaHint | null };
-  }
+  const cached = session?.persona_snapshot as PersonaSnapshot | null | undefined;
+  if (cached && "tarot" in cached) return cached;
 
-  const snapshot = await computePersonaHint(admin, userId);
+  // 2026-10-07: 타로 요약(tarot)이 생기기 전에 저장된 스냅샷은 유형 정보는 그대로 쓰고 타로만 채워 넣는다.
+  const snapshot: PersonaSnapshot = cached
+    ? { ...cached, tarot: await computeTarotHint(admin, userId) }
+    : { ...(await computePersonaHint(admin, userId)), tarot: await computeTarotHint(admin, userId) };
   await admin.from("chat_sessions").update({ persona_snapshot: snapshot }).eq("session_id", sessionId);
   return snapshot;
+}
+
+// 2026-10-07 owner 요청: 쏠 타로 하우스(별도 앱) 결과를 채팅에서도 참고. 최근 30일 안의 가장 최근 결과 한 건,
+// 카드·위치·방향·고민 분류 이름만(고민 원문은 넘기지 않음 — 정책 미정). 유형 정보와 같이 세션당 1회만 조회한다.
+async function computeTarotHint(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string | null> {
+  return buildTarotHint(await loadTarotReadings(admin, userId, 1));
 }
 
 async function computePersonaHint(
@@ -133,7 +145,7 @@ export async function generateAnswer(params: {
   let serviceResults: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
   let frameworkHint: Awaited<ReturnType<typeof findFrameworkHint>> = null;
 
-  const { label: personaLabel, hint: personaHint } = await loadPersonaHint(admin, params.userId, params.sessionId);
+  const { label: personaLabel, hint: personaHint, tarot: tarotSummary } = await loadPersonaHint(admin, params.userId, params.sessionId);
 
   if (params.isPersonaQuestion && !personaHint) {
     return { reply: NEEDS_TEST_REPLY, retrievedChunkIds: [], frameworkId: null, usage: [], regenerated: false, usedFallback: false };
@@ -200,6 +212,8 @@ export async function generateAnswer(params: {
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
+    // 쏠 타로 결과: 고민을 함께 다루는 route에서만(서비스 문의·진단/약물 질문에는 넣지 않음).
+    tarotHint: params.route === "wellness" || params.route === "life_decision" || params.route === "clinical_distress" ? tarotSummary : null,
     // 심층 리포트는 전체가 아니라 지금 이야기와 관련 있어 보이는 섹션만 넣는다(prompt.ts/reportSelect.ts).
     reportQuery: {
       message: params.message,

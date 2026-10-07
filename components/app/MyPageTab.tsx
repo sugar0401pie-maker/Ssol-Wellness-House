@@ -22,6 +22,14 @@ type ReportListItem = {
   isPrimary: boolean;
 };
 
+// 2026-10-07: 쏠 타로 하우스(tarot.ssolwellnesshouse.com, 같은 계정) 결과 — /api/mypage/tarot.
+type TarotReading = {
+  id: string;
+  createdAt: string;
+  cards: { position: string; positionName: string; name: string; character: string; reversed: boolean }[];
+  topic: { domain: string; emotions: string[]; need: string } | null;
+};
+
 // "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY.MM.DD" (표시용)
 function formatShortDate(iso: string): string {
   const d = new Date(iso);
@@ -80,7 +88,8 @@ export default function MyPageTab() {
   const [reports, setReports] = useState<ReportListItem[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
+  const [tarot, setTarot] = useState<{ readings: TarotReading[]; tarotUrl: string } | null>(null);
+  const [open, setOpen] = useState<"type" | "tarot" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -110,6 +119,11 @@ export default function MyPageTab() {
         const json = (await infoRes.json()) as MyPageData;
         const reportsJson = (await reportsRes.json()) as { reports: ReportListItem[] };
         const billingJson = (await billingRes.json()) as BillingStatus;
+        // 타로 결과는 부가 정보라 실패해도 마이페이지 전체를 막지 않는다.
+        fetch("/api/mypage/tarot", { headers: authHeaders(token), cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((t) => !cancelled && t && setTarot(t))
+          .catch(() => {});
         if (!cancelled) {
           setData(json);
           setReports(reportsJson.reports);
@@ -217,6 +231,49 @@ export default function MyPageTab() {
                   className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
                 >
                   지금 테스트하러 가기
+                </a>
+              </div>
+            )}
+          </SectionRow>
+
+          <SectionRow title="타로 결과" open={open === "tarot"} onToggle={() => setOpen(open === "tarot" ? null : "tarot")}>
+            {tarot && tarot.readings.length > 0 ? (
+              <div className="divide-y divide-line rounded-xl border border-line">
+                {tarot.readings.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[12px] text-slate-400">{formatShortDate(t.createdAt)}</p>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {t.cards.map((c) => (
+                          <li key={c.position} className="text-[13px] text-foreground">
+                            <span className="text-slate-400">{c.positionName}</span> · {c.name}
+                            {c.reversed && <span className="ml-1 text-[11px] text-navy">역방향</span>}
+                          </li>
+                        ))}
+                      </ul>
+                      {t.topic && <p className="mt-1 text-[12px] text-slate-500">{t.topic.domain} 고민</p>}
+                    </div>
+                    <a
+                      href={`${tarot.tarotUrl}/result/${t.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                    >
+                      열기
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <p>아직 이 계정에 저장된 타로 결과가 없어요. 쏠 타로 하우스에서 카드를 뽑고 “결과 저장하기”를 누르면 여기에 모여요.</p>
+                <a
+                  href={tarot?.tarotUrl ?? "https://tarot.ssolwellnesshouse.com"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
+                >
+                  타로 보러 가기
                 </a>
               </div>
             )}

@@ -445,3 +445,13 @@ describe("buildSystemPrompt", () => {
     });
   });
 });
+
+test("타로 결과 요약은 있을 때만, 예언 금지 지침과 함께 들어간다", () => {
+  const base = { sections: [], matchedRules: [], route: "wellness" as const, usedClinicalChunk: false };
+  const withTarot = buildSystemPrompt({ ...base, tarotHint: "오늘 쏠 타로 하우스에서 뽑은 세 장 — 지금의 마음: 첫 물장구(수달)." });
+  assert.match(withTarot, /첫 물장구\(수달\)/);
+  assert.match(withTarot, /점괘가 아니라/);
+  assert.match(withTarot, /역방향을 나쁘거나 불길한 뜻으로 말하지 않는다/);
+  const without = buildSystemPrompt({ ...base, tarotHint: null });
+  assert.doesNotMatch(without, /쏠 타로 하우스/);
+});

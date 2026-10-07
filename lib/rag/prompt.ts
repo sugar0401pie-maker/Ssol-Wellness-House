@@ -160,6 +160,8 @@ export function buildSystemPrompt(params: {
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
   personaMode?: PersonaMode;
+  // 쏠 타로 하우스 최근 결과 요약(lib/tarot/readings.ts의 buildTarotHint). 없으면 블록이 들어가지 않는다.
+  tarotHint?: string | null;
   // 트라우마 단계별 대응(lib/safety/traumaStage.ts). 없으면 아래 블록이 들어가지 않는다.
   traumaStage?: TraumaStage | null;
   // 심층 리포트 중 관련 섹션만 고르기 위한 현재 대화 내용(lib/rag/reportSelect.ts). 없으면 전체를 넣는다.
@@ -240,6 +242,18 @@ export function buildSystemPrompt(params: {
         ].join(" "),
       );
     }
+  }
+
+  if (params.tarotHint) {
+    // 2026-10-07 owner 요청: 타로 결과를 채팅에서도 참고. 타로는 예언이 아니라 고민을 비추는 자기이해 콘텐츠라는
+    // 타로 앱의 원칙(예언·운명 금지, 대신 결정하지 않기, 역방향을 나쁜 뜻으로 말하지 않기)을 채팅에서도 그대로 지킨다.
+    parts.push(
+      [
+        `[참고] ${params.tarotHint}`,
+        "이건 미래를 맞히는 점괘가 아니라 고민을 다른 각도로 비춰 본 자기이해 콘텐츠다. 사용자가 타로 이야기를 꺼내거나 지금 이야기와 분명히 이어질 때만 자연스럽게 연결하고, 관련 없으면 언급하지 않는다.",
+        "'카드가 그렇게 하라고 한다', '~하게 될 거예요'처럼 앞날을 단정하거나 카드를 근거로 결정을 대신하지 않는다. 역방향을 나쁘거나 불길한 뜻으로 말하지 않는다. 카드를 진단 근거로 쓰지 않는다.",
+      ].join(" "),
+    );
   }
 
   if (params.usedClinicalChunk) {

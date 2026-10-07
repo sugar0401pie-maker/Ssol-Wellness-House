@@ -25,18 +25,18 @@ describe("buildSelectPrompt", () => {
   });
 });
 
-import { buildHintLines, SELECT_HINTS } from "./selectHints.ts";
+import { applySelectSuffixes, SELECT_SUFFIXES } from "./selectHints.ts";
 describe("구분 단서(selectHints)", () => {
-  test("두 이론이 모두 후보에 있을 때만 단서가 들어간다", () => {
-    assert.equal(buildHintLines(["EFT", "IPT", "ACT", "LOGO"]).length, SELECT_HINTS.length);
-    assert.equal(buildHintLines(["EFT", "ACT"]).length, 0);
-    assert.equal(buildHintLines(["EFT", "IPT"]).length, 1);
+  test("해당 이론 설명 줄 끝에만 단서가 붙고 다른 이론·원본 목록은 그대로다", () => {
+    const t = [{ id: "EFT", focus: "a", axes: null }, { id: "CBT", focus: "b", axes: null }];
+    const out = applySelectSuffixes(t);
+    assert.equal(out[0].focus, `a ${SELECT_SUFFIXES.EFT}`);
+    assert.equal(out[1].focus, "b");
+    assert.equal(t[0].focus, "a"); // 원본을 바꾸지 않는다
   });
-  test("단서가 없으면 프롬프트는 이전과 같고, 있으면 구분 항목이 붙는다", () => {
-    const t = [{ id: "EFT", focus: "a", axes: null }, { id: "IPT", focus: "b", axes: null }];
-    assert.equal(buildSelectPrompt(t), buildSelectPrompt(t, []));
-    const p = buildSelectPrompt(t, buildHintLines(["EFT", "IPT"]));
-    assert.match(p, /헷갈리기 쉬운 쌍/);
-    assert.match(p, /EFT와 IPT 구분/);
+  test("단서를 붙인 프롬프트에도 이론 줄이 한 줄씩 그대로 들어간다", () => {
+    const p = buildSelectPrompt(applySelectSuffixes([{ id: "IPT", focus: "역할", axes: "기대" }, { id: "LOGO", focus: "의미", axes: null }]));
+    assert.match(p, /IPT: 역할 ※ 분담/);
+    assert.match(p, /LOGO: 의미 ※ 무엇이 의미인지/);
   });
 });

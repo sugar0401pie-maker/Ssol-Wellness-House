@@ -5,7 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import fs from "node:fs";
 import { buildSelectPrompt, parseTheoryAnswer } from "../lib/theory/theoryAnswer.ts";
-import { buildHintLines } from "../lib/theory/selectHints.ts";
+import { applySelectSuffixes } from "../lib/theory/selectHints.ts";
+// (C)는 폐기된 "별도 문단" 방식 — 비교용으로만 남긴 실험 코드다(lib에는 없음).
+const buildHintLines = (ids) => ids.length ? ["- EFT와 IPT 구분: EFT는 연인·가까운 사람과 정서적으로 닿지 않는 이야기 / IPT는 기대 차이·분담·역할 변화", "- ACT와 LOGO 구분: ACT는 방향은 아는데 불안에 멈춤 / LOGO는 무엇이 의미인지 모름"] : [];
 
 const graded = JSON.parse(fs.readFileSync(process.argv[2], "utf-8"));
 const MODEL = process.argv[3], K = Number(process.argv[4] ?? 3), REPEAT = Number(process.argv[5] ?? 1);
@@ -44,11 +46,11 @@ async function run(system) {
   return { 정답률: `${hit}/${theoryRows} = ${(100 * hit / theoryRows).toFixed(1)}%`, 정밀도: `${right}/${picks} = ${(100 * right / picks).toFixed(1)}%`, 고르면안되는문장을안고름: `${noneOk}/${noneRows}`, 오류: errs, 평균입력토큰: Math.round(tok / graded.length), wrong };
 }
 const hinted = buildSelectPrompt(rows.map((t) => ({ id: t.theory_id.replace("TH-", ""), focus: t.plain_focus, axes: t.theory_axes })), buildHintLines(ids));
-// (D) 별도 문단 대신, 해당 이론 설명 줄 끝에 짧은 단서를 덧붙이는 방식
-const SUFFIX = { EFT: "※ '내가 이 사람한테 중요한가'·위로가 안 닿음·싸운 뒤 멀어질까 무서움·다가가면 물러나는 되풀이", IPT: "※ 분담·기대 차이·역할 변화·새 상황 — 정서적 연결 단서가 없으면 연애여도 IPT", ACT: "※ 방향은 아는데 불안·생각이 올라오면 멈추거나 피함", LOGO: "※ 무엇이 의미인지 모름·속이 빈 느낌·나 밖을 향한 쓰임·유머로 부풀려 웃어넘기기" };
-const suffixed = buildSelectPrompt(rows.map((t) => { const id = t.theory_id.replace("TH-", ""); return { id, focus: t.plain_focus + (SUFFIX[id] ? " " + SUFFIX[id] : ""), axes: t.theory_axes }; }));
+// (D) 현재 서비스가 쓰는 방식: 해당 이론 설명 줄 끝에 짧은 단서를 덧붙인다(lib/theory/selectHints.ts)
+const suffixed = buildSelectPrompt(applySelectSuffixes(rows.map((t) => ({ id: t.theory_id.replace("TH-", ""), focus: t.plain_focus, axes: t.theory_axes }))));
 const out = {};
-for (let r = 0; r < REPEAT; r++) { (out.A ??= []).push(await run(base)); (out.C ??= []).push(await run(hinted)); (out.D ??= []).push(await run(suffixed)); if (K > 0) (out.B ??= []).push(await run(fewshot)); }
+const V = (process.env.VARIANTS ?? "A,C,D").split(",");
+for (let r = 0; r < REPEAT; r++) { if (V.includes("A")) (out.A ??= []).push(await run(base)); if (V.includes("C")) (out.C ??= []).push(await run(hinted)); if (V.includes("D")) (out.D ??= []).push(await run(suffixed)); if (K > 0) (out.B ??= []).push(await run(fewshot)); }
 for (const [k, label] of [["A", "(A) 이론 설명만"], ["C", "(C) +구분 단서(별도 문단)"], ["D", "(D) +구분 단서(설명 줄 끝)"], ["B", `(B) +예시 ${K}개/이론`]]) {
   for (const x of out[k] ?? []) { console.log(label, { ...x, wrong: undefined }); console.log("   틀린 것:", x.wrong.join(" | ")); }
 }

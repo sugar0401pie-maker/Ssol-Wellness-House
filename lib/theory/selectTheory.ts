@@ -3,7 +3,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import type { RouteId } from "@/lib/safety/types";
 import { generateShort } from "@/lib/ai/utilityModel";
 import { buildSelectPrompt, parseTheoryAnswer } from "./theoryAnswer";
-import { buildHintLines } from "./selectHints";
+import { applySelectSuffixes } from "./selectHints";
 
 // 사용자의 최근 말을 보고 상담 이론 14개 중 가장 알맞은 하나를 고른다(없으면 null).
 // 2026-10-06 측정으로 정한 방식: 판별 문장 임베딩 유사도만으로는 1등 정답률이 26%(상위 3개 안 64%)라 목표 정밀도(85~90%)에
@@ -41,7 +41,7 @@ export async function selectTheory(
     if (!rows.length) return null;
     const ids = rows.map((t) => t.theory_id.replace("TH-", ""));
     const { text: answer } = await generateShort(
-      buildSelectPrompt(rows.map((t) => ({ id: t.theory_id.replace("TH-", ""), focus: t.plain_focus, axes: t.theory_axes })), buildHintLines(ids)),
+      buildSelectPrompt(applySelectSuffixes(rows.map((t) => ({ id: t.theory_id.replace("TH-", ""), focus: t.plain_focus, axes: t.theory_axes })))),
       text,
     );
     const id = parseTheoryAnswer(answer, ids);

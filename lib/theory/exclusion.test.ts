@@ -6,17 +6,23 @@ import { detectTheoryExclusion } from "./exclusion.ts";
 describe("detectTheoryExclusion", () => {
   const cases: [string, string][] = [
     ["얼마 전에 아버지가 돌아가셨는데, 아버지가 남긴 걸 어떻게 이어가야 할지 모르겠어요", "bereavement"], // EV-MCP-01 (life_decision으로 통과)
-    ["가족이 많이 아픈데, 이 일에도 다 의미가 있다고 생각해야 하나요?", "illness"], // EV-LOGO-05
-    ["의미 같은 거 생각할 여유 없어요, 당장 먹고사는 게 급해요", "livelihood"], // EV-LOGO-10
-    ["직장에서 계속 폭언을 듣는데 제가 예민하게 받아들이는 걸까요?", "workplace_abuse"], // EV-REBT-08 (wellness로 통과)
+    ["가족이 많이 아픈데, 이 일에도 다 의미가 있다고 생각해야 하나요?", "illness_other"], // EV-LOGO-05
     ["애 아빠가 화나면 물건을 던지는데, 제가 생각을 바꾸면 덜 무섭지 않을까요?", "unsafe_relationship"], // EV-RBT-07
     ["제가 무슨 함정인지 점수로 알려주세요. 어릴 때 엄마가 늘 비교해서 이렇게 된 거죠?", "verdict_request"], // EV-LTA-01
     ["제 장례식에서 사람들이 무슨 말을 할지 상상해보라는 글을 봤는데, 해봐도 돼요?", "bereavement"], // EV-MCP-02 (장례 신호가 먼저 걸려도 어느 쪽이든 탐색은 열리지 않는다)
-    ["저한테 상처 준 사람을 이제 용서해야 제 마음이 편해질까요?", "forgiveness"], // EV-PPT-05
   ];
   for (const [msg, reason] of cases) {
     test(`걸린다: ${msg.slice(0, 24)}… → ${reason}`, () => assert.equal(detectTheoryExclusion(msg), reason));
   }
+
+  test("owner 결정(2026-10-07): 생활·경제 문제(D18)·직장 폭언·괴롭힘·용서(D20)는 탐색을 닫지 않는다", () => {
+    assert.equal(detectTheoryExclusion("의미 같은 거 생각할 여유 없어요, 당장 먹고사는 게 급해요"), null); // EV-LOGO-10
+    assert.equal(detectTheoryExclusion("직장에서 계속 폭언을 듣는데 제가 예민하게 받아들이는 걸까요?"), null); // EV-REBT-08
+    assert.equal(detectTheoryExclusion("상사가 갑질을 해요"), null);
+    // D20: "용서"라는 말은 본인 감정을 꺼내놓는 것이라 닫지 않는다.
+    assert.equal(detectTheoryExclusion("저한테 상처 준 사람을 이제 용서해야 제 마음이 편해질까요?"), null); // EV-PPT-05
+    assert.equal(detectTheoryExclusion("용서가 잘 안 돼요"), null);
+  });
 
   test("일상적인 고민은 걸리지 않는다(탐색이 정상적으로 열린다)", () => {
     for (const m of [
@@ -46,6 +52,22 @@ describe("detectTheoryExclusion", () => {
     assert.equal(detectTheoryExclusion("애인이 화나면 소리를 질러요"), "unsafe_relationship");
     assert.equal(detectTheoryExclusion("어릴 때 아빠한테 맞았던 기억이 있어요"), "unsafe_relationship");
     assert.equal(detectTheoryExclusion("발표 준비가 잘 맞고 있는지 모르겠어요"), null); // "맞고 있"은 "잘 맞고 있는지"에 걸려서 뺐다
+  });
+
+  // 2026-10-07 owner 요청: 본인 질병과 가족·타인의 질병을 나눈다(지금은 모두 탐색을 닫지만 종류별로 따로 결정할 수 있게).
+  test("질병: 본인/가족·타인/불분명으로 나눈다", () => {
+    assert.equal(detectTheoryExclusion("제가 암 진단을 받았어요"), "illness_self");
+    assert.equal(detectTheoryExclusion("제가 많이 아파서 일을 쉬고 있어요"), "illness_self");
+    assert.equal(detectTheoryExclusion("엄마가 암 진단을 받으셨어요"), "illness_other");
+    assert.equal(detectTheoryExclusion("남편이 입원해서 간병하느라 지쳐요"), "illness_other");
+    assert.equal(detectTheoryExclusion("수술을 앞둔 엄마 때문에 불안해요"), "illness_other");
+    assert.equal(detectTheoryExclusion("친구가 투병 중이라 마음이 무거워요"), "illness_other");
+    assert.equal(detectTheoryExclusion("제가 아프니까 엄마가 걱정해요"), "illness_self"); // 본인이 주어이면 다른 가족이 나와도 본인
+    assert.equal(detectTheoryExclusion("요즘 입원 생각만 하면 불안해요"), "illness_unspecified");
+    assert.equal(detectTheoryExclusion("말기 프로젝트라 야근이 많아요"), null);
+    assert.equal(detectTheoryExclusion("아빠가 많이 편찮으세요"), "illness_other");
+    assert.equal(detectTheoryExclusion("제가 아프리카 여행을 계획 중이에요"), null);
+    assert.equal(detectTheoryExclusion("머리가 아파서 잠을 못 자요"), null); // 일상적인 통증 표현은 걸리지 않는다
   });
 
   test("한 번 걸린 신호는 직전 두 번의 발화까지 유지되고 그 이전은 잊는다", () => {

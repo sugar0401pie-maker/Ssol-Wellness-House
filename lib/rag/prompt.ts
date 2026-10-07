@@ -1,7 +1,7 @@
 // 시스템 프롬프트를 실제 텍스트로 조립하는 순수 함수. DB·네트워크 호출이 없어서 네트워크 없이
 // 테스트할 수 있다 (route.ts의 combine.ts와 같은 이유로 분리했다).
 import type { RouteId } from "../safety/types.ts";
-import type { TheoryGuide, TheoryStage } from "../theory/types.ts";
+import type { TheoryGuide, TheoryStage, VoiceCard } from "../theory/types.ts";
 import { selectReportSections, splitReportInsight } from "./reportSelect.ts";
 import type { TraumaStage } from "../safety/traumaStage.ts";
 
@@ -35,7 +35,7 @@ export type PersonaHint = {
   reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
-export type DialogueMode = "offer_follows" | "action" | "explore";
+export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead";
 
 const STAGE_GUIDE: Record<TheoryStage, string> = {
   OPEN: "상황과 감정을 사용자의 말로 풀어내도록 돕는 단계",
@@ -44,8 +44,21 @@ const STAGE_GUIDE: Record<TheoryStage, string> = {
   COMMIT: "탐색을 정리하고 작은 다음 걸음 하나를 사용자가 스스로 정해보는 단계",
 };
 
-// 선택 흐름의 모드별 지시. 이 모드들에서는 턴 수 기반 기본 페이싱(2턴째 방향 제시/3턴째~ 3가지
-// 제안)을 쓰지 않는다 — 서로 반대되는 지시가 한 프롬프트에 같이 들어가면 안 되기 때문.
+// 이론별 말투 카드(문서 D6): 쏘웰라의 목소리(존댓말·따뜻함·문장 길이)는 그대로 두고, 질문 방식·어휘·받아주는 자세·금지 표현만 얹는다.
+function voiceCardLines(card: VoiceCard | null | undefined): string[] {
+  if (!card) return [];
+  return [
+    card.questionStyle ? `이번 탐색의 질문 방식: ${card.questionStyle}` : "",
+    card.vocab ? `자주 쓰는 말: ${card.vocab}` : "",
+    card.stance ? `받아주는 자세: ${card.stance}` : "",
+    card.forbidden ? `쓰지 말 것: ${card.forbidden}` : "",
+    "위 항목은 질문 방식과 어휘만 바꾸는 것입니다. 존댓말, 따뜻한 어조, 문장 길이, 호칭 같은 기본 말투는 그대로 유지하세요.",
+  ].filter(Boolean);
+}
+
+// 선택 흐름의 모드별 지시. 이 모드들에서는 턴 수 기반 기본 페이싱(2턴째 방향 제시/3턴째~ 3가지 제안)을 쓰지 않는다 —
+// 서로 반대되는 지시가 한 프롬프트에 같이 들어가면 안 되기 때문. 탐색(explore_lead/commit_lead) 턴은 DB 우선 응답이라 AI는 한두 문장의
+// "앞부분"만 쓰고, 질문과 실천 문구는 시스템이 검수된 원문 그대로 뒤에 붙인다(문서 4-16).
 function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null | undefined): string {
   if (mode === "offer_follows") {
     return "이번 답변 바로 뒤에 시스템이 '지금 당장 해볼 수 있는 방법을 알려드릴까요, 아니면 고민을 더 깊게 알아볼까요?'라는 선택 안내를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 지금까지 들은 마음을 따뜻하게 반영하고 짧게 정리하는 것으로 마무리하세요. 구체적인 행동 제안은 사용자가 고른 뒤에 하므로 이번에는 하지 마세요. 선택 안내 문구 자체는 쓰지 마세요.";
@@ -53,17 +66,28 @@ function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null |
   if (mode === "action") {
     return "사용자가 '행동 제안받기'를 직접 선택했습니다. 더 이상 확인 질문을 하지 말고, 지금까지 들은 내용을 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 단기적인 것 1~2개와 꾸준히 이어가면 좋을 중장기적인 것 1개를 총 3가지 안팎으로 구체적으로 제안하세요. 여러 감정이 함께 드러나 있다면 각각에 짝지어 제안하세요. 마지막에는 새 질문 대신 조정이 필요한 부분이 있는지 물어보며 마무리하세요.";
   }
-  const base =
-    "사용자가 '내 고민 더 알아보기'를 직접 선택했습니다. 이제부터는 해결책이나 행동 제안을 먼저 내놓지 말고, 사용자가 자신의 고민을 스스로 더 깊이 들여다보도록 돕는 탐색 대화를 합니다. 사용자의 대답을 평가하거나 진단하지 말고, '~패턴이네요' 같은 이름 붙이기도 하지 마세요. 이론 이름이나 전문용어는 쓰지 마세요. 먼저 방금 한 말에 담긴 마음을 반영한 뒤, 질문은 딱 하나만 물으며 마무리하세요.";
-  if (!guide) {
-    return `${base} 지금까지 이야기에서 아직 덜 다뤄진 부분(상황, 감정, 원하는 것 중 하나)을 한 가지만 골라 자연스럽게 물어보세요.`;
+  const common =
+    "사용자가 '내 고민 더 알아보기'를 직접 선택했습니다. 이제부터는 해결책이나 행동 제안을 먼저 내놓지 말고, 사용자가 자신의 고민을 스스로 더 깊이 들여다보도록 돕는 탐색 대화를 합니다. 사용자의 대답을 평가하거나 진단하지 말고, '~패턴이네요' 같은 이름 붙이기도 하지 마세요. 이론 이름이나 전문용어는 쓰지 마세요.";
+  if (mode === "explore") {
+    // 이론 없는 일반 탐색: AI가 질문 하나를 직접 만든다.
+    return `${common} 먼저 방금 한 말에 담긴 마음을 반영한 뒤, 질문은 딱 하나만 물으며 마무리하세요. 지금까지 이야기에서 아직 덜 다뤄진 부분(상황, 감정, 원하는 것 중 하나)을 한 가지만 골라 자연스럽게 물어보세요.`;
   }
+  if (mode === "commit_lead") {
+    return [
+      common,
+      "지금은 탐색을 정리하는 단계입니다. 사용자가 이야기한 것을 사용자의 말로 한두 문장 짧게 정리하고, 사용자가 스스로 정할 수 있는 작은 다음 걸음 하나를 부드럽게 짚어주세요. 질문은 하지 마세요. 구체적인 실천 방법은 시스템이 이어서 붙이니 직접 나열하지 마세요.",
+      ...voiceCardLines(guide?.voiceCard),
+    ].join("\n");
+  }
+  // explore_lead
   return [
-    base,
-    `이번 탐색의 초점: ${guide.plainFocus}`,
-    `이번 단계: ${STAGE_GUIDE[guide.stage]}`,
-    guide.intent ? `이 단계 질문의 의도: ${guide.intent}` : "",
-    `참고 질문: "${guide.question}" — 이 문장을 그대로 읽지 말고, 사용자가 방금 한 말에 맞게 자연스럽게 바꿔서 한 번만 물으세요.`,
+    common,
+    guide ? `이번 탐색의 초점: ${guide.plainFocus}` : "",
+    guide ? `이번 단계: ${STAGE_GUIDE[guide.stage]}` : "",
+    guide?.intent ? `이 단계 질문의 의도: ${guide.intent}` : "",
+    "방금 한 말에 담긴 마음을 한두 문장(150자 이내)으로만 반영하세요. 질문은 하지 마세요. 질문은 시스템이 이어서 붙입니다. 같은 말을 되풀이해 요약하지 말고 한 걸음만 더 들어가세요.",
+    guide?.growthFrame ? `이번 턴에는 다음 문장의 뜻을 사용자 상황에 맞게 풀어, 새로운 관점으로 한 문장 안에 이어주세요(그대로 읽지 말고 자연스럽게): "${guide.growthFrame}"` : "",
+    ...voiceCardLines(guide?.voiceCard),
   ]
     .filter(Boolean)
     .join("\n");

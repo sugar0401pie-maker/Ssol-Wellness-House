@@ -405,34 +405,43 @@ describe("buildSystemPrompt", () => {
       assert.doesNotMatch(p, /이미 이 대화에서 몇 차례 들었습니다/); // 서로 반대 지시가 섞이지 않는다
     });
 
-    test("explore + 이론 가이드: 초점·단계·의도·참고 질문이 들어가고, 이론 이름·진단·이름 붙이기를 금지한다", () => {
-      const p = buildSystemPrompt({
-        ...base,
-        turnCount: 3,
-        dialogueMode: "explore",
-        theoryGuide: {
-          plainFocus: "생각이 감정에 어떻게 이어지는지 살펴보기",
-          stage: "CLARIFY",
-          question: "그 상황에서 가장 먼저 떠오른 생각은 무엇이었나요?",
-          intent: "자동적으로 떠오른 생각 알아차리기",
-        },
-      });
+    const guide = {
+      plainFocus: "생각이 감정에 어떻게 이어지는지 살펴보기",
+      stage: "REFRAME" as const,
+      question: "그 상황에서 가장 먼저 떠오른 생각은 무엇이었나요?",
+      intent: "자동적으로 떠오른 생각 알아차리기",
+      growthFrame: "실수는 배우는 과정의 일부라는 뜻",
+      voiceCard: { questionStyle: "부드럽게 되묻기", vocab: "생각, 장면", stance: "판단하지 않고 듣기", forbidden: "이름 붙이기" },
+    };
+
+    test("explore_lead: 앞부분 한두 문장만 쓰고 질문은 시스템이 붙인다. 초점·단계·의도·말투 카드가 들어간다", () => {
+      const p = buildSystemPrompt({ ...base, turnCount: 3, dialogueMode: "explore_lead", theoryGuide: guide });
       assert.match(p, /'내 고민 더 알아보기'를 직접 선택/);
       assert.match(p, /생각이 감정에 어떻게 이어지는지 살펴보기/);
-      assert.match(p, /핵심을 구분해보는 단계/);
+      assert.match(p, /다른 관점이나 예외/);
       assert.match(p, /자동적으로 떠오른 생각 알아차리기/);
-      assert.match(p, /가장 먼저 떠오른 생각은 무엇이었나요/);
+      assert.match(p, /질문은 하지 마세요\. 질문은 시스템이 이어서 붙입니다/);
       assert.match(p, /이론 이름이나 전문용어는 쓰지 마세요/);
       assert.match(p, /평가하거나 진단하지 말고/);
-      assert.match(p, /질문은 딱 하나만/);
+      assert.match(p, /실수는 배우는 과정의 일부라는 뜻/);
+      assert.match(p, /부드럽게 되묻기/);
+      assert.match(p, /기본 말투는 그대로 유지/);
+      assert.doesNotMatch(p, /그대로 읽지 말고.*가장 먼저 떠오른 생각은/); // DB 질문 원문은 AI에게 주지 않는다(시스템이 붙인다)
       assert.doesNotMatch(p, /이미 이 대화에서 몇 차례 들었습니다/); // 3가지 제안 페이싱과 섞이면 안 된다
+    });
+
+    test("commit_lead: 정리 문장만 쓰고 질문·실천 나열은 하지 않는다", () => {
+      const p = buildSystemPrompt({ ...base, turnCount: 4, dialogueMode: "commit_lead", theoryGuide: { ...guide, stage: "COMMIT" } });
+      assert.match(p, /탐색을 정리하는 단계/);
+      assert.match(p, /질문은 하지 마세요/);
+      assert.match(p, /직접 나열하지 마세요/);
     });
 
     test("explore인데 이론 가이드가 없으면(DB 미준비 등) 일반 탐색 지시로 대체된다", () => {
       const p = buildSystemPrompt({ ...base, turnCount: 3, dialogueMode: "explore", theoryGuide: null });
       assert.match(p, /'내 고민 더 알아보기'를 직접 선택/);
       assert.match(p, /아직 덜 다뤄진 부분/);
-      assert.doesNotMatch(p, /참고 질문:/);
+      assert.match(p, /질문은 딱 하나만/);
     });
   });
 });

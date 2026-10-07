@@ -8,18 +8,19 @@ import { SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/p
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
-import { OFFER_CHOICES, isOfferMessage } from "@/lib/theory/offer";
+import { choicesForMessage } from "@/lib/theory/offer";
 import type { Choice, ChoiceId } from "@/lib/theory/types";
 
 // choices: 이 말풍선 아래에 보여줄 선택 칩("행동 제안받기"/"내 고민 더 알아보기" — lib/theory).
 // 대화의 맨 마지막 말풍선이고 아직 답하지 않았을 때만 화면에 나온다.
 type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[] };
 
-// 저장된 대화를 다시 불러올 때(서버는 role/content만 준다), 마지막 말이 선택 안내이면 칩을 되살린다.
+// 저장된 대화를 다시 불러올 때(서버는 role/content만 준다), 마지막 말이 선택 안내/연장 안내이면 칩을 되살린다.
 function withOfferChoices(list: Message[]): Message[] {
   const last = list[list.length - 1];
-  if (!last || last.role !== "assistant" || !isOfferMessage(last.content)) return list;
-  return [...list.slice(0, -1), { ...last, choices: OFFER_CHOICES }];
+  const choices = last && last.role === "assistant" ? choicesForMessage(last.content) : null;
+  if (!last || !choices) return list;
+  return [...list.slice(0, -1), { ...last, choices: [...choices] }];
 }
 type SessionSummary = {
   sessionId: string;

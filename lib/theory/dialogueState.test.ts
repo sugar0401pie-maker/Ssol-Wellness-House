@@ -1,124 +1,119 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
-  EMPTY_STATE,
-  afterActionTurn,
-  afterExploreTurn,
-  afterOffer,
-  applyChoice,
-  endForUnsafeRoute,
-  isChoiceId,
-  nextStage,
-  parseDialogueState,
+  EMPTY_STATE, MAX_OFFERS, afterOffer, decideTurn, endForUnsafeRoute, endFlow, extendExplore, isChoiceId, parseDialogueState, startExplore, stepExplore, withTheory,
+  type DialogueState,
 } from "./dialogueState.ts";
 
-const offered = afterOffer(EMPTY_STATE, 2, "TH-1", ["Q1", "Q2"]);
+const base = { userTurn: 1, choiceId: null, textIntent: null, implicitExplore: true } as const;
+const offered1 = afterOffer(EMPTY_STATE, 2);
+const offered2 = afterOffer(offered1, 3);
 
-describe("parseDialogueState", () => {
-  test("이상한 값(null, 문자열, 알 수 없는 모드)은 빈 상태로 돌아간다", () => {
+describe("parseDialogueState / isChoiceId", () => {
+  test("이상한 값은 빈 상태로, 저장된 값은 그대로 복원", () => {
     assert.deepEqual(parseDialogueState(null), EMPTY_STATE);
-    assert.deepEqual(parseDialogueState("x"), EMPTY_STATE);
     assert.equal(parseDialogueState({ mode: "hack" }).mode, "undecided");
     assert.equal(parseDialogueState({ stage: "??" }).stage, "OPEN");
+    assert.equal(parseDialogueState({ offerCount: 99 }).offerCount, MAX_OFFERS);
+    const s = parseDialogueState({ ...EMPTY_STATE, mode: "explore", theoryId: "TH-ACT", stage: "REFRAME", exploreTurns: 2, askedQuestionIds: ["Q1"], pendingExtension: true });
+    assert.equal(s.theoryId, "TH-ACT"); assert.equal(s.pendingExtension, true); assert.deepEqual(s.askedQuestionIds, ["Q1"]);
   });
-
-  test("저장된 값은 그대로 복원된다", () => {
-    const s = parseDialogueState({ ...offered, mode: "explore", stage: "CLARIFY", exploreTurns: 2, askedQuestionIds: ["Q1"] });
-    assert.equal(s.mode, "explore");
-    assert.equal(s.stage, "CLARIFY");
-    assert.equal(s.theoryId, "TH-1");
-    assert.deepEqual(s.askedQuestionIds, ["Q1"]);
-  });
-});
-
-describe("선택 전이", () => {
-  test("isChoiceId는 두 값만 통과시킨다", () => {
-    assert.equal(isChoiceId("action"), true);
-    assert.equal(isChoiceId("explore"), true);
-    assert.equal(isChoiceId("x"), false);
-    assert.equal(isChoiceId(undefined), false);
-  });
-
-  test("제안을 받은 적 없는 선택(조작된 요청)은 상태를 바꾸지 않는다", () => {
-    assert.equal(applyChoice(EMPTY_STATE, "explore"), EMPTY_STATE);
-    assert.equal(applyChoice(EMPTY_STATE, "action"), EMPTY_STATE);
-  });
-
-  test("제안 후 '행동 제안받기' → action, '내 고민 더 알아보기' → explore(OPEN부터)", () => {
-    assert.equal(applyChoice(offered, "action").mode, "action");
-    const e = applyChoice(offered, "explore");
-    assert.equal(e.mode, "explore");
-    assert.equal(e.stage, "OPEN");
-    assert.equal(e.exploreTurns, 0);
-  });
-
-  test("탐색 중에도 '행동 제안받기'로 언제든 갈아탈 수 있다", () => {
-    assert.equal(applyChoice(applyChoice(offered, "explore"), "action").mode, "action");
-  });
-
-  test("이미 끝난(done) 흐름에서는 선택이 무시된다", () => {
-    const done = { ...offered, mode: "done" as const };
-    assert.equal(applyChoice(done, "explore"), done);
-    assert.equal(applyChoice(done, "action"), done);
-  });
-
-  test("action은 한 턴짜리 지시라, 그 턴이 끝나면 done으로 돌아간다", () => {
-    assert.equal(afterActionTurn(applyChoice(offered, "action")).mode, "done");
-    assert.equal(afterActionTurn(offered).mode, "undecided"); // action이 아니면 그대로
+  test("칩 id 네 개만 통과", () => {
+    for (const ok of ["action", "explore", "extend", "finish"]) assert.equal(isChoiceId(ok), true);
+    assert.equal(isChoiceId("x"), false); assert.equal(isChoiceId(undefined), false);
   });
 });
 
-describe("탐색 진행", () => {
-  test("단계는 OPEN → CLARIFY → REFRAME → COMMIT 순서이고 마지막 다음은 없다", () => {
-    assert.equal(nextStage("OPEN"), "CLARIFY");
-    assert.equal(nextStage("CLARIFY"), "REFRAME");
-    assert.equal(nextStage("REFRAME"), "COMMIT");
-    assert.equal(nextStage("COMMIT"), null);
+describe("decideTurn — 선택 안내", () => {
+  test("두 번째 사용자 메시지에서 항상 선택 안내(이론 매칭과 무관), 첫·세 번째는 아님", () => {
+    assert.deepEqual(decideTurn({ ...base, state: EMPTY_STATE, userTurn: 2 }), { kind: "offer", offerNo: 1 });
+    assert.deepEqual(decideTurn({ ...base, state: EMPTY_STATE, userTurn: 1 }), { kind: "none" });
+    assert.deepEqual(decideTurn({ ...base, state: EMPTY_STATE, userTurn: 3 }), { kind: "none" });
   });
-
-  test("질문 하나를 던질 때마다 턴 수가 늘고, 던진 질문이 기록되고, 단계가 한 칸 넘어간다", () => {
-    const s0 = applyChoice(offered, "explore");
-    const s1 = afterExploreTurn(s0, "Q1", "OPEN", 4);
-    assert.equal(s1.exploreTurns, 1);
-    assert.deepEqual(s1.askedQuestionIds, ["Q1"]);
-    assert.equal(s1.stage, "CLARIFY");
-    assert.equal(s1.mode, "explore");
+  test("제안을 받은 적 없는데 칩 요청이 오면(조작) 일반 메시지로", () => {
+    assert.deepEqual(decideTurn({ ...base, state: EMPTY_STATE, userTurn: 2, choiceId: "explore" }), { kind: "none" });
   });
-
-  test("최대 턴 수에 닿으면 done(평소 대화로 복귀)", () => {
-    let s = applyChoice(offered, "explore");
-    s = afterExploreTurn(s, "Q1", "OPEN", 2);
-    s = afterExploreTurn(s, "Q2", "CLARIFY", 2);
-    assert.equal(s.mode, "done");
-    assert.equal(s.exploreTurns, 2);
+  test("칩 선택: action → 행동 제안, explore → 탐색 시작", () => {
+    assert.deepEqual(decideTurn({ ...base, state: offered1, userTurn: 3, choiceId: "action" }), { kind: "action" });
+    assert.deepEqual(decideTurn({ ...base, state: offered1, userTurn: 3, choiceId: "explore" }), { kind: "explore_start", implicit: false });
   });
-
-  test("COMMIT 단계까지 마치면 최대 턴 전이라도 done", () => {
-    const s = afterExploreTurn(applyChoice(offered, "explore"), "Q9", "COMMIT", 10);
-    assert.equal(s.mode, "done");
+  test("글로 의도를 말하면(방법만 / 더 이야기) 칩을 안 눌러도 같은 의미", () => {
+    assert.deepEqual(decideTurn({ ...base, state: offered1, userTurn: 3, textIntent: "action" }), { kind: "action" });
+    assert.deepEqual(decideTurn({ ...base, state: offered1, userTurn: 3, textIntent: "explore" }), { kind: "explore_start", implicit: false });
   });
-
-  test("질문을 못 찾은 턴(null)도 턴 수는 올라가서 무한히 탐색만 하지 않는다", () => {
-    const s = afterExploreTurn(applyChoice(offered, "explore"), null, "OPEN", 4);
-    assert.equal(s.exploreTurns, 1);
-    assert.deepEqual(s.askedQuestionIds, []);
+  test("칩을 안 누르고 이어 말하면 한 번만 다시 보여주고, 또 이어 말하면 탐색으로 간주(D1)", () => {
+    assert.deepEqual(decideTurn({ ...base, state: offered1, userTurn: 3 }), { kind: "offer", offerNo: 2 });
+    assert.deepEqual(decideTurn({ ...base, state: offered2, userTurn: 4 }), { kind: "explore_start", implicit: true });
   });
-
-  test("explore가 아닌 상태에서는 아무것도 바뀌지 않는다", () => {
-    assert.equal(afterExploreTurn(offered, "Q1", "OPEN", 4), offered);
+  test("간주 설정을 끄면 두 번 안내 후에는 평소 대화", () => {
+    assert.deepEqual(decideTurn({ ...base, state: offered2, userTurn: 4, implicitExplore: false }), { kind: "none" });
+  });
+  test("그만하자고 하면 어떤 상태에서도 끝(이미 끝났으면 평소 대화)", () => {
+    assert.deepEqual(decideTurn({ ...base, state: offered1, userTurn: 3, textIntent: "stop" }), { kind: "end" });
+    assert.deepEqual(decideTurn({ ...base, state: startExplore(offered1, false), textIntent: "stop" }), { kind: "end" });
+    assert.deepEqual(decideTurn({ ...base, state: endFlow(offered1), textIntent: "stop" }), { kind: "none" });
+  });
+  test("끝난 흐름은 다시 열리지 않는다", () => {
+    assert.deepEqual(decideTurn({ ...base, state: endFlow(offered1), userTurn: 2 }), { kind: "none" });
+    assert.deepEqual(decideTurn({ ...base, state: endFlow(offered1), userTurn: 5, choiceId: "explore" }), { kind: "none" });
   });
 });
 
-describe("안전 경로 이탈", () => {
-  test("탐색 중에 허용 경로를 벗어나면 끝낸다", () => {
-    assert.equal(endForUnsafeRoute(applyChoice(offered, "explore")).mode, "done");
-  });
+describe("탐색 진행(stepExplore)", () => {
+  const long = "커피 마시고 유튜브를 보는데 오히려 더 불안해져요";
+  const explore = withTheory(startExplore(offered1, false), "TH-ACT", "llm");
 
-  test("제안만 받고 고르지 않은 상태도 끝낸다 — 지나간 안내의 칩으로 나중에 탐색이 열리면 안 된다", () => {
-    assert.equal(endForUnsafeRoute(offered).mode, "done");
+  test("OPEN → CLARIFY → REFRAME → COMMIT 순서, 한 턴에 한 단계", () => {
+    const s1 = stepExplore(explore, long, 6, "Q-open");
+    assert.equal(s1.stage, "OPEN"); assert.equal(s1.nextState.stage, "CLARIFY"); assert.deepEqual(s1.nextState.askedQuestionIds, ["Q-open"]);
+    const s2 = stepExplore(s1.nextState, long, 6, "Q-clar");
+    assert.equal(s2.stage, "CLARIFY"); assert.equal(s2.nextState.stage, "REFRAME");
+    const s3 = stepExplore(s2.nextState, long, 6, "Q-ref");
+    assert.equal(s3.stage, "REFRAME"); assert.equal(s3.nextState.stage, "COMMIT");
+    const s4 = stepExplore(s3.nextState, long, 6, null);
+    assert.equal(s4.stage, "COMMIT"); assert.equal(s4.offerExtension, true); assert.equal(s4.nextState.pendingExtension, true); assert.equal(s4.finished, false);
   });
+  test("CLARIFY에서 답이 막연하면 한 번 더 묻고, 두 번째부터는 넘어간다", () => {
+    const atClarify = { ...explore, stage: "CLARIFY" as const, exploreTurns: 1 };
+    const a = stepExplore(atClarify, "몰라요", 6, "Q1");
+    assert.equal(a.nextState.stage, "CLARIFY"); assert.equal(a.nextState.clarifyCount, 1);
+    const b = stepExplore(a.nextState, "그냥요", 6, "Q2");
+    assert.equal(b.nextState.stage, "REFRAME");
+  });
+  test("사용자가 다음 걸음을 말하면 COMMIT으로 바로 넘어간다", () => {
+    const atClarify = { ...explore, stage: "CLARIFY" as const, exploreTurns: 1 };
+    const s = stepExplore(atClarify, "제목이라도 써볼게요", 6, null);
+    assert.equal(s.stage, "COMMIT");
+  });
+  test("상한 턴에 닿으면 이번 턴이 정리(COMMIT)이고 연장 칩 없이 끝난다", () => {
+    const late: DialogueState = { ...explore, stage: "CLARIFY", exploreTurns: 5 };
+    const s = stepExplore(late, long, 6, null);
+    assert.equal(s.stage, "COMMIT"); assert.equal(s.finished, true); assert.equal(s.offerExtension, false); assert.equal(s.nextState.mode, "done");
+  });
+  test("연장: COMMIT 뒤 CLARIFY부터 한 번 더, 연장은 최대 2회, 상한 근처면 연장 칩을 안 보낸다", () => {
+    const afterCommit: DialogueState = { ...explore, stage: "COMMIT", exploreTurns: 4, pendingExtension: true };
+    const ext = extendExplore(afterCommit);
+    assert.equal(ext.stage, "CLARIFY"); assert.equal(ext.pendingExtension, false); assert.equal(ext.extensionsUsed, 1);
+    const nearCap: DialogueState = { ...explore, stage: "COMMIT", exploreTurns: 4 };
+    assert.equal(stepExplore(nearCap, long, 6, null).offerExtension, false); // turn 5 → cap-1 = 5 → 연장 불가
+    const used: DialogueState = { ...explore, stage: "COMMIT", exploreTurns: 3, extensionsUsed: 2 };
+    assert.equal(stepExplore(used, long, 6, null).offerExtension, false);
+  });
+  test("연장 칩 뒤: finish → 끝, 칩 없이 말 이어가면 extend, 탐색 중 action 칩은 행동 제안", () => {
+    const pending: DialogueState = { ...explore, stage: "COMMIT", exploreTurns: 4, pendingExtension: true };
+    assert.deepEqual(decideTurn({ ...base, state: pending, userTurn: 8, choiceId: "finish" }), { kind: "finish" });
+    assert.deepEqual(decideTurn({ ...base, state: pending, userTurn: 8 }), { kind: "extend" });
+    assert.deepEqual(decideTurn({ ...base, state: explore, userTurn: 8, choiceId: "action" }), { kind: "action" });
+    assert.deepEqual(decideTurn({ ...base, state: explore, userTurn: 8 }), { kind: "explore_turn" });
+  });
+});
 
-  test("아직 제안한 적 없는 상태는 그대로 둔다", () => {
+describe("endForUnsafeRoute", () => {
+  test("탐색 중이거나 제안만 받은 상태에서 위험 경로가 되면 끝낸다", () => {
+    assert.equal(endForUnsafeRoute(startExplore(offered1, false)).mode, "done");
+    assert.equal(endForUnsafeRoute(offered1).mode, "done");
+  });
+  test("아직 아무것도 시작하지 않았으면 그대로", () => {
     assert.equal(endForUnsafeRoute(EMPTY_STATE), EMPTY_STATE);
   });
 });

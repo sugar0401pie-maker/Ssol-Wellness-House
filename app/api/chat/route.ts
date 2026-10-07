@@ -219,7 +219,6 @@ export async function POST(req: NextRequest) {
     choiceId,
     message,
     recentMessages,
-    safetyRules,
   });
   const result = await generateAnswer({
     route: decision.route,
@@ -233,18 +232,22 @@ export async function POST(req: NextRequest) {
     ...dialogue.generationExtras,
   });
 
+  // 탐색 턴이면 AI가 쓴 앞부분에 DB의 검수된 질문/실천을 붙여 최종 답변을 만든다(그 외에는 그대로).
+  const finalReply = await dialogue.compose(result.reply, result.usedFallback);
+
   await admin.from("chat_messages").insert({
     session_id: sessionId,
     user_id: userId,
     role: "assistant",
-    content: result.reply,
+    content: finalReply,
     route: decision.route,
     retrieved_chunk_ids: result.retrievedChunkIds.length ? result.retrievedChunkIds : null,
     framework_id: result.frameworkId,
+    ...dialogue.logFields(),
   });
 
-  // 이번 답변이 저장된 뒤에야 상태를 저장하고, 선택 안내를 보낼 차례면 그 메시지를 이어서 저장한다.
-  const { followUp } = await dialogue.finalize();
+  // 이번 답변이 저장된 뒤에야 상태를 저장하고, 안내(선택 칩/연장 칩)를 보낼 차례면 그 메시지를 이어서 저장한다.
+  const { followUp } = await dialogue.finalize({ usedFallback: result.usedFallback });
 
   const usageTotals = result.usage.reduce(
     (acc, u) => ({ inputTokens: acc.inputTokens + u.inputTokens, outputTokens: acc.outputTokens + u.outputTokens }),
@@ -254,7 +257,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     sessionId,
     route: decision.route,
-    reply: result.reply,
+    reply: finalReply,
     done: true,
     remainingToday: Math.max(DAILY_MESSAGE_LIMIT - (todayCount ?? 0), 0),
     // 이번이 이 대화의 마지막으로 허용되는 메시지(20번째)면 true — 답변이 다 보인 뒤 새 대화 안내 팝업을 띄운다.

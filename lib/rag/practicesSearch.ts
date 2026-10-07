@@ -34,6 +34,8 @@ type PracticeRow = PracticeResult & {
   availability: string | null;
   exposureFlag: boolean | null;
   exposureStep: number | null;
+  sourceTheoryId: string | null;
+  suggestReason: string | null;
 };
 
 function toResult(p: PracticeResult): PracticeResult {
@@ -50,7 +52,7 @@ async function loadPractices(): Promise<PracticeRow[]> {
   const base = "id,domain,category,tier,title,detail";
   // 칸을 새로 추가한 마이그레이션(2순위 영역 20261006000000, 이론 실천 노출 제한 20261006000200)을 아직 안 돌렸어도
   // 실천방법 제안 전체가 사라지지 않게, 새 칸이 있는 조회부터 시도하고 실패하면 칸을 줄여 다시 읽는다.
-  const attempts = [`${base},secondary_domains,availability,exposure_flag,exposure_step`, `${base},secondary_domains`, base];
+  const attempts = [`${base},secondary_domains,availability,exposure_flag,exposure_step,source_theory_id,suggest_reason`, `${base},secondary_domains`, base];
   let res = await admin.from("wellness_practices").select(attempts[0]);
   for (let i = 1; res.error && i < attempts.length; i++) res = await admin.from("wellness_practices").select(attempts[i]);
   const { data, error } = res;
@@ -69,6 +71,8 @@ async function loadPractices(): Promise<PracticeRow[]> {
     availability: (r.availability as string | null | undefined) ?? null,
     exposureFlag: (r.exposure_flag as boolean | null | undefined) ?? null,
     exposureStep: (r.exposure_step as number | null | undefined) ?? null,
+    sourceTheoryId: (r.source_theory_id as string | null | undefined) ?? null,
+    suggestReason: (r.suggest_reason as string | null | undefined) ?? null,
   }));
   cache = { rows, loadedAt: Date.now() };
   return cache.rows;
@@ -274,4 +278,44 @@ export async function getDailyPractice(
 
   const idx = simpleHash(`${dateKey}:${userId}`) % pool.length;
   return toResult(pool[idx]);
+}
+
+
+export type CommitPractice = { id: string; title: string; detail: string; reason: string | null };
+
+// 이론 탐색을 마무리(COMMIT)할 때 권할 실천 1~2개(문서 4-2 ⑤·4-11): 그 이론과 "궁합이 맞는(fit)" 연결 실천과 그 이론에서 나온 실천을 후보로,
+// 궁합이 충돌(conflict)하는 것은 뺀다. 온보딩 하드 필터(파트너·돌봄·재직·제외)와 노출 제한(위기 이력 등)은 항상 먼저 적용하고,
+// 탐색을 거친 대화이므로 이 이론의 after_explore 실천은 허용한다(allowAfterExplore). 단기(가볍게 시작) 하나 + 이어가기 하나를 우선한다.
+// 후보가 하나도 없으면 빈 배열(호출하는 쪽이 일반 검색으로 대체).
+export async function pickCommitPractices(params: {
+  theoryId: string;
+  messages: string[]; // 최근 사용자 발화(관련도 가산점용)
+  onboardingPrefs: OnboardingPrefs;
+  serving: ServingContext;
+  traumaStage: TraumaStage | null;
+  alreadyShownText?: string; // 이 대화에서 이미 나간 답변 글(같은 실천을 또 권하지 않으려고 제목이 들어 있는지 본다)
+}): Promise<CommitPractice[]> {
+  const admin = createAdminClient();
+  const [{ data: links }, rowsAll] = await Promise.all([
+    admin.from("theory_practice_links").select("practice_id, compatibility").eq("theory_id", params.theoryId),
+    loadPractices(),
+  ]);
+  const fit = new Set<string>(), conflict = new Set<string>();
+  for (const l of (links ?? []) as { practice_id: string; compatibility: string }[]) (l.compatibility === "conflict" ? conflict : l.compatibility === "fit" ? fit : new Set<string>()).add(l.practice_id);
+
+  const ctx: ServingContext = { ...params.serving, allowAfterExplore: true, excludeExposure: params.traumaStage != null || params.serving.excludeExposure };
+  const shown = params.alreadyShownText ?? "";
+  let rows = rowsAll.filter((p) => !conflict.has(p.id) && passesServingRules(p, ctx) && !(shown && shown.includes(p.title)));
+  const eligibilityMap = await loadEligibilityMap();
+  rows = filterByEligibility(rows, eligibilityMap, params.onboardingPrefs);
+  const q = bigrams(params.messages.slice(-3).join(" "));
+  const candidates = rows
+    .filter((p) => fit.has(p.id) || p.sourceTheoryId === params.theoryId)
+    .map((p) => ({ p, score: (fit.has(p.id) ? 3 : 0) + (p.sourceTheoryId === params.theoryId ? 2 : 0) + Math.min(overlapScore(q, bigrams(`${p.title} ${p.detail}`)), 6) * 0.4 })) // 주제 관련도(최대 2.4점)는 이론 적합(3점)·출처(2점)를 뒤집지 못하지만, 같은 적합도끼리는 대화 주제에 가까운 것을 앞세운다
+    .sort((a, b) => b.score - a.score);
+  const short = candidates.find((c) => c.p.tier === "가볍게 시작");
+  const longer = candidates.find((c) => c.p.tier !== "가볍게 시작" && c !== short);
+  const picked = [short, longer].filter((c): c is NonNullable<typeof c> => !!c);
+  for (const c of candidates) { if (picked.length >= 2) break; if (!picked.includes(c)) picked.push(c); }
+  return picked.slice(0, 2).map(({ p }) => ({ id: p.id, title: p.title, detail: p.detail, reason: p.suggestReason }));
 }

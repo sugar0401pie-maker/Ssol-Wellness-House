@@ -120,6 +120,8 @@ export async function generateAnswer(params: {
   frameworkId: string | null;
   usage: GenerationUsage[];
   regenerated: boolean;
+  // 생성 실패/검수 2회 실패로 고정 대체 문구가 나간 경우. 탐색 흐름은 이때 상태를 앞으로 넘기지 않는다.
+  usedFallback: boolean;
 }> {
   const admin = createAdminClient();
   const sections = await getSystemPromptSections();
@@ -134,7 +136,7 @@ export async function generateAnswer(params: {
   const { label: personaLabel, hint: personaHint } = await loadPersonaHint(admin, params.userId, params.sessionId);
 
   if (params.isPersonaQuestion && !personaHint) {
-    return { reply: NEEDS_TEST_REPLY, retrievedChunkIds: [], frameworkId: null, usage: [], regenerated: false };
+    return { reply: NEEDS_TEST_REPLY, retrievedChunkIds: [], frameworkId: null, usage: [], regenerated: false, usedFallback: false };
   }
 
   if (params.route === "service_info") {
@@ -160,8 +162,7 @@ export async function generateAnswer(params: {
   // 가져오지 않는다(불필요한 조회 방지 + 프롬프트에 서로 반대되는 지시가 섞이지 않게).
   const wantsPractices =
     !params.isPersonaQuestion &&
-    params.dialogueMode !== "offer_follows" &&
-    params.dialogueMode !== "explore" &&
+    (!params.dialogueMode || params.dialogueMode === "action") &&
     (params.route === "wellness" || params.route === "life_decision" || params.route === "clinical_distress");
 
   // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
@@ -217,6 +218,7 @@ export async function generateAnswer(params: {
   const usage: GenerationUsage[] = [];
   let reply: string;
   let regenerated = false;
+  let usedFallback = false;
 
   try {
     const first = await generateReply(system, conversation);
@@ -233,12 +235,14 @@ export async function generateAnswer(params: {
       const check2 = checkOutput(second.text, { usedClinicalChunk, clinicalBoundaryAlreadyStated });
       reply = check2.ok ? second.text : SAFE_FALLBACK_REPLY;
       if (!check2.ok) {
+        usedFallback = true;
         console.warn("출력 검사 2회 연속 실패, 안전한 대체 문구 사용:", check2.violations);
       }
     }
   } catch (e) {
     console.error("답변 생성 실패:", e instanceof Error ? e.message : e);
     reply = SAFE_FALLBACK_REPLY;
+    usedFallback = true;
   }
 
   // 이번이 이 세션에서 처음으로 전문가 상담 안내가 나간 턴이면 기록해둔다 — 다음 턴부터는
@@ -256,5 +260,6 @@ export async function generateAnswer(params: {
     frameworkId: frameworkHint?.framework_id ?? null,
     usage,
     regenerated,
+    usedFallback,
   };
 }

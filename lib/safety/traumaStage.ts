@@ -34,3 +34,11 @@ export function detectTraumaStage(message: string, recentUserMessages: string[] 
 export const STABILIZATION_PRACTICE_IDS = ["SELF-MIND-L1-03", "THX-CFT-01", "THX-DBT-02", "THX-DBT-15"] as const;
 // 진정된 뒤에만 쓰는 2단계(지금은 권하지 않음 — 목록에 남겨 두기만 한다).
 export const STABILIZATION_AFTER_CALM_IDS = ["THX-CFT-15"] as const;
+
+// 트라우마 T0 대화에서 이론 탐색에 쓰지 않는 기법(문서 stabilization_set 제외 목록; 기법 번호는 이론 정렬본의 번호).
+// 과거 장면을 떠올리거나 다시 쓰는 기법, 불편에 머무르는 연습(exposure), 눈 감고 생각을 오래 지켜보기, 애착 상처를 건드릴 수 있는 이미지 기법.
+// T1(지금 압도)에서는 탐색 자체를 멈춘다.
+export const TRAUMA_EXCLUDED_TECHNIQUE_NUMBERS: Record<string, string[]> = {
+  "TH-ACT": ["⑤", "⑥", "⑫", "⑬", "⑳"],
+  "TH-CFT": ["⑤", "⑥", "⑦", "⑩"],
+};

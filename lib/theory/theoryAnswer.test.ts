@@ -24,3 +24,19 @@ describe("buildSelectPrompt", () => {
     assert.match(p, /NONE/);
   });
 });
+
+import { buildHintLines, SELECT_HINTS } from "./selectHints.ts";
+describe("구분 단서(selectHints)", () => {
+  test("두 이론이 모두 후보에 있을 때만 단서가 들어간다", () => {
+    assert.equal(buildHintLines(["EFT", "IPT", "ACT", "LOGO"]).length, SELECT_HINTS.length);
+    assert.equal(buildHintLines(["EFT", "ACT"]).length, 0);
+    assert.equal(buildHintLines(["EFT", "IPT"]).length, 1);
+  });
+  test("단서가 없으면 프롬프트는 이전과 같고, 있으면 구분 항목이 붙는다", () => {
+    const t = [{ id: "EFT", focus: "a", axes: null }, { id: "IPT", focus: "b", axes: null }];
+    assert.equal(buildSelectPrompt(t), buildSelectPrompt(t, []));
+    const p = buildSelectPrompt(t, buildHintLines(["EFT", "IPT"]));
+    assert.match(p, /헷갈리기 쉬운 쌍/);
+    assert.match(p, /EFT와 IPT 구분/);
+  });
+});

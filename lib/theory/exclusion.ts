@@ -1,0 +1,35 @@
+// 이론 탐색을 열면 안 되는 상황 신호(2026-10-07 owner 재판정: "이론 제외 조건", D18/D19). 순수 함수라 테스트할 수 있다(exclusion.test.ts).
+//
+// 🔒 안전 라우터는 건드리지 않는다. 라우터가 이미 일반 경로(wellness/life_decision)로 통과시킨 대화에서만 "이론 탐색(선택 칩·탐색 대화)을 열지 않는" 보조 신호다.
+// 신호가 있으면 흐름을 끝내고 평소 대화(안전 규칙·시스템 프롬프트가 그대로 적용되는 경로)로 답한다. 이론 선택 AI에게 맡기지 않고 키워드로 먼저 막는 이유:
+// AI 판단은 비용·지연이 있고 결과가 흔들리지만, 이 상황들은 놓쳤을 때의 피해(사별 중인 사람에게 의미 찾기 질문, 폭언을 겪는 사람에게 "생각을 점검해보세요")가 크기 때문이다.
+// 단어 목록은 초안이며 실제 대화 로그를 보며 넓혀 간다. 놓치면 이론 선택 단계로 가므로, 목록이 틀려도 "탐색을 덜 여는 쪽"으로만 틀리도록(과하게 걸리는 쪽) 넉넉히 잡았다.
+export type ExclusionReason =
+  | "bereavement" // 사별·최근 상실 — MCP·LOGO·WBT·PPT·IPT 비적용, 공감 먼저
+  | "illness" // 본인·가족의 질병·고통 — 의미 찾기(태도 가치) 작업 금지
+  | "livelihood" // 생활·경제 문제가 먼저(D18)
+  | "workplace_abuse" // 직장 폭언·괴롭힘(D18) — 인지 계열("예민한 건 아닐까")로 가면 안 됨
+  | "unsafe_relationship" // 폭력·통제 관계(D19) — 라우터가 놓친 경우의 안전망
+  | "verdict_request" // 판정·원인 단정 요청("점수로 알려줘", "○○ 때문이죠?")
+  | "death_imagery" // 죽음 이미지 기법을 직접 요청
+  | "forgiveness"; // 용서 질문 — 용서 과정을 안내하지 않는다
+
+const SIGNALS: Record<ExclusionReason, string[]> = {
+  bereavement: ["돌아가셨", "돌아가신", "돌아가시", "사별", "세상을 떠", "세상을 뜨", "하늘나라", "먼저 떠나", "임종", "유가족", "상을 치", "장례", "49재", "추모", "그리워"],
+  illness: ["많이 아픈", "많이 아프", "투병", "암 진단", "암이래", "말기", "시한부", "입원", "간병", "수술을 앞", "큰 병", "중병", "치매"],
+  livelihood: ["먹고사는", "먹고 사는", "먹고살", "먹고 살", "생활비", "월세", "빚이", "빚을", "빚때", "카드값", "대출", "실직", "해고", "월급이 밀", "임금 체불", "굶"],
+  workplace_abuse: ["폭언", "괴롭힘", "갑질", "욕설", "인격 모독", "모욕을 당", "모욕적인 말", "직장 내 괴롭", "왕따"],
+  unsafe_relationship: ["물건을 던", "물건 던", "때려", "때리", "맞았", "맞던", "맞고", "폭행", "폭력", "휴대폰을 검사", "핸드폰을 검사", "못 만나게", "감시", "스토킹", "협박", "위협"],
+  verdict_request: ["점수로 알려", "점수로 말해", "진단해", "판정해", "무슨 유형", "때문이죠", "된 거죠", "때문인 거죠", "때문이잖아요"],
+  death_imagery: ["장례식", "유서", "묘비", "내 죽음", "제 죽음", "죽음을 상상", "죽는다고 상상", "죽음 이미지"],
+  forgiveness: ["용서"],
+};
+
+// 이번 메시지와 직전 사용자 발화 두 개를 본다(한 번 걸린 신호는 다음 한두 턴 동안 유지 — 곧바로 탐색으로 돌아가지 않기 위해).
+export function detectTheoryExclusion(message: string, recentUserMessages: string[] = []): ExclusionReason | null {
+  const texts = [message, ...recentUserMessages.slice(-2)];
+  for (const reason of Object.keys(SIGNALS) as ExclusionReason[]) {
+    if (texts.some((t) => SIGNALS[reason].some((w) => t.includes(w)))) return reason;
+  }
+  return null;
+}

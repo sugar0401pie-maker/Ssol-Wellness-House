@@ -23,6 +23,7 @@ import {
   type DialogueState,
 } from "./dialogueState";
 import { composeCommitReply, composeExploreReply, stripQuestions } from "./compose";
+import { detectTheoryExclusion } from "./exclusion";
 import { detectTextIntent } from "./intent";
 import {
   EXTENSION_CHOICES,
@@ -147,6 +148,13 @@ export async function planDialogue(params: {
     // 트라우마 T1 대응(안정화 안내 + 전문가 도움)이 맡는다.
     if (traumaStage === "T1" && turn.kind !== "none") {
       if (state.mode !== "done") await saveState(admin, sessionId, endFlow(state));
+      return NOOP;
+    }
+
+    // 사별·질병·생활고·직장 폭언·폭력/통제 관계·판정 요청·용서 질문 같은 "이론 제외 조건"(재판정 2026-10-07)에서는 탐색을 열지 않고 끝낸다.
+    // 행동 제안(action)은 이론 없이 일반 실천 제안이라 그대로 허용한다(실천 쪽 필터는 별도).
+    if (detectTheoryExclusion(params.message, recentUser) && turn.kind !== "action" && turn.kind !== "none") {
+      if (state.mode !== "done" && turn.kind !== "offer") await saveState(admin, sessionId, endFlow(state));
       return NOOP;
     }
 

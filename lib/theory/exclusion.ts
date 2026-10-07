@@ -14,13 +14,14 @@ export type ExclusionReason =
   | "unsafe_relationship" // 폭력·통제 관계(D19) — 라우터가 놓친 경우의 안전망
   | "verdict_request" // 판정·원인 단정 요청("점수로 알려줘", "○○ 때문이죠?")
   | "death_imagery" // 죽음 이미지 기법을 직접 요청
-  | "forgiveness"; // 용서 질문 — 용서 과정을 안내하지 않는다
+  | "forgiveness" // 용서 질문 — 용서 과정을 안내하지 않는다
+  | "safety_net"; // 아동 학대·성적 피해·섭식 문제 — 안전 라우터가 먼저 막지만, 라우터 판단이 흔들릴 때를 대비한 이중 안전망(2026-10-07)
 
 export type IllnessReason = "illness_self" | "illness_other" | "illness_unspecified";
 // 질병 이외의 종류는 단어 목록으로 잡고, 질병은 아래 ILLNESS_WORDS + illnessOwner(주어로 구분)로 따로 잡는다.
 export const THEORY_EXCLUSION_SIGNALS: Record<Exclude<ExclusionReason, IllnessReason>, string[]> = {
   // "그리워"는 일상 그리움("친구가 그리워요")에 너무 자주 걸려 뺐다. 사별은 돌아가신/사별 같은 직접 표현으로만 잡는다.
-  bereavement: ["돌아가셨", "돌아가신", "돌아가시", "사별", "세상을 떠", "세상을 뜨", "하늘나라", "먼저 떠나", "임종", "유가족", "상을 치", "장례", "49재", "추모", "무지개다리", "떠나보냈", "반려견이 죽", "반려묘가 죽", "강아지가 죽", "고양이가 죽", "반려동물이 죽"],
+  bereavement: ["돌아가셨", "돌아가신", "돌아가시", "사별", "세상을 떠", "세상을 뜨", "하늘나라", "먼저 떠나", "임종", "유가족", "상을 치", "장례", "49재", "추모", "무지개다리", "떠나보냈", "반려견이 죽", "반려묘가 죽", "강아지가 죽", "고양이가 죽", "반려동물이 죽", "유산했", "유산을", "유산이", "사산", "아이를 잃"],
   livelihood: ["먹고사는", "먹고 사는", "먹고살", "먹고 살", "생활비", "월세", "빚이", "빚을", "빚때", "카드값", "대출", "실직", "해고", "월급이 밀", "임금 체불", "굶어", "끼니를"],
   workplace_abuse: ["폭언", "괴롭힘", "갑질", "욕설", "인격 모독", "모욕을 당", "모욕적인 말", "직장 내 괴롭", "왕따"],
   // "맞고/맞았"는 "의견이 안 맞고", "예상이 맞았는데"에 걸려서, 사람에게 맞았다는 뜻이 분명한 표현만 쓴다. "폭력"도 "폭력적인 영화"에 걸려서 당했다/가정폭력류만 쓴다.
@@ -30,6 +31,8 @@ export const THEORY_EXCLUSION_SIGNALS: Record<Exclude<ExclusionReason, IllnessRe
   // "유서"는 "유서 깊은 가게"에 걸려서 유서를 쓴다는 표현만 쓴다.
   death_imagery: ["장례식", "유서를", "유서 쓰", "유서 써", "묘비", "내 죽음", "제 죽음", "죽음을 상상", "죽는다고 상상", "죽음 이미지"],
   forgiveness: ["용서"],
+  // 실제 라우터 확인(2026-10-07): 아동 학대·성적 피해는 violence, 섭식 문제·유산은 clinical_distress로 이미 막힘. 이 목록은 분류기가 다르게 판단할 때를 위한 안전망이다.
+  safety_net: ["성추행", "성폭행", "성폭력", "성희롱", "아이를 때렸", "아이를 학대", "아이를 폭행", "학대를 당", "학대당", "먹고 나면 토", "먹고 토", "폭식", "거식", "구토를 유도", "토하게 만"],
 };
 const SIGNALS = THEORY_EXCLUSION_SIGNALS;
 
@@ -61,6 +64,8 @@ export const OPEN_ALLOWED_REASONS: readonly ExclusionReason[] = ["livelihood", "
 // 2026-10-07 owner: "애매"로 표시했던 문장도 이론을 적용한다. 신호 단어가 있어도 아래 경우는 탐색을 닫지 않는다.
 //  - 오래된 상실: "할머니가 돌아가신 지 3년 됐는데…" — 사별 규칙은 "최근 상실"이 대상이다(2년 이상·몇 년·오래전·어릴 때가 함께 나오면 닫지 않음).
 //  - 병문안: "입원한 친구를 병문안 다녀왔어요" — 본인·가족의 질병과 크게 상관이 없는 이야기다.
+// "친구가 갑자기 죽었어요"처럼 가까운 사람 + (낱말 하나쯤) + 죽었 형태. 단어 목록으로는 사이에 낱말이 끼면 놓친다.
+const CLOSE_DEATH = /(친구|남편|아내|배우자|아이|아들|딸|부모님|엄마|아빠|어머니|아버지|동생|언니|오빠|누나|형|가족|연인|남자친구|여자친구)(가|이)\s*(\S+\s*)?죽었/;
 const OLD_LOSS = /([2-9]|\d{2,})\s*년|몇\s*년|수년|오래\s*전|오래전|어릴\s*때|어렸을\s*때/;
 function isExempt(reason: string, text: string): boolean {
   if (reason === "bereavement") return OLD_LOSS.test(text);
@@ -73,7 +78,7 @@ export function detectTheoryExclusion(message: string, recentUserMessages: strin
   const texts = [message, ...recentUserMessages.slice(-2)];
   for (const reason of Object.keys(SIGNALS) as (keyof typeof SIGNALS)[]) {
     if (OPEN_ALLOWED_REASONS.includes(reason)) continue;
-    if (texts.some((t) => !isExempt(reason, t) && SIGNALS[reason].some((w) => t.includes(w)))) return reason;
+    if (texts.some((t) => !isExempt(reason, t) && (SIGNALS[reason].some((w) => t.includes(w)) || (reason === "bereavement" && CLOSE_DEATH.test(t))))) return reason;
   }
   for (const t of texts) {
     const owner = isExempt("illness", t) ? null : illnessOwner(t);

@@ -46,6 +46,21 @@ describe("detectTheoryExclusion", () => {
     ]) assert.equal(detectTheoryExclusion(m), null, m);
   });
 
+  test("안전망 보강(2026-10-07): 유산·가까운 사람의 죽음·아동 학대·성적 피해·섭식 문제는 닫는다", () => {
+    assert.equal(detectTheoryExclusion("얼마 전에 유산했어요. 아무 일도 손에 안 잡혀요"), "bereavement");
+    assert.equal(detectTheoryExclusion("가장 친한 친구가 갑자기 죽었어요"), "bereavement");
+    assert.equal(detectTheoryExclusion("직장 상사가 성추행을 했어요"), "safety_net");
+    assert.equal(detectTheoryExclusion("화가 나서 아이를 때렸어요"), "safety_net");
+    assert.equal(detectTheoryExclusion("먹고 나면 자꾸 토해요"), null); // 일상적인 표현만으로는 걸리지 않는다(라우터 담당)
+    assert.equal(detectTheoryExclusion("먹고 나면 토하는 일이 반복돼요"), "safety_net");
+  });
+
+  test("가스라이팅·이혼·사기 피해는 열려 있다(owner 결정에 따라 닫지 않음)", () => {
+    assert.equal(detectTheoryExclusion("남편이 자꾸 제 기억이 틀렸다고 하고 제가 이상한 사람이래요"), null);
+    assert.equal(detectTheoryExclusion("이혼 소송 중이라 마음이 복잡해요"), null);
+    assert.equal(detectTheoryExclusion("사기를 당해서 모아둔 돈을 다 잃었어요"), null);
+  });
+
   test("일상적인 고민은 걸리지 않는다(탐색이 정상적으로 열린다)", () => {
     for (const m of [
       "요즘 회사에서 팀장님이랑 자꾸 부딪혀서 마음이 무거워요",

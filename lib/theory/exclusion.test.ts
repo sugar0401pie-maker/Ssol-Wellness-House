@@ -29,6 +29,25 @@ describe("detectTheoryExclusion", () => {
     ]) assert.equal(detectTheoryExclusion(m), null, m);
   });
 
+  test("오탐 방지(2026-10-07 시험에서 발견): 단어가 다른 뜻으로 쓰인 일상 문장은 걸리지 않는다", () => {
+    for (const m of [
+      "친구가 그리워요 요즘 연락이 뜸해졌어요",
+      "남편이랑 의견이 안 맞고 자주 다퉈요",
+      "제 예상이 맞았는데도 기분이 안 좋아요",
+      "말기 프로젝트라 야근이 많아요",
+      "유서 깊은 가게라 일하기 부담돼요",
+      "폭력적인 영화를 봤더니 마음이 안 좋아요",
+      "점심을 굶고 일하니 지쳐요",
+    ]) assert.equal(detectTheoryExclusion(m), null, m);
+  });
+
+  test("놓침 보완: 반려동물 상실과 연인의 고함은 걸린다", () => {
+    assert.equal(detectTheoryExclusion("강아지가 죽었어요 너무 슬퍼요"), "bereavement");
+    assert.equal(detectTheoryExclusion("애인이 화나면 소리를 질러요"), "unsafe_relationship");
+    assert.equal(detectTheoryExclusion("어릴 때 아빠한테 맞았던 기억이 있어요"), "unsafe_relationship");
+    assert.equal(detectTheoryExclusion("발표 준비가 잘 맞고 있는지 모르겠어요"), null); // "맞고 있"은 "잘 맞고 있는지"에 걸려서 뺐다
+  });
+
   test("한 번 걸린 신호는 직전 두 번의 발화까지 유지되고 그 이전은 잊는다", () => {
     assert.equal(detectTheoryExclusion("그래서 요즘 힘들어요", ["아버지가 돌아가셨어요", "네"]), "bereavement");
     assert.equal(detectTheoryExclusion("그래서 요즘 힘들어요", ["아버지가 돌아가셨어요", "네", "음"]), null);

@@ -24,8 +24,9 @@ export const THEORY_EXCLUSION_SIGNALS: Record<Exclude<ExclusionReason, IllnessRe
   livelihood: ["먹고사는", "먹고 사는", "먹고살", "먹고 살", "생활비", "월세", "빚이", "빚을", "빚때", "카드값", "대출", "실직", "해고", "월급이 밀", "임금 체불", "굶어", "끼니를"],
   workplace_abuse: ["폭언", "괴롭힘", "갑질", "욕설", "인격 모독", "모욕을 당", "모욕적인 말", "직장 내 괴롭", "왕따"],
   // "맞고/맞았"는 "의견이 안 맞고", "예상이 맞았는데"에 걸려서, 사람에게 맞았다는 뜻이 분명한 표현만 쓴다. "폭력"도 "폭력적인 영화"에 걸려서 당했다/가정폭력류만 쓴다.
-  unsafe_relationship: ["물건을 던", "물건 던", "때려", "때리", "한테 맞았", "한테 맞고", "한테 맞아서", "에게 맞았", "에게 맞고", "에게 맞아서", "맞고 살", "맞은 적", "맞던", "폭행", "가정폭력", "데이트폭력", "폭력을 당", "폭력을 써", "폭력을 행사", "휴대폰을 검사", "핸드폰을 검사", "못 만나게", "감시", "스토킹", "협박", "위협", "소리를 질러", "소리를 지르", "소리 지르"],
-  verdict_request: ["점수로 알려", "점수로 말해", "진단해", "판정해", "무슨 유형", "때문이죠", "된 거죠", "때문인 거죠", "때문이잖아요"],
+  unsafe_relationship: ["물건을 던", "물건 던", "때려", "때리", "한테 맞았", "한테 맞고", "한테 맞아서", "에게 맞았", "에게 맞고", "에게 맞아서", "맞고 살", "맞은 적", "맞던", "폭행", "가정폭력", "데이트폭력", "폭력을 당", "폭력을 써", "폭력을 행사", "휴대폰을 검사", "핸드폰을 검사", "못 만나게", "연락을 감시", "폰을 감시", "핸드폰을 감시", "휴대폰을 감시", "위치를 감시", "감시당", "감시를 당", "스토킹", "협박", "위협", "소리를 질러", "소리를 지르", "소리 지르"],
+  // 2026-10-07 owner: "~때문이죠?"·"무슨 유형" 같은 일상 말투는 판정 요청이 아니라서 뺐다(이론을 적용한다). 점수·진단·판정을 직접 요청하는 표현만 남긴다.
+  verdict_request: ["점수로 알려", "점수로 말해", "진단해", "판정해"],
   // "유서"는 "유서 깊은 가게"에 걸려서 유서를 쓴다는 표현만 쓴다.
   death_imagery: ["장례식", "유서를", "유서 쓰", "유서 써", "묘비", "내 죽음", "제 죽음", "죽음을 상상", "죽는다고 상상", "죽음 이미지"],
   forgiveness: ["용서"],
@@ -56,15 +57,25 @@ export function illnessOwner(text: string): "illness_self" | "illness_other" | "
 // 단어 사전은 나중에 다시 닫거나 다른 용도(예: 실천 필터)로 쓸 수 있게 남겨 두고, 여기서만 "탐색을 닫는 신호"에서 뺀다.
 export const OPEN_ALLOWED_REASONS: readonly ExclusionReason[] = ["livelihood", "workplace_abuse", "forgiveness"];
 
+// 2026-10-07 owner: "애매"로 표시했던 문장도 이론을 적용한다. 신호 단어가 있어도 아래 경우는 탐색을 닫지 않는다.
+//  - 오래된 상실: "할머니가 돌아가신 지 3년 됐는데…" — 사별 규칙은 "최근 상실"이 대상이다(2년 이상·몇 년·오래전·어릴 때가 함께 나오면 닫지 않음).
+//  - 병문안: "입원한 친구를 병문안 다녀왔어요" — 본인·가족의 질병과 크게 상관이 없는 이야기다.
+const OLD_LOSS = /([2-9]|\d{2,})\s*년|몇\s*년|수년|오래\s*전|오래전|어릴\s*때|어렸을\s*때/;
+function isExempt(reason: string, text: string): boolean {
+  if (reason === "bereavement") return OLD_LOSS.test(text);
+  if (reason.startsWith("illness")) return text.includes("병문안");
+  return false;
+}
+
 // 이번 메시지와 직전 사용자 발화 두 개를 본다(한 번 걸린 신호는 다음 한두 턴 동안 유지 — 곧바로 탐색으로 돌아가지 않기 위해).
 export function detectTheoryExclusion(message: string, recentUserMessages: string[] = []): ExclusionReason | null {
   const texts = [message, ...recentUserMessages.slice(-2)];
   for (const reason of Object.keys(SIGNALS) as (keyof typeof SIGNALS)[]) {
     if (OPEN_ALLOWED_REASONS.includes(reason)) continue;
-    if (texts.some((t) => SIGNALS[reason].some((w) => t.includes(w)))) return reason;
+    if (texts.some((t) => !isExempt(reason, t) && SIGNALS[reason].some((w) => t.includes(w)))) return reason;
   }
   for (const t of texts) {
-    const owner = illnessOwner(t);
+    const owner = isExempt("illness", t) ? null : illnessOwner(t);
     if (owner) return owner;
   }
   return null;

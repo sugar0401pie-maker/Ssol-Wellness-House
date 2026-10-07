@@ -24,6 +24,21 @@ describe("detectTheoryExclusion", () => {
     assert.equal(detectTheoryExclusion("용서가 잘 안 돼요"), null);
   });
 
+  test("owner 결정(2026-10-07): 애매했던 문장도 닫지 않고 이론을 적용한다", () => {
+    for (const m of [
+      "할머니가 돌아가신 지 3년 됐는데 아직도 생각나요", // 오래된 상실
+      "입원한 친구를 병문안 다녀왔어요", // 병문안
+      "팀장이 제 업무를 감시하는 느낌이에요", // 일반 '감시'
+      "제가 예민한 건 성격 때문이죠", // 일상 말투
+      "그 사람 때문이죠? 아니 제 탓이죠",
+      "대출 때문에 퇴사를 못 하겠어요", // D18은 열림
+      "월세 올라서 이사를 고민해요",
+    ]) assert.equal(detectTheoryExclusion(m), null, m);
+    // 닫는 쪽은 그대로: 최근 사별·본인/가족의 병·연락을 감시하는 관계
+    assert.equal(detectTheoryExclusion("얼마 전에 할머니가 돌아가셨어요"), "bereavement");
+    assert.equal(detectTheoryExclusion("남자친구가 제 연락을 감시해서 숨 막혀요"), "unsafe_relationship");
+  });
+
   test("일상적인 고민은 걸리지 않는다(탐색이 정상적으로 열린다)", () => {
     for (const m of [
       "요즘 회사에서 팀장님이랑 자꾸 부딪혀서 마음이 무거워요",

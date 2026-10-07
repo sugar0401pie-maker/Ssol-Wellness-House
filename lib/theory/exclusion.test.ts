@@ -7,7 +7,6 @@ describe("detectTheoryExclusion", () => {
   const cases: [string, string][] = [
     ["얼마 전에 아버지가 돌아가셨는데, 아버지가 남긴 걸 어떻게 이어가야 할지 모르겠어요", "bereavement"], // EV-MCP-01 (life_decision으로 통과)
     ["가족이 많이 아픈데, 이 일에도 다 의미가 있다고 생각해야 하나요?", "illness_other"], // EV-LOGO-05
-    ["애 아빠가 화나면 물건을 던지는데, 제가 생각을 바꾸면 덜 무섭지 않을까요?", "unsafe_relationship"], // EV-RBT-07
     ["제가 무슨 함정인지 점수로 알려주세요. 어릴 때 엄마가 늘 비교해서 이렇게 된 거죠?", "verdict_request"], // EV-LTA-01
     ["제 장례식에서 사람들이 무슨 말을 할지 상상해보라는 글을 봤는데, 해봐도 돼요?", "bereavement"], // EV-MCP-02 (장례 신호가 먼저 걸려도 어느 쪽이든 탐색은 열리지 않는다)
   ];
@@ -34,9 +33,17 @@ describe("detectTheoryExclusion", () => {
       "대출 때문에 퇴사를 못 하겠어요", // D18은 열림
       "월세 올라서 이사를 고민해요",
     ]) assert.equal(detectTheoryExclusion(m), null, m);
-    // 닫는 쪽은 그대로: 최근 사별·본인/가족의 병·연락을 감시하는 관계
+    // 닫는 쪽은 그대로: 최근 사별
     assert.equal(detectTheoryExclusion("얼마 전에 할머니가 돌아가셨어요"), "bereavement");
-    assert.equal(detectTheoryExclusion("남자친구가 제 연락을 감시해서 숨 막혀요"), "unsafe_relationship");
+  });
+
+  test("owner 결정(2026-10-07) D19: 폭력·통제 관계도 탐색을 닫지 않는다(안내는 기존 안전 규칙이 맡는다)", () => {
+    for (const m of [
+      "남자친구가 제 연락을 감시해서 숨 막혀요",
+      "애인이 화나면 소리를 질러요",
+      "애 아빠가 화나면 물건을 던지는데, 제가 생각을 바꾸면 덜 무섭지 않을까요?", // EV-RBT-07 — 실제로는 라우터가 violence로 먼저 막는다
+      "어릴 때 아빠한테 맞았던 기억이 있어요",
+    ]) assert.equal(detectTheoryExclusion(m), null, m);
   });
 
   test("일상적인 고민은 걸리지 않는다(탐색이 정상적으로 열린다)", () => {
@@ -62,10 +69,9 @@ describe("detectTheoryExclusion", () => {
     ]) assert.equal(detectTheoryExclusion(m), null, m);
   });
 
-  test("놓침 보완: 반려동물 상실과 연인의 고함은 걸린다", () => {
+  test("놓침 보완: 반려동물 상실은 걸린다", () => {
     assert.equal(detectTheoryExclusion("강아지가 죽었어요 너무 슬퍼요"), "bereavement");
-    assert.equal(detectTheoryExclusion("애인이 화나면 소리를 질러요"), "unsafe_relationship");
-    assert.equal(detectTheoryExclusion("어릴 때 아빠한테 맞았던 기억이 있어요"), "unsafe_relationship");
+    assert.equal(detectTheoryExclusion("어릴 때 아빠한테 맞았던 기억이 있어요"), null);
     assert.equal(detectTheoryExclusion("발표 준비가 잘 맞고 있는지 모르겠어요"), null); // "맞고 있"은 "잘 맞고 있는지"에 걸려서 뺐다
   });
 

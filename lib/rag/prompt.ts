@@ -143,6 +143,18 @@ function reportBody(
   ];
 }
 
+// 점성술 리포트 요약도 디저트 리포트와 같은 형식이라 같은 방식으로 관련 섹션만 고른다.
+function astroBody(insight: string, query: { message: string; recentUserMessages?: string[] } | undefined): string[] {
+  const sections = query ? splitReportInsight(insight) : [];
+  if (!query || sections.length < 3) return ["[참고] 이 사용자의 쏠 점성술 하우스 리포트 요약(섹션 제목이 [ ] 안에 표시됨):", insight];
+  const sel = selectReportSections(sections, query, "subtle");
+  return [
+    `[참고] 이 사용자의 쏠 점성술 하우스 리포트입니다. 총 ${sections.length}개 섹션(${sel.labels.join(" / ")}) 중 지금 이야기와 관련 있어 보이는 섹션만 옮겼습니다(섹션 제목이 [ ] 안에 표시됨):`,
+    sel.selected.map((x) => `[${x.label}] ${x.body}`).join("\n"),
+    "옮기지 않은 섹션의 구체적인 내용은 지금 알 수 없으니 추측하거나 지어내지 마세요.",
+  ];
+}
+
 function formatPractice(p: PracticeLike): string {
   return `- [${p.category}/${p.tier}] ${p.title} — ${p.detail}`;
 }
@@ -160,6 +172,8 @@ export function buildSystemPrompt(params: {
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
   personaMode?: PersonaMode;
+  // 2026-10-08: 쏠 점성술 하우스 결과 요약(lib/mypage/loadAstroInsight.ts). 없으면 아래 점성술 블록이 들어가지 않는다.
+  astroInsight?: string;
   // 트라우마 단계별 대응(lib/safety/traumaStage.ts). 없으면 아래 블록이 들어가지 않는다.
   traumaStage?: TraumaStage | null;
   // 심층 리포트 중 관련 섹션만 고르기 위한 현재 대화 내용(lib/rag/reportSelect.ts). 없으면 전체를 넣는다.
@@ -240,6 +254,20 @@ export function buildSystemPrompt(params: {
         ].join(" "),
       );
     }
+  }
+
+  if (params.astroInsight) {
+    // 2026-10-08 owner 결정: 점성술 리포트(유형·2026 회고·바라는 것·5년 흐름·결제 시 본문과 제안)를 채팅 참고 자료로.
+    // 점성술은 예측 도구가 아니라 자기 성찰의 상징 언어라서(쏠 점성술 하우스 CLAUDE.md 2장), 예측·진단·결정 권유로 쓰지 않게
+    // 디저트 리포트보다 지침을 하나 더 둔다. 관련 섹션만 고르는 방식은 같다(reportSelect).
+    parts.push(
+      [
+        ...astroBody(params.astroInsight, params.reportQuery),
+        "이 내용은 점성술을 자기 성찰의 상징 언어로 풀어 쓴 참고 자료이지, 미래 예측이나 확정된 사실이 아니다. '~하게 됩니다', '반드시', '운명' 같은 예측·단정으로 말하지 말고, 진단이나 문제의 원인('별이 그래서', '유형 때문에')으로 쓰지 않는다.",
+        "건강 상태·투자나 매매 시점·만남과 이별·이직 같은 결정을 이 내용으로 권하거나 정해 주지 않는다. 결정은 사용자의 몫이고, 이 내용은 스스로를 돌아보는 질문이나 관점으로만 잇는다.",
+        "지금 사용자가 하는 말과 실제로 관련 있을 때만 활용하고, 관련 없으면 무시한다. '점성술 리포트에서 보면'처럼 출처를 밝히며 인용해도 된다. 별자리 이름이나 출생 정보는 알 수 없으니 추측하지 않는다.",
+      ].join(" "),
+    );
   }
 
   if (params.usedClinicalChunk) {

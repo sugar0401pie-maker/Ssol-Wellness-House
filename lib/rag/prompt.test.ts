@@ -445,3 +445,34 @@ describe("buildSystemPrompt", () => {
     });
   });
 });
+
+describe("buildSystemPrompt — 쏠 점성술 하우스 요약(astroInsight)", () => {
+  const ASTRO = [
+    "[1. 별이 본 나의 유형] 누군가에게 기대는 일에 에너지가 많이 들고, 그럴 때 먼저 다가가는 유형(기대기 × 다가가기).",
+    "[2. 2027년에 바라는 것과 앞으로 5년의 흐름] 2027년에 바라는 것: 안정. 2027년: 내 손에 달린 해(보통). 2028년: 활짝 열리는 해(순풍).",
+    "[3. 2026년 회고] 2026년을 한 단어로: 변화. 한 해를 정리한 문장.",
+    "[4. 연말까지 조심하면 좋을 것] 연말에는 일과 말을 한 번 더 확인하면 좋은 시기입니다.",
+    "[8. 별이 주는 질문과 웰니스 제안] 별이 주는 질문: 지금 내가 붙잡고 싶은 것은 무엇일까요.",
+  ].join("\n");
+  const base = { sections: SECTIONS, matchedRules: [], route: "wellness" as const, usedClinicalChunk: false };
+
+  test("없으면 점성술 블록이 들어가지 않는다", () => {
+    assert.doesNotMatch(buildSystemPrompt(base), /쏠 점성술 하우스/);
+  });
+
+  test("있으면 관련 섹션만 넣고, 예측·진단·결정 권유를 막는 지침이 함께 들어간다", () => {
+    const p = buildSystemPrompt({ ...base, astroInsight: ASTRO, reportQuery: { message: "요즘 일이 많아서 연말이 걱정돼요" } });
+    assert.match(p, /쏠 점성술 하우스 리포트입니다\. 총 5개 섹션/);
+    assert.match(p, /\[2\. 2027년에 바라는 것과 앞으로 5년의 흐름\]/); // 기본 섹션
+    assert.match(p, /\[8\. 별이 주는 질문과 웰니스 제안\]/); // 기본 섹션
+    assert.match(p, /미래 예측이나 확정된 사실이 아니다/);
+    assert.match(p, /진단이나 문제의 원인/);
+    assert.match(p, /결정을 이 내용으로 권하거나 정해 주지 않는다/);
+    assert.match(p, /별자리 이름이나 출생 정보는 알 수 없으니 추측하지 않는다/);
+  });
+
+  test("디저트 유형이 없어도(personaHint 없음) 점성술 요약은 쓰인다", () => {
+    const p = buildSystemPrompt({ ...base, personaHint: null, astroInsight: ASTRO });
+    assert.match(p, /쏠 점성술 하우스 리포트 요약/);
+  });
+});

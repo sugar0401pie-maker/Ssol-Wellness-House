@@ -12,6 +12,7 @@ import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
+import { loadAstroInsight } from "@/lib/mypage/loadAstroInsight";
 import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
 import { detectTraumaStage } from "@/lib/safety/traumaStage";
@@ -60,10 +61,11 @@ async function loadPersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   sessionId: string,
-): Promise<{ label: string | null; hint: PersonaHint | null }> {
+): Promise<PersonaSnapshot> {
   const { data: session } = await admin.from("chat_sessions").select("persona_snapshot").eq("session_id", sessionId).maybeSingle();
   if (session?.persona_snapshot) {
-    return session.persona_snapshot as { label: string | null; hint: PersonaHint | null };
+    // 2026-10-08 이전에 캐시된 스냅샷엔 astro가 없다 — 새 대화부터 점성술 요약이 들어간다.
+    return session.persona_snapshot as PersonaSnapshot;
   }
 
   const snapshot = await computePersonaHint(admin, userId);
@@ -71,15 +73,19 @@ async function loadPersonaHint(
   return snapshot;
 }
 
+// 2026-10-08: 쏠 점성술 하우스 결과 요약(astro)도 같은 스냅샷에 담는다(디저트 테스트를 안 했어도 따로 쓰일 수 있음).
+type PersonaSnapshot = { label: string | null; hint: PersonaHint | null; astro?: string | null };
+
 async function computePersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
-): Promise<{ label: string | null; hint: PersonaHint | null }> {
+): Promise<PersonaSnapshot> {
+  const astro = await loadAstroInsight(admin, userId);
   // 2026-09-24: 마이페이지와 같은 방식(ssol_quiz_results 직접 조회)으로 통일 — 예전엔
   // wellness_profiles를 봤지만 실제 퀴즈 결과와 연결되지 않아 실사용자 기준으로 항상
   // 비어 있었다(위 파일 상단 import의 loadQuizPersona 주석 참고).
   const persona = await loadQuizPersona(admin, userId);
-  if (!persona) return { label: null, hint: null };
+  if (!persona) return { label: null, hint: null, astro };
 
   return {
     label: persona.name,
@@ -92,6 +98,7 @@ async function computePersonaHint(
       scoresSummary: summarizeThemeScores(persona.domainScores),
       reportInsight: persona.reportInsight ?? undefined,
     },
+    astro,
   };
 }
 
@@ -133,7 +140,7 @@ export async function generateAnswer(params: {
   let serviceResults: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
   let frameworkHint: Awaited<ReturnType<typeof findFrameworkHint>> = null;
 
-  const { label: personaLabel, hint: personaHint } = await loadPersonaHint(admin, params.userId, params.sessionId);
+  const { label: personaLabel, hint: personaHint, astro: astroInsight } = await loadPersonaHint(admin, params.userId, params.sessionId);
 
   if (params.isPersonaQuestion && !personaHint) {
     return { reply: NEEDS_TEST_REPLY, retrievedChunkIds: [], frameworkId: null, usage: [], regenerated: false, usedFallback: false };
@@ -200,6 +207,7 @@ export async function generateAnswer(params: {
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
+    astroInsight: astroInsight ?? undefined,
     // 심층 리포트는 전체가 아니라 지금 이야기와 관련 있어 보이는 섹션만 넣는다(prompt.ts/reportSelect.ts).
     reportQuery: {
       message: params.message,

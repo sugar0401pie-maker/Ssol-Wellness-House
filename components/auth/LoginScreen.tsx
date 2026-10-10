@@ -34,7 +34,9 @@ type ResetStep = "request" | "confirm";
 // 뒤, 실제로 버튼을 눌러 두 곳 다 진짜 로그인 도메인(nid.naver.com / accounts.kakao.com)까지
 // 정상적으로 넘어가는 것까지 확인하고 owner 확인 후 켰다.
 export const SHOW_KAKAO_LOGIN = true;
-export const SHOW_NAVER_LOGIN = false; // 2026-09-28 owner 요청으로 다시 숨김(코드는 유지)
+// 2026-09-28에 owner 요청으로 숨겼다가, 2026-10-10 owner 요청("네이버 로그인 살려주세요")으로 다시 켠다.
+// 켜기 전에 Supabase 커스텀 provider(custom:naver)가 여전히 nid.naver.com 로그인 화면까지 연결되는 것을 확인했다.
+export const SHOW_NAVER_LOGIN = true;
 
 // initialMode="signup"이면 /signup 주소 전용 화면이라 랜딩을 건너뛰고 바로 가입 화면부터
 // 보여준다. 그 외(기본값 "landing")에서는 첫 화면 → 로그인 → (필요시) 비밀번호 재설정 순.

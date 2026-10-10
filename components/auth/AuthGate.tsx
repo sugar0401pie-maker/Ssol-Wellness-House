@@ -34,13 +34,10 @@ export default function AuthGate({
         return;
       }
       const { data } = await supabase.auth.getSession();
-      if (data.session && !isRealSession(data.session)) {
-        // 남아있는 익명 세션은 정리하고 로그인 화면을 보여준다.
-        await supabase.auth.signOut();
-        setStatus("loggedOut");
-        return;
-      }
-      setStatus(data.session ? "loggedIn" : "loggedOut");
+      // 익명 세션은 로그인으로 치지 않고 로그인 화면을 보여 주되, 로그아웃시키지는 않는다(2026-10-10 owner 결정):
+      // 쿠키를 함께 쓰는 쏠 아스트로 하우스의 '로그인 없이 테스트하기'(익명 임시 계정)가 쏘웰라에 들르기만 해도
+      // 끊기지 않게. 여기서 로그인하면 Supabase가 익명 세션을 실제 세션으로 바꾼다. 서버도 익명 토큰을 거부한다(lib/supabase/auth.ts).
+      setStatus(isRealSession(data.session) ? "loggedIn" : "loggedOut");
     }
     void check();
 

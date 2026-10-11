@@ -365,6 +365,16 @@ export default function LoginScreen({
                   회원가입 없이 10초만에 카카오로 로그인하기
                 </button>
               )}
+              {/* 2026-10-11 owner 요청: 카카오 지름길 아래에 네이버도 같은 모양으로. */}
+              {SHOW_NAVER_LOGIN && (
+                <button
+                  type="button"
+                  onClick={() => handleOAuth("naver")}
+                  className="mb-1 h-11 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
+                >
+                  회원가입 없이 10초만에 네이버로 로그인하기
+                </button>
+              )}
 
               <form onSubmit={handleCompleteSignup} className="flex flex-col gap-2.5">
                 <p className="font-serif text-[17px] font-bold text-foreground">계정 만들기</p>

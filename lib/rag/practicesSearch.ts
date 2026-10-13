@@ -4,6 +4,7 @@ import { domainRankScore, pickDailyPool } from "@/lib/rag/domainRank";
 import { passesHardFilter, scoreSoftPreference, type OnboardingPrefs, type PracticeEligibility } from "@/lib/onboarding/practiceFilter";
 import { passesServingRules, type ServingContext } from "@/lib/onboarding/servingRules";
 import { STABILIZATION_PRACTICE_IDS, type TraumaStage } from "@/lib/safety/traumaStage";
+import { parseTheoryWeight, weightTheoryPractices } from "./dailyWeight";
 
 // wellness_practices(owner가 만든 실천방법 DB, 375개: domain x category x tier)에서 지금
 // 대화 상황에 맞을 만한 몇 개를 골라 답변 재료로 준다. 진단이나 처방이 아니라 "지금 해볼 수
@@ -241,6 +242,9 @@ function simpleHash(text: string): number {
 // 한 사용자(hasConsentedData)는 그 안에서 Q4~Q7 선호 점수가 가장 높은 후보 중 하나를 날짜로
 // 결정론적으로 고르고, 그렇지 않으면 기존 category/domain 매칭(둘 다 하드 필터를 통과한
 // 후보 안에서만) → 전체 하드 필터 통과 후보 순으로 넓혀간다.
+// 홈 추천에서 이론 기반 실천이 뽑힐 가중치(기본 2배, 환경변수 HOME_THEORY_PRACTICE_WEIGHT로 1~5 조절). dailyWeight.ts 참고.
+const THEORY_WEIGHT = parseTheoryWeight(process.env.HOME_THEORY_PRACTICE_WEIGHT);
+
 export async function getDailyPractice(
   userId: string,
   dateKey: string,
@@ -267,14 +271,14 @@ export async function getDailyPractice(
     const topScore = Math.max(...scored.map((p) => p.score));
     // 가장 선호 점수가 높은 후보들끼리만 날짜로 고른다(항상 1등만 나오면 매일 똑같아 보이므로,
     // 동점자 사이에서는 날짜에 따라 자연스럽게 바뀐다).
-    const topPool = scored.filter((p) => p.score === topScore);
+    const topPool = weightTheoryPractices(scored.filter((p) => p.score === topScore), THEORY_WEIGHT);
     const idx = simpleHash(`${dateKey}:${userId}`) % topPool.length;
     return toResult(topPool[idx]);
   }
 
   // 2026-10-06: 1순위 영역 → 2순위 영역(secondary_domains) → 전체 순으로 넓힌다(lib/rag/domainRank.ts).
   // 1순위 후보가 있는 영역은 예전과 똑같이 동작하고, 1순위 후보가 0개인 "삶의 방향"만 2순위 항목을 쓴다.
-  const pool = pickDailyPool(pool0, preference ?? {});
+  const pool = weightTheoryPractices(pickDailyPool(pool0, preference ?? {}), THEORY_WEIGHT);
 
   const idx = simpleHash(`${dateKey}:${userId}`) % pool.length;
   return toResult(pool[idx]);

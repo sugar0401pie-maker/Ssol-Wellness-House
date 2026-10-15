@@ -161,7 +161,7 @@ export default function HomeTab() {
             </p>
             <p className="mt-1 text-[12px] leading-5 text-slate-400">
               <span className="ssol-pulse-text" style={{ animationDelay: "200ms" }}>
-                처음 열 때는 5~10초 정도 걸릴 수 있어요.
+                잠시만 기다려 주세요.
               </span>
             </p>
             <p className="mt-3 text-[20px] leading-none text-navy" aria-hidden="true">

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { pickRandomVariant } from "@/lib/characters/variants";
+import { randomSeed, variantFor } from "@/lib/characters/variants";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -39,7 +39,7 @@ export default function HomeTab() {
   const [error, setError] = useState<string | null>(null);
   // 2026-10-01: 탭이 마운트될 때 한 번만 뽑는다 — 화면을 다시 불러올 때마다(새로고침, 재방문)
   // 바뀌지만, 같은 화면을 보는 동안에는 바뀌지 않는다("로딩할 때마다 랜덤").
-  const [variant] = useState(pickRandomVariant);
+  const [variantSeed] = useState(randomSeed);
 
   // 2026-09-26: 테스트를 새로 마치고 돌아오면 캐릭터도 바로 바뀌도록 창이 다시 보일 때 재조회한다.
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function HomeTab() {
               <Image
                 src={
                   data.character.hasResult
-                    ? `/characters/${data.character.code}/${variant}.png`
+                    ? `/characters/${data.character.code}/${variantFor(data.character.code, variantSeed)}.png`
                     : `/characters/${data.character.code}.png`
                 }
                 alt={data.character.name ?? "웰니스 캐릭터"}

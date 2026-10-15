@@ -9,7 +9,7 @@ import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import type { ReportSectionData } from "@/lib/mypage/assembledReport";
 import { leadInIndexFor, splitBoldParagraph } from "@/lib/mypage/reportParagraph";
 import { splitSentences } from "@/lib/text/paragraphs";
-import { pickRandomVariant } from "@/lib/characters/variants";
+import { randomSeed, variantFor } from "@/lib/characters/variants";
 import DomainRadarChart from "./DomainRadarChart";
 
 type ReportDetail = {
@@ -91,7 +91,7 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
   const [error, setError] = useState<string | null>(null);
   // 2026-10-01: 페이지가 열릴 때 한 번만 뽑는다 — 홈 탭과는 별도로 독립적으로 뽑히므로
   // 같은 유형이어도 홈과 심층보고서의 캐릭터 그림이 서로 다를 수 있다(owner가 원한 동작).
-  const [variant] = useState(pickRandomVariant);
+  const [variantSeed] = useState(randomSeed);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,7 +138,7 @@ export default function ReportDetailPage({ resultId }: { resultId: string }) {
               크기도 키운다(220px -> 280px). */}
           <div className="relative mx-auto mt-3 aspect-square w-full max-w-[280px]">
             <Image
-              src={`/characters/${data.persona.dessertCode}/${variant}.png`}
+              src={`/characters/${data.persona.dessertCode}/${variantFor(data.persona.dessertCode, variantSeed)}.png`}
               alt={data.persona.name}
               fill
               className="object-contain"

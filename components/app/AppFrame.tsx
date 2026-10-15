@@ -10,6 +10,8 @@ import OAuthProfileGate from "./OAuthProfileGate";
 import OAuthProfileReminder from "./OAuthProfileReminder";
 import TrialExpiringReminder, { type TrialExpiringVariant } from "./TrialExpiringReminder";
 import { signOut } from "@/lib/supabase/authClient";
+import { bootstrap } from "@/lib/app/bootstrapClient";
+import type { BootKey } from "@/lib/app/bootstrap";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
@@ -122,17 +124,32 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         }
         return;
       }
+      // 2026-10-16(앱 첫 로딩 속도 개선): AccessGate가 앱을 열자마자 미리 출발시켜 둔 요청의 결과를 받아 쓰고(없거나 실패하면
+      // 평소처럼 직접 요청), 무료체험 상태 확인도 내 정보 확인과 동시에 출발시킨다(이전에는 그 뒤에 이어서 요청했다).
+      const load = async <T,>(key: BootKey, path: string): Promise<T> => {
+        const pre = await bootstrap.take<T>(key);
+        if (pre) return pre;
+        const res = await fetch(path, { headers: authHeaders(token) });
+        if (!res.ok) throw new Error();
+        return (await res.json()) as T;
+      };
+      const billingPromise = load<{
+        reason: "entitlement" | "trial" | "expired";
+        trialDaysLeft: number;
+        trialDays: number;
+      }>("billing", "/api/billing/status").catch(() => null);
+      const onboardingPromise = load<OnboardingInfo>("onboarding", "/api/onboarding");
+      const profilePromise = load<{ needsCompletion: boolean; suggestedName: string | null }>("profile", "/api/profile");
+      // 아래에서 차례로 기다리는 동안 먼저 실패한 쪽이 "처리되지 않은 오류"로 콘솔에 남지 않게 표시만 해 둔다(결과·오류는 그대로 전달된다).
+      onboardingPromise.catch(() => undefined);
+      profilePromise.catch(() => undefined);
       try {
-        const [onboardingRes, profileRes] = await Promise.all([
-          fetch("/api/onboarding", { headers: authHeaders(token) }),
-          fetch("/api/profile", { headers: authHeaders(token) }),
-        ]);
-        if (!onboardingRes.ok) throw new Error();
-        const onboardingJson = (await onboardingRes.json()) as OnboardingInfo;
+        const onboardingJson = await onboardingPromise;
+        // 홈 데이터를 미리 받아 둔 값으로 써도 되는지 알려 준다(온보딩을 이미 마친 사용자만 — bootstrap.ts 설명 참고).
+        bootstrap.setOnboardingCompleted(!!onboardingJson.completed);
         if (!cancelled) setOnboarding(onboardingJson);
 
-        if (!profileRes.ok) throw new Error();
-        const profileJson = (await profileRes.json()) as { needsCompletion: boolean; suggestedName: string | null };
+        const profileJson = await profilePromise;
         if (!cancelled) setOauthProfile(profileJson);
       } catch {
         // 확인 자체가 실패하면 안전하게 막지 않고 그냥 넘어간다(각각 독립적으로 실패 처리).
@@ -143,19 +160,8 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
       }
       // 무료체험 D-2/D-1 리마인더용 — 부가 기능이라 실패해도(네트워크 등) 조용히 건너뛴다
       // (billing이 null로 남아 리마인더가 안 뜰 뿐, 다른 화면 동작엔 영향 없다).
-      try {
-        const billingRes = await fetch("/api/billing/status", { headers: authHeaders(token) });
-        if (billingRes.ok) {
-          const billingJson = (await billingRes.json()) as {
-            reason: "entitlement" | "trial" | "expired";
-            trialDaysLeft: number;
-            trialDays: number;
-          };
-          if (!cancelled) setBilling(billingJson);
-        }
-      } catch {
-        // 무시 — 위 주석 참고.
-      }
+      const billingJson = await billingPromise;
+      if (billingJson && !cancelled) setBilling(billingJson);
     }
     void check();
     return () => {

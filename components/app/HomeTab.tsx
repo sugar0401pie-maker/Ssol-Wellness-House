@@ -5,6 +5,7 @@ import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { randomSeed, variantFor } from "@/lib/characters/variants";
+import { bootstrap } from "@/lib/app/bootstrapClient";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -45,6 +46,19 @@ export default function HomeTab() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      // 2026-10-16(앱 첫 로딩 속도 개선): 앱을 열 때 미리 출발시켜 둔 홈 데이터가 있으면(온보딩을 이미 마친 사용자만) 그 결과를 쓴다.
+      // 한 번만 쓰이고(가져가면 비워짐), 없거나 실패하면 아래처럼 평소대로 직접 요청한다. 창이 다시 보일 때의 재조회는 항상 직접 요청한다.
+      const pre = bootstrap.takeDaily<DailyResponse>();
+      if (pre) {
+        const json = await pre;
+        if (json) {
+          if (!cancelled) {
+            setData(json);
+            setError(null);
+          }
+          return;
+        }
+      }
       const token = await getAccessToken();
       if (!token) {
         if (!cancelled) setError("로그인 정보를 확인하지 못했어요. 새로고침해주세요.");

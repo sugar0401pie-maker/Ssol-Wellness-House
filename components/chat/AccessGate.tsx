@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getStoredAccessCode, setStoredAccessCode } from "@/lib/security/accessCodeClient";
 import AppLoading from "@/components/app/AppLoading";
+import { bootstrap } from "@/lib/app/bootstrapClient";
 
 // ACCESS_CODE가 서버에 설정돼 있지 않으면(로컬 개발) /api/access가 항상 ok를 주므로
 // 이 화면은 거의 즉시 지나가고 평소처럼 채팅 화면이 보인다.
@@ -35,6 +36,9 @@ export default function AccessGate({ children }: { children: React.ReactNode }) 
   }
 
   useEffect(() => {
+    // 2026-10-16(앱 첫 로딩 속도 개선): 접속 확인·세션 확인을 기다리지 않고 첫 화면에 필요한 요청들(내 정보·프로필·무료체험·홈 데이터)을
+    // 지금 바로 동시에 출발시켜 둔다. 화면은 필요할 때 이 결과를 받아 쓴다(lib/app/bootstrap.ts). 로그인 정보가 없으면 아무것도 안 한다.
+    bootstrap.start();
     // 마운트 시 1회, 저장된 코드로 서버 확인. setState는 verify 내부의 await 이후(비동기)에만 일어난다.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 마운트 시 1회 확인하는 표준 데이터 패칭 패턴
     void verify(getStoredAccessCode());

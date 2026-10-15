@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
+import { getUserIdFast } from "@/lib/supabase/auth";
+import { createTimer } from "@/lib/perf/serverTiming";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { loadAccessStatus } from "@/lib/billing/loadAccess";
@@ -13,10 +14,13 @@ export async function GET(req: NextRequest) {
   if (!checkAccessCode(req.headers.get("x-access-code"))) {
     return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
   }
-  const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
+  // 2026-10-16: 화면 안내용 읽기 전용 GET이라 토큰을 공개키로 직접 검증하는 빠른 확인을 쓴다(실제 차단은 chat API가 엄격하게 한다).
+  const timer = createTimer();
+  const userId = await getUserIdFast(req.headers.get("authorization"));
+  timer.mark("auth");
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const admin = createAdminClient();
-  const access = await loadAccessStatus(admin, userId);
-  return NextResponse.json(access);
+  const access = await timer.time("db", loadAccessStatus(admin, userId));
+  return NextResponse.json(access, { headers: { "Server-Timing": timer.header() } });
 }

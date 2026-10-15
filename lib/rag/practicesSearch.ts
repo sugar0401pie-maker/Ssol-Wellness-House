@@ -173,7 +173,9 @@ export async function searchWellnessPractices(
 ): Promise<PracticeResult[]> {
   // 이론 기반 실천 노출 제한(after_explore·exposure·위기 이력) — 트라우마 대화(T0/T1)에서는 exposure를 전부 뺀다.
   const ctx: ServingContext = traumaStage ? { ...serving, excludeExposure: true } : serving;
-  let rows = (await loadPractices()).filter((p) => passesServingRules(p, ctx));
+  // 2026-10-16: 실천 목록과 적격성 표를 동시에 읽는다(캐시가 비어 있을 때 두 번 연달아 기다리던 것).
+  const [allRows, eligibilityMap] = await Promise.all([loadPractices(), loadEligibilityMap()]);
+  let rows = allRows.filter((p) => passesServingRules(p, ctx));
   if (!rows.length) return [];
 
   // 트라우마 T1(지금 압도): 탐색·일반 제안을 멈추고 안정화 실천 1~2개만 후보로 준다(문서 4-6-1). 아직 데이터에 없으면 아래 일반 검색으로.
@@ -181,7 +183,6 @@ export async function searchWellnessPractices(
   if (traumaStage === "T1" && stabilization.length) return stabilization.slice(0, 2).map(toResult);
 
   {
-    const eligibilityMap = await loadEligibilityMap();
     const filtered = filterByEligibility(rows, eligibilityMap, onboardingPrefs);
     if (filtered.length) rows = filtered; // 다 걸러져 후보가 0개면(드묾) 안전하게 필터 전 목록으로 되돌아간다
   }
@@ -242,6 +243,11 @@ function simpleHash(text: string): number {
 // 한 사용자(hasConsentedData)는 그 안에서 Q4~Q7 선호 점수가 가장 높은 후보 중 하나를 날짜로
 // 결정론적으로 고르고, 그렇지 않으면 기존 category/domain 매칭(둘 다 하드 필터를 통과한
 // 후보 안에서만) → 전체 하드 필터 통과 후보 순으로 넓혀간다.
+// 홈 API가 다른 조회와 동시에 실천 목록·적격성 표를 미리 읽어 두게 한다(2026-10-16). 캐시(5분)가 이미 있으면 즉시 끝난다.
+export async function preloadPractices(): Promise<void> {
+  await Promise.all([loadPractices(), loadEligibilityMap()]);
+}
+
 // 홈 추천에서 이론 기반 실천이 뽑힐 가중치(기본 2배, 환경변수 HOME_THEORY_PRACTICE_WEIGHT로 1~5 조절). dailyWeight.ts 참고.
 const THEORY_WEIGHT = parseTheoryWeight(process.env.HOME_THEORY_PRACTICE_WEIGHT);
 
@@ -253,12 +259,12 @@ export async function getDailyPractice(
   hasConsentedData: boolean,
   serving: ServingContext,
 ): Promise<PracticeResult | null> {
-  const rows = await loadPractices();
+  // 2026-10-16: 실천 목록과 적격성 표를 동시에 읽는다(캐시가 비어 있는 첫 요청에서 두 번 연달아 기다리던 것).
+  const [rows, eligibilityMap] = await Promise.all([loadPractices(), loadEligibilityMap()]);
   // 이론 기반 실천 노출 제한: 홈에서도 after_explore는 안 나가고, exposure는 위기 이력 계정에 안 나간다(1단계만).
   const base = rows.filter((p) => p.tier === "가볍게 시작" && passesServingRules(p, serving));
   if (!base.length) return null;
 
-  const eligibilityMap = await loadEligibilityMap();
   const hardFiltered = filterByEligibility(base, eligibilityMap, onboardingPrefs);
   // 극단적 예외(하드 필터로 전부 걸러짐, 사실상 안 일어남)에만 안전하게 전체 목록으로 돌아간다.
   const pool0 = hardFiltered.length ? hardFiltered : base;
@@ -300,9 +306,10 @@ export async function pickCommitPractices(params: {
   alreadyShownText?: string; // 이 대화에서 이미 나간 답변 글(같은 실천을 또 권하지 않으려고 제목이 들어 있는지 본다)
 }): Promise<CommitPractice[]> {
   const admin = createAdminClient();
-  const [{ data: links }, rowsAll] = await Promise.all([
+  const [{ data: links }, rowsAll, eligibilityMap] = await Promise.all([
     admin.from("theory_practice_links").select("practice_id, compatibility").eq("theory_id", params.theoryId),
     loadPractices(),
+    loadEligibilityMap(),
   ]);
   const fit = new Set<string>(), conflict = new Set<string>();
   for (const l of (links ?? []) as { practice_id: string; compatibility: string }[]) (l.compatibility === "conflict" ? conflict : l.compatibility === "fit" ? fit : new Set<string>()).add(l.practice_id);
@@ -310,7 +317,6 @@ export async function pickCommitPractices(params: {
   const ctx: ServingContext = { ...params.serving, allowAfterExplore: true, excludeExposure: params.traumaStage != null || params.serving.excludeExposure };
   const shown = params.alreadyShownText ?? "";
   let rows = rowsAll.filter((p) => !conflict.has(p.id) && passesServingRules(p, ctx) && !(shown && shown.includes(p.title)));
-  const eligibilityMap = await loadEligibilityMap();
   rows = filterByEligibility(rows, eligibilityMap, params.onboardingPrefs);
   const q = bigrams(params.messages.slice(-3).join(" "));
   const candidates = rows

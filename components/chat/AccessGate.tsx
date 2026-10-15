@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getStoredAccessCode, setStoredAccessCode } from "@/lib/security/accessCodeClient";
+import AppLoading from "@/components/app/AppLoading";
 
 // ACCESS_CODE가 서버에 설정돼 있지 않으면(로컬 개발) /api/access가 항상 ok를 주므로
 // 이 화면은 거의 즉시 지나가고 평소처럼 채팅 화면이 보인다.
@@ -65,7 +66,8 @@ export default function AccessGate({ children }: { children: React.ReactNode }) 
     }
   }
 
-  if (status === "checking") return null;
+  // 2026-10-15: 확인이 끝날 때까지 빈 화면 대신 안내 화면을 보여준다(AppLoading).
+  if (status === "checking") return <AppLoading fullScreen />;
   if (status === "unlocked") return <>{children}</>;
 
   return (

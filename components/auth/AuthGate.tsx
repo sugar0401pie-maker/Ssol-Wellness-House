@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import LoginScreen from "./LoginScreen";
+import AppLoading from "@/components/app/AppLoading";
 
 // 2026-09-22: 로그인 없이 쓸 수 있던 익명 로그인 방식을 대체한다. 로그인해야만 앱이 보이고,
 // 한 번 로그인하면(이메일/카카오/네이버) Supabase가 세션을 브라우저에 저장해 다음 방문에
@@ -51,7 +52,8 @@ export default function AuthGate({
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  if (status === "checking") return null;
+  // 2026-10-15: 세션 확인 중에도 빈 화면 대신 안내 화면(AppLoading).
+  if (status === "checking") return <AppLoading fullScreen />;
   if (status === "loggedIn") return <>{children}</>;
   return <LoginScreen initialMode={initialMode} onLoggedIn={() => setStatus("loggedIn")} />;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import AppLoading from "./AppLoading";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -202,6 +203,13 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           입력 폼은 다른 팝업처럼 이 내용 위에 겹쳐서(오버레이) 뜬다. */}
       {onboarding !== "loading" && oauthProfile !== "loading" && (!needsOnboarding || dismissed) && (
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      )}
+      {/* 2026-10-15 owner 요청: 위 확인이 끝나기 전(보통 2~3초, 처음엔 더 길다)에는 가운데가 비어 보이므로
+          안내 화면을 먼저 보여준다. 헤더·하단 탭은 이미 보이는 상태라 영역 안에서만 채운다. */}
+      {(onboarding === "loading" || oauthProfile === "loading") && (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <AppLoading />
+        </div>
       )}
 
       <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">

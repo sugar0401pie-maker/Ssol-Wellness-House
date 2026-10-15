@@ -142,8 +142,14 @@ export default function HomeTab() {
         {/* 2026-10-15 owner 요청: 홈 데이터(캐릭터·오늘의 제안)를 불러오는 동안 빈 칸 대신 안내를 보여준다. */}
         {!data && !error && (
           <div role="status" aria-live="polite" className="mt-10 flex flex-col items-center text-center">
-            <p className="text-[14px] leading-6 text-slate-600">오늘의 캐릭터와 제안을 불러오고 있어요</p>
-            <p className="mt-1 text-[12px] leading-5 text-slate-400">처음 열 때는 5~10초 정도 걸릴 수 있어요.</p>
+            <p className="text-[14px] leading-6 text-slate-600">
+              <span className="ssol-pulse-text">오늘의 캐릭터와 제안을 불러오고 있어요</span>
+            </p>
+            <p className="mt-1 text-[12px] leading-5 text-slate-400">
+              <span className="ssol-pulse-text" style={{ animationDelay: "200ms" }}>
+                처음 열 때는 5~10초 정도 걸릴 수 있어요.
+              </span>
+            </p>
             <p className="mt-3 text-[20px] leading-none text-navy" aria-hidden="true">
               <span className="ssol-thinking-dot" style={{ animationDelay: "0ms" }}>
                 ·

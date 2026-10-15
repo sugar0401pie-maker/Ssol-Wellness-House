@@ -9,6 +9,7 @@ import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
 import { choicesForMessage } from "@/lib/theory/offer";
+import ThinkingBubble from "./ThinkingBubble";
 import type { Choice, ChoiceId } from "@/lib/theory/types";
 
 // choices: 이 말풍선 아래에 보여줄 선택 칩("행동 제안받기"/"내 고민 더 알아보기" — lib/theory).
@@ -684,27 +685,6 @@ export default function ChatApp() {
           onClose={() => setShowOnboarding(false)}
         />
       )}
-    </div>
-  );
-}
-
-// "생각하는 중…" 대신 점 3개가 순서대로 튀어오르는 타이핑 인디케이터 (2026-09-22 결정:
-// 글자가 가만히 있지 않고 움직이게 해달라는 요청 반영).
-function ThinkingBubble() {
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[85%] rounded-2xl bg-navy-soft px-4 py-2.5 text-[15px] leading-6 text-foreground">
-        <span>생각하는 중</span>
-        <span className="ssol-thinking-dot" style={{ animationDelay: "0ms" }}>
-          .
-        </span>
-        <span className="ssol-thinking-dot" style={{ animationDelay: "150ms" }}>
-          .
-        </span>
-        <span className="ssol-thinking-dot" style={{ animationDelay: "300ms" }}>
-          .
-        </span>
-      </div>
     </div>
   );
 }

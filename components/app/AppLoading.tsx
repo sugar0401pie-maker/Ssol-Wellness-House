@@ -13,11 +13,15 @@ export default function AppLoading({ fullScreen = false }: { fullScreen?: boolea
       className={`flex w-full flex-col items-center justify-center bg-background px-6 text-center ${fullScreen ? "h-dvh" : "h-full"}`}
     >
       <Image src="/logo-mark.png" alt="" width={56} height={15} priority className="h-auto w-[56px]" />
-      <p className="mt-5 font-serif text-[18px] font-bold leading-7 text-foreground">쏘웰라가 준비하고 있어요</p>
+      <p className="mt-5 font-serif text-[18px] font-bold leading-7 text-foreground">
+        <span className="ssol-pulse-text">쏘웰라가 준비하고 있어요</span>
+      </p>
       <p className="mt-2 text-[13px] leading-5 text-slate-500">
-        처음 열 때는 5~10초 정도 걸릴 수 있어요.
-        <br />
-        잠시만 기다려 주세요.
+        <span className="ssol-pulse-text" style={{ animationDelay: "200ms" }}>
+          처음 열 때는 5~10초 정도 걸릴 수 있어요.
+          <br />
+          잠시만 기다려 주세요.
+        </span>
       </p>
       <p className="mt-4 text-[20px] leading-none text-navy" aria-hidden="true">
         <span className="ssol-thinking-dot" style={{ animationDelay: "0ms" }}>

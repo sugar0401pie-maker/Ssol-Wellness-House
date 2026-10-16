@@ -6,6 +6,8 @@ export type Timer = {
   time<T>(name: string, work: Promise<T>): Promise<T>;
   // 지금까지 걸린 시간을 name으로 기록한다.
   mark(name: string): void;
+  // 직전 lap(또는 시작)부터 지금까지 걸린 시간을 name으로 기록한다 — 순서대로 이어지는 단계를 하나씩 재는 데 쓴다.
+  lap(name: string): void;
   // Server-Timing 헤더 값(예: "auth;dur=1.2, db;dur=80.5, total;dur=95.3").
   header(): string;
 };
@@ -16,6 +18,7 @@ function cleanName(name: string): string {
 
 export function createTimer(now: () => number = () => performance.now()): Timer {
   const start = now();
+  let last = start;
   const entries: { name: string; dur: number }[] = [];
   return {
     time(name, work) {
@@ -26,6 +29,11 @@ export function createTimer(now: () => number = () => performance.now()): Timer 
     },
     mark(name) {
       entries.push({ name: cleanName(name), dur: now() - start });
+    },
+    lap(name) {
+      const t = now();
+      entries.push({ name: cleanName(name), dur: t - last });
+      last = t;
     },
     header() {
       const all = [...entries, { name: "total", dur: now() - start }];

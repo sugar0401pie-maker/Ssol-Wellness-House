@@ -13,6 +13,14 @@ describe("createTimer", () => {
     t += 10;
     assert.equal(timer.header(), "db;dur=30.0, after;dur=30.0, total;dur=40.0");
   });
+  test("lap은 직전 lap(또는 시작)부터의 시간을 단계별로 기록한다", () => {
+    let t = 0;
+    const timer = createTimer(() => t);
+    t += 10; timer.lap("a");
+    t += 25; timer.lap("b");
+    t += 5; timer.lap("c");
+    assert.equal(timer.header(), "a;dur=10.0, b;dur=25.0, c;dur=5.0, total;dur=40.0");
+  });
   test("이름에 쓸 수 없는 글자는 밑줄로 바꾼다(헤더 깨짐 방지)", () => {
     const timer = createTimer(() => 0);
     timer.mark("a b;c,d");

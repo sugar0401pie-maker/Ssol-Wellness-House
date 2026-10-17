@@ -8,30 +8,9 @@ import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
-import { astroResultUrl, ASTRO_SITE_URL } from "@/lib/mypage/astroResultUrl";
+import type { TestGroup } from "@/lib/mypage/testTypes";
 
 type MyPageData = MyInfo & { gender: string | null; hasPassword: boolean };
-
-// 2026-09-27: "지금은 보고서가 1개인데 나중에 여러 개를 열람할 수도 있으니" — 응시 기록을
-// 목록으로 보여주고, 각 항목의 "열기"를 누르면 /report/[resultId]에서 전체 심층보고서를 본다.
-type ReportListItem = {
-  id: string;
-  createdAt: string;
-  dessertCode: string;
-  dessertName: string;
-  hasReport: boolean;
-  isPrimary: boolean;
-};
-
-// 2026-10-17 owner 요청: 쏠 점성술 하우스 결과 목록. 목록에는 "결과가 있다"는 사실만 보이고,
-// 세부 내용은 점성술 앱의 결과 페이지로 바로 연결한다(채팅은 서버에서 따로 그 내용을 참고한다).
-type AstroListItem = {
-  id: string;
-  createdAt: string;
-  nickname: string | null;
-  paid: boolean;
-  lastPage: number | null;
-};
 
 // "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY.MM.DD" (표시용)
 function formatShortDate(iso: string): string {
@@ -88,8 +67,8 @@ function SectionRow({
 export default function MyPageTab() {
   const router = useRouter();
   const [data, setData] = useState<MyPageData | null>(null);
-  const [reports, setReports] = useState<ReportListItem[] | null>(null);
-  const [astroResults, setAstroResults] = useState<AstroListItem[] | null>(null);
+  // 2026-10-17: 테스트 종류별 결과 그룹(디저트·점성술·앞으로 추가될 테스트). null이면 아직/불러오지 못함.
+  const [testGroups, setTestGroups] = useState<TestGroup[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
@@ -113,24 +92,21 @@ export default function MyPageTab() {
         return;
       }
       try {
-        // 점성술 목록은 따로 불러온다 — 실패해도 마이페이지의 나머지(내 정보·유형·이용권)는 그대로 뜨게.
-        const astroPromise = fetch("/api/mypage/astro", { headers: authHeaders(token), cache: "no-store" })
-          .then(async (res) => (res.ok ? ((await res.json()) as { results: AstroListItem[] }).results : null))
+        // 테스트 결과 목록은 따로 불러온다 — 실패해도 마이페이지의 나머지(내 정보·이용권)는 그대로 뜨게.
+        const testsPromise = fetch("/api/mypage/tests", { headers: authHeaders(token), cache: "no-store" })
+          .then(async (res) => (res.ok ? ((await res.json()) as { groups: TestGroup[] }).groups : null))
           .catch(() => null);
-        const [infoRes, reportsRes, billingRes] = await Promise.all([
+        const [infoRes, billingRes] = await Promise.all([
           fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" }),
-          fetch("/api/mypage/reports", { headers: authHeaders(token), cache: "no-store" }),
           fetch("/api/billing/status", { headers: authHeaders(token), cache: "no-store" }),
         ]);
-        if (!infoRes.ok || !reportsRes.ok || !billingRes.ok) throw new Error();
+        if (!infoRes.ok || !billingRes.ok) throw new Error();
         const json = (await infoRes.json()) as MyPageData;
-        const reportsJson = (await reportsRes.json()) as { reports: ReportListItem[] };
         const billingJson = (await billingRes.json()) as BillingStatus;
-        const astroJson = await astroPromise;
+        const groups = await testsPromise;
         if (!cancelled) {
-          if (astroJson) setAstroResults(astroJson);
           setData(json);
-          setReports(reportsJson.reports);
+          setTestGroups(groups);
           setBilling(billingJson);
           setError(null);
         }
@@ -169,7 +145,15 @@ export default function MyPageTab() {
         body: JSON.stringify({ resultId }),
       });
       if (!res.ok) throw new Error();
-      setReports((prev) => prev?.map((r) => ({ ...r, isPrimary: r.id === resultId })) ?? prev);
+      // 대표 유형은 디저트 테스트만의 개념이라 그 그룹에서만 표시를 바꾼다.
+      setTestGroups(
+        (prev) =>
+          prev?.map((g) =>
+            g.key === "dessert"
+              ? { ...g, items: g.items?.map((r) => (r.primary ? { ...r, primary: { isPrimary: r.id === resultId } } : r)) ?? null }
+              : g,
+          ) ?? prev,
+      );
     } catch {
       setError("대표 유형 지정에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -188,100 +172,74 @@ export default function MyPageTab() {
       {data && (
         <div className="flex-1">
           <SectionRow title="테스트 결과 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
-            {/* 2026-10-17 owner 요청: 큰 분류 "테스트 결과 열람하기" 아래에 디저트 심리테스트(지금까지 한 유형들) 목록,
-                그 밑에 점성술 테스트 결과 목록. 테스트 종류가 늘면 같은 모양의 소제목+목록을 아래에 추가한다. */}
-            <p className="mb-2 text-[13px] font-medium text-foreground">디저트 심리테스트</p>
-            {reports && reports.length > 0 ? (
-              <div className="divide-y divide-line rounded-xl border border-line">
-                {reports.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between px-3.5 py-3">
-                    <div>
-                      <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
-                      <p className="mt-0.5 text-[14px] font-medium text-foreground">
-                        {r.dessertName} 유형{r.hasReport && <span className="ml-1.5 text-[11px] font-normal text-navy">심층보고서</span>}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {r.isPrimary ? (
-                        <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => selectPrimary(r.id)}
-                          disabled={settingPrimaryId === r.id}
-                          className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
-                        >
-                          대표 유형으로 선택
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/report/${r.id}`)}
-                        className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
-                      >
-                        열기
-                      </button>
-                    </div>
+            {/* 2026-10-17 owner 요청: 큰 분류 "테스트 결과 열람하기" 아래에 테스트 종류별 소제목 + 결과 목록(디저트 → 점성술 순).
+                어떤 종류가 있는지는 서버의 lib/mypage/testRegistry.ts가 정한다 — 새 테스트는 거기에 등록하면 여기에 자동으로 나온다. */}
+            {testGroups === null && <p>테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요.</p>}
+            {testGroups?.map((g, gi) => (
+              <div key={g.key} className={gi > 0 ? "mt-6" : ""}>
+                <p className="mb-2.5 text-[17px] font-bold text-foreground">{g.title}</p>
+                {g.items && g.items.length > 0 ? (
+                  <div className="divide-y divide-line rounded-xl border border-line">
+                    {g.items.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
+                          <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
+                            {r.title}
+                            {r.badge && <span className="ml-1.5 text-[11px] font-normal text-navy">{r.badge}</span>}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {r.primary &&
+                            (r.primary.isPrimary ? (
+                              <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => selectPrimary(r.id)}
+                                disabled={settingPrimaryId === r.id}
+                                className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
+                              >
+                                대표 유형으로 선택
+                              </button>
+                            ))}
+                          {r.open.external ? (
+                            <a
+                              href={r.open.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                            >
+                              {r.open.label}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => router.push(r.open.href)}
+                              className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                            >
+                              {r.open.label}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div>
-                <p>
-                  아직 웰니스 유형 테스트 결과가 없어요. 심리 테스트를 먼저 진행해주시면, 완료 후 여기서 결과를 확인할 수
-                  있어요.
-                </p>
-                <a
-                  href="https://quiz.ssolwellnesshouse.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
-                >
-                  지금 테스트하러 가기
-                </a>
-              </div>
-            )}
-
-            <p className="mb-2 mt-5 text-[13px] font-medium text-foreground">점성술 테스트</p>
-            {astroResults && astroResults.length > 0 ? (
-              <div className="divide-y divide-line rounded-xl border border-line">
-                {astroResults.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
-                    <div className="min-w-0">
-                      <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
-                      <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
-                        {r.nickname ? `${r.nickname}님의 점성술 결과` : "점성술 결과"}
-                        {r.paid && <span className="ml-1.5 text-[11px] font-normal text-navy">리포트</span>}
-                      </p>
-                    </div>
+                ) : (
+                  <div>
+                    <p>{g.items === null ? "이 테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요." : g.emptyMessage}</p>
                     <a
-                      href={astroResultUrl(r.id, r.lastPage)}
+                      href={g.start.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="shrink-0 rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                      className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
                     >
-                      자세히 보기
+                      {g.start.label}
                     </a>
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <div>
-                <p>
-                  {astroResults === null
-                    ? "점성술 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요."
-                    : "아직 이 계정에 연결된 점성술 결과가 없어요. 로그인한 상태로 점성술 테스트를 마치면 여기에 나타나요."}
-                </p>
-                <a
-                  href={ASTRO_SITE_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
-                >
-                  점성술 테스트하러 가기
-                </a>
-              </div>
-            )}
+            ))}
           </SectionRow>
 
           <SectionRow title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>

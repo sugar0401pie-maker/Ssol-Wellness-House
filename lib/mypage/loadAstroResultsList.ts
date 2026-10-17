@@ -3,8 +3,8 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 
 // 2026-10-17 owner 요청: 마이페이지에 "내 점성술 결과" 목록. 목록에는 결과가 있다는 사실(날짜·이름·리포트 여부)만 보이고,
 // 세부 내용은 점성술 앱의 결과 페이지로 연결한다(lib/mypage/astroResultUrl.ts). 별자리·출생 정보는 목록에 싣지 않는다.
-// astro_results는 점성술 앱 소유 테이블이라 여기서는 읽기만 하고, 조회가 실패해도 마이페이지 전체를 막지 않도록
-// 빈 목록을 돌려준다(에러는 버리지 않고 남긴다 — 2026-09-25 교훈).
+// astro_results는 점성술 앱 소유 테이블이라 여기서는 읽기만 한다. 조회가 실패하면 빈 목록이 아니라 던진다 —
+// "결과 없음"으로 잘못 보이지 않게, 호출하는 쪽(lib/mypage/testRunner.ts)이 이 종류만 "불러오지 못함"으로 표시한다.
 export type AstroResultListItem = {
   id: string;
   createdAt: string;
@@ -27,8 +27,7 @@ export async function loadAstroResultsList(
     .order("created_at", { ascending: false })
     .limit(MAX_ITEMS);
   if (error) {
-    console.error("astro_results 목록 조회 실패:", error.code, error.message);
-    return [];
+    throw new Error(`astro_results 목록 조회 실패: ${error.code} ${error.message}`);
   }
   return (data ?? []).map((r) => ({
     id: r.id as string,

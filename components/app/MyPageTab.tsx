@@ -305,8 +305,8 @@ export default function MyPageTab() {
                   </p>
                 ) : (
                   <p>
-                    채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (가입일로부터 +{billing.trialDays}일,
-                    가입일 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
+                    채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (쏘웰라에 처음 들어온 날로부터 +{billing.trialDays}일,
+                    그날 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
                   </p>
                 )}
                 <p className="mt-1.5 text-slate-500">만료 이후에도 기존 대화내역과 심층 보고서는 볼 수 있어요.</p>

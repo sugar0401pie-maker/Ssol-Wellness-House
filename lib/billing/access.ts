@@ -10,7 +10,7 @@ export type AccessResult = {
   reason: "entitlement" | "trial" | "expired";
   trialDaysLeft: number;
   // 2026-09-28: 마이페이지에 "채팅 무료체험 만료일"을 실제 날짜로 보여주기 위해 추가.
-  // trialEndsAt은 결제 여부와 무관하게 항상 계산해서 준다(가입일 + trialDays). entitlementExpiresAt은
+  // trialEndsAt은 결제 여부와 무관하게 항상 계산해서 준다(체험 시작일 + trialDays). entitlementExpiresAt은
   // 지금 접근을 허용해준 활성 이용권의 만료일 — 이용권이 없으면(무료체험 중/만료) null이고,
   // 이용권은 있지만 만료일 자체가 없으면(수동 부여한 무제한 계정 등)도 null이다.
   trialEndsAt: string;
@@ -20,8 +20,26 @@ export type AccessResult = {
   trialDays: number;
 };
 
+// 무료체험 시작 시각을 정한다(2026-10-17 owner 결정). 예전엔 계정이 만들어진 시각(profiles.created_at)을 썼는데,
+// 계정은 점성술·심리테스트 등 다른 앱과 공유라 쏘웰라를 열어 본 적 없어도 체험 기간이 흘러갔다. 이제는
+// "쏘웰라에 처음 직접 들어온 시각"(profiles.trial_started_at)부터 센다.
+// - 값이 이미 있으면 그대로 쓴다(절대 덮어쓰지 않는다).
+// - 값이 없으면 지금이 첫 접속이므로 지금부터 시작하고, 호출하는 쪽이 한 번 기록(stamp)한다.
+// - 그 칸이 DB에 아직 없으면(마이그레이션 전) 예전 방식(가입일)으로 그대로 동작하고 기록하지 않는다 — 배포가 먼저여도 안 깨진다.
+export function decideTrialStart(params: {
+  columnAvailable: boolean;
+  trialStartedAt: string | null | undefined;
+  createdAt: string | null | undefined;
+  now: Date;
+}): { startedAt: string; stamp: boolean } {
+  const { columnAvailable, trialStartedAt, createdAt, now } = params;
+  if (!columnAvailable) return { startedAt: createdAt ?? now.toISOString(), stamp: false };
+  if (trialStartedAt) return { startedAt: trialStartedAt, stamp: false };
+  return { startedAt: now.toISOString(), stamp: true };
+}
+
 // entitlements 중 하나라도 지금 유효하게 활성 상태면(만료일이 없거나 아직 안 지났으면) 그걸로 허용한다.
-// 아니면 가입일(trialStartedAt) 기준 무료체험이 아직 안 끝났는지 본다.
+// 아니면 무료체험 시작일(trialStartedAt — decideTrialStart 참고) 기준 무료체험이 아직 안 끝났는지 본다.
 //
 // 2026-10-01 owner 결정: 무료체험 기간은 심층보고서(hasReport) 보유 여부로 차등 적용된다 —
 // 보고서가 있으면 7일, 없으면 3일. 매 호출마다 다시 계산하므로(고정된 값을 저장해두지

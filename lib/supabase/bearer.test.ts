@@ -20,6 +20,10 @@ describe("userIdFromClaims", () => {
   test("로그인한 사용자 토큰(role=authenticated + sub)만 인정한다", () => {
     assert.equal(userIdFromClaims({ sub: "u-1", role: "authenticated" }), "u-1");
   });
+  test("익명(임시) 계정 토큰은 거부하고, is_anonymous가 false면 인정한다", () => {
+    assert.equal(userIdFromClaims({ sub: "u-1", role: "authenticated", is_anonymous: true }), null);
+    assert.equal(userIdFromClaims({ sub: "u-1", role: "authenticated", is_anonymous: false }), "u-1");
+  });
   test("공개용 anon 토큰·service 토큰·sub 없음·빈 값은 거부한다(안전한 쪽)", () => {
     assert.equal(userIdFromClaims({ role: "anon" }), null);
     assert.equal(userIdFromClaims({ sub: "u-1", role: "anon" }), null);

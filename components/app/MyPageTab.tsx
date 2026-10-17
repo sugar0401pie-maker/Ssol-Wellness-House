@@ -8,6 +8,7 @@ import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
+import { astroResultUrl, ASTRO_SITE_URL } from "@/lib/mypage/astroResultUrl";
 
 type MyPageData = MyInfo & { gender: string | null; hasPassword: boolean };
 
@@ -20,6 +21,16 @@ type ReportListItem = {
   dessertName: string;
   hasReport: boolean;
   isPrimary: boolean;
+};
+
+// 2026-10-17 owner 요청: 쏠 점성술 하우스 결과 목록. 목록에는 "결과가 있다"는 사실만 보이고,
+// 세부 내용은 점성술 앱의 결과 페이지로 바로 연결한다(채팅은 서버에서 따로 그 내용을 참고한다).
+type AstroListItem = {
+  id: string;
+  createdAt: string;
+  nickname: string | null;
+  paid: boolean;
+  lastPage: number | null;
 };
 
 // "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY.MM.DD" (표시용)
@@ -78,9 +89,10 @@ export default function MyPageTab() {
   const router = useRouter();
   const [data, setData] = useState<MyPageData | null>(null);
   const [reports, setReports] = useState<ReportListItem[] | null>(null);
+  const [astroResults, setAstroResults] = useState<AstroListItem[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
+  const [open, setOpen] = useState<"type" | "astro" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -101,6 +113,10 @@ export default function MyPageTab() {
         return;
       }
       try {
+        // 점성술 목록은 따로 불러온다 — 실패해도 마이페이지의 나머지(내 정보·유형·이용권)는 그대로 뜨게.
+        const astroPromise = fetch("/api/mypage/astro", { headers: authHeaders(token), cache: "no-store" })
+          .then(async (res) => (res.ok ? ((await res.json()) as { results: AstroListItem[] }).results : null))
+          .catch(() => null);
         const [infoRes, reportsRes, billingRes] = await Promise.all([
           fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" }),
           fetch("/api/mypage/reports", { headers: authHeaders(token), cache: "no-store" }),
@@ -110,7 +126,9 @@ export default function MyPageTab() {
         const json = (await infoRes.json()) as MyPageData;
         const reportsJson = (await reportsRes.json()) as { reports: ReportListItem[] };
         const billingJson = (await billingRes.json()) as BillingStatus;
+        const astroJson = await astroPromise;
         if (!cancelled) {
+          if (astroJson) setAstroResults(astroJson);
           setData(json);
           setReports(reportsJson.reports);
           setBilling(billingJson);
@@ -217,6 +235,48 @@ export default function MyPageTab() {
                   className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
                 >
                   지금 테스트하러 가기
+                </a>
+              </div>
+            )}
+          </SectionRow>
+
+          <SectionRow title="내 점성술 결과" open={open === "astro"} onToggle={() => setOpen(open === "astro" ? null : "astro")}>
+            {astroResults && astroResults.length > 0 ? (
+              <div className="divide-y divide-line rounded-xl border border-line">
+                {astroResults.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
+                      <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
+                        {r.nickname ? `${r.nickname}님의 점성술 결과` : "점성술 결과"}
+                        {r.paid && <span className="ml-1.5 text-[11px] font-normal text-navy">리포트</span>}
+                      </p>
+                    </div>
+                    <a
+                      href={astroResultUrl(r.id, r.lastPage)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                    >
+                      자세히 보기
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <p>
+                  {astroResults === null
+                    ? "점성술 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요."
+                    : "아직 이 계정에 연결된 점성술 결과가 없어요. 로그인한 상태로 점성술 테스트를 마치면 여기에 나타나요."}
+                </p>
+                <a
+                  href={ASTRO_SITE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
+                >
+                  점성술 테스트하러 가기
                 </a>
               </div>
             )}

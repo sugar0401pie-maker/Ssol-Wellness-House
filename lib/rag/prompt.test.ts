@@ -468,7 +468,8 @@ describe("buildSystemPrompt — 쏠 점성술 하우스 요약(astroInsight)", (
     assert.match(p, /미래 예측이나 확정된 사실이 아니다/);
     assert.match(p, /진단이나 문제의 원인/);
     assert.match(p, /결정을 이 내용으로 권하거나 정해 주지 않는다/);
-    assert.match(p, /별자리 이름이나 출생 정보는 알 수 없으니 추측하지 않는다/);
+    assert.match(p, /그 별자리로 새 해석·예측·날짜를 만들거나/);
+    assert.match(p, /출생 날짜·시간·장소는 알 수 없으니 추측하지 않는다/);
   });
 
   test("디저트 유형이 없어도(personaHint 없음) 점성술 요약은 쓰인다", () => {

@@ -92,7 +92,7 @@ export default function MyPageTab() {
   const [astroResults, setAstroResults] = useState<AstroListItem[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "astro" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
+  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -187,7 +187,10 @@ export default function MyPageTab() {
 
       {data && (
         <div className="flex-1">
-          <SectionRow title="내 유형 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
+          <SectionRow title="테스트 결과 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
+            {/* 2026-10-17 owner 요청: 큰 분류 "테스트 결과 열람하기" 아래에 디저트 심리테스트(지금까지 한 유형들) 목록,
+                그 밑에 점성술 테스트 결과 목록. 테스트 종류가 늘면 같은 모양의 소제목+목록을 아래에 추가한다. */}
+            <p className="mb-2 text-[13px] font-medium text-foreground">디저트 심리테스트</p>
             {reports && reports.length > 0 ? (
               <div className="divide-y divide-line rounded-xl border border-line">
                 {reports.map((r) => (
@@ -238,9 +241,8 @@ export default function MyPageTab() {
                 </a>
               </div>
             )}
-          </SectionRow>
 
-          <SectionRow title="내 점성술 결과" open={open === "astro"} onToggle={() => setOpen(open === "astro" ? null : "astro")}>
+            <p className="mb-2 mt-5 text-[13px] font-medium text-foreground">점성술 테스트</p>
             {astroResults && astroResults.length > 0 ? (
               <div className="divide-y divide-line rounded-xl border border-line">
                 {astroResults.map((r) => (

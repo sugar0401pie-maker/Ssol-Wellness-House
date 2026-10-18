@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { determineRoute } from "@/lib/safety/route";
@@ -7,6 +7,7 @@ import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
+import { runInterpretation } from "@/lib/interp/run";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
 import { HISTORY_MESSAGE_LIMIT, SESSION_LIMIT_REPLY, sessionLimitState } from "@/lib/chat/sessionLimit";
 import { checkAccessCode } from "@/lib/security/accessCode";
@@ -118,8 +119,11 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 세션 안전 상태는 올라가기만 한다 (CLAUDE.md: 세션 중 자동으로 낮추지 않는다).
   const newFlag = safetyFlagFor(decision.route);
   // 메시지 저장과 세션 상태 조회는 서로 필요하지 않아 동시에 한다(2026-10-16).
+  // 2026-10-18: 발화 해석이 이 메시지를 가리킬 수 있게 id를 먼저 정해 저장한다(사건 id에 쓰인다).
+  const userMessageId = crypto.randomUUID();
   const [, { data: session }] = await Promise.all([
     admin.from("chat_messages").insert({
+      message_id: userMessageId,
       session_id: sessionId,
       user_id: userId,
       role: "user",
@@ -276,6 +280,11 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 이번 답변이 저장된 뒤에야 상태를 저장하고, 안내(선택 칩/연장 칩)를 보낼 차례면 그 메시지를 이어서 저장한다.
   timer.lap("save_assistant");
   const { followUp } = await dialogue.finalize({ usedFallback: result.usedFallback });
+
+  // 2026-10-18: 발화 해석(CSO 해석 엔진) — 답변을 보낸 뒤 뒤에서 돌고 결과는 다음 턴부터 반영된다(지연 0). 기본 꺼짐:
+  // SW_INTERP_ENABLED=1 이고 SW_INTERP_ALLOWLIST에 있는 사용자만. 실패해도 채팅에는 영향이 없다(lib/interp/run.ts).
+  const lastBot = [...recentMessages].reverse().find((m) => m.role === "assistant")?.content ?? null;
+  after(() => runInterpretation({ userId, sessionId, messageId: userMessageId, text: message, route: decision.route, lastBot }));
 
   const usageTotals = result.usage.reduce(
     (acc, u) => ({ inputTokens: acc.inputTokens + u.inputTokens, outputTokens: acc.outputTokens + u.outputTokens }),

@@ -32,16 +32,19 @@ async function emailOf(admin: ReturnType<typeof createAdminClient>, userId: stri
   return email;
 }
 
-export async function runInterpretation(p: InterpParams): Promise<void> {
-  try {
+async function work(p: InterpParams, at: (stage: string) => void): Promise<void> {
+  {
     const env = process.env as { SW_INTERP_ENABLED?: string; SW_INTERP_ALLOWLIST?: string };
-    if (env.SW_INTERP_ENABLED !== "1") return;
+    if (env.SW_INTERP_ENABLED === "0") return; // 끄기 스위치
     if (!shouldAnalyze(p.route, p.text, interpRoutes(process.env.SW_INTERP_ROUTES))) return;
     const admin = createAdminClient();
-    const listed = isInterpEnabled(env, p.userId) || isInterpEnabled(env, p.userId, await emailOf(admin, p.userId));
+    // 목록이 없으면 전체이므로 이메일 조회 없이 통과한다. 목록이 있을 때만 이메일을 확인한다.
+    const listed = isInterpEnabled(env, p.userId) || (!!env.SW_INTERP_ALLOWLIST?.trim() && isInterpEnabled(env, p.userId, await emailOf(admin, p.userId)));
     if (!listed) return;
 
+    at("data");
     const { index } = await getClassifierData(admin);
+    at("classify");
     const cls = await classifyUtterance(
       p.text,
       { lastBot: p.lastBot ?? null, messageId: p.messageId, chatId: p.sessionId },
@@ -55,6 +58,7 @@ export async function runInterpretation(p: InterpParams): Promise<void> {
     // 마이페이지에서 학습 활용을 거부한 사용자는 문장 조각을 저장하지 않는다(점수·제안용 기록은 그대로) — 2026-10-18 owner 결정.
     const allowText = trainingAllowed(await admin.from("profiles").select("ai_training_consent").eq("user_id", p.userId).maybeSingle());
     const events = maskEvents(process.env.SW_STORE_EVIDENCE === "0" || !allowText ? cls.events.map((e) => ({ ...e, evidence: undefined })) : cls.events);
+    at("ledger");
     const { data: ledger, error: le } = await admin.rpc("sw_read_ledger", { p_user: p.userId });
     if (le) throw new Error(`sw_read_ledger ${le.code}`);
     const states = RS.hydrate(p.userId, ledger ?? [], []);
@@ -65,6 +69,7 @@ export async function runInterpretation(p: InterpParams): Promise<void> {
       if (error) throw new Error(`sw_apply_ops ${error.code}`);
     }
 
+    at("log");
     // 판정 기록(확률 보정용 재료) — 후보 전체와 누가 골랐는지. 사용자 반응(outcome)은 나중에 채운다.
     const applied = cls.events.filter((e) => e.op === "apply");
     const top = [...applied].sort((a, b) => b.confidence - a.confidence)[0];
@@ -77,7 +82,25 @@ export async function runInterpretation(p: InterpParams): Promise<void> {
       model_version: CLASSIFIER_MODEL_NAME,
       spec_version: SPEC_VERSION,
     });
+  }
+}
+
+const BUDGET_MS = 50_000; // 함수 최대 시간(60초) 안에 끝나도록 — 어느 단계든 멈추면 여기서 끊는다
+
+export async function runInterpretation(p: InterpParams): Promise<void> {
+  const t0 = Date.now();
+  let stage = "start";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      work(p, (s) => { stage = s; }),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`시간 초과(단계: ${stage})`)), BUDGET_MS); }),
+    ]);
   } catch (e) {
     console.error("발화 해석 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown");
+  } finally {
+    if (timer) clearTimeout(timer);
+    // 대화 내용은 남기지 않는다 — 걸린 시간과 마지막 단계만.
+    console.info(`interp ms=${Date.now() - t0} stage=${stage}`);
   }
 }

@@ -21,6 +21,8 @@ import { createTimer, type Timer } from "@/lib/perf/serverTiming";
 // C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
 // 위기(route 1)·폭력(route 2)은 아래에서 이 제한 검사보다 먼저 처리되어, 제한과 무관하게 항상 응답한다.
 export const runtime = "nodejs";
+// 2026-10-18: 답변을 보낸 뒤 뒤에서 도는 발화 해석(after)이 끊기지 않도록 시간을 넉넉히 준다(60초는 모든 요금제에서 허용). 해석은 처음 한 번 임베딩 색인을 만드는 데 약 10초가 든다.
+export const maxDuration = 60;
 
 const MAX_MESSAGE_LENGTH = 2000;
 

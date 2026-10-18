@@ -1,6 +1,7 @@
-// 해석 기능을 켤 대상·경로를 정하는 순수 함수(2026-10-18). 기본은 꺼짐이다.
-// SW_INTERP_ENABLED=1 이어야 하고, 대상은 SW_INTERP_ALLOWLIST(쉼표로 구분한 사용자 id 또는 이메일, "*"는 전체)에 있어야 한다.
-// 약관·방침 개정 시행일 전에는 대표·테스트 계정만 넣고, 시행일에 "*"로 바꾼다.
+// 해석 기능을 켤 대상·경로를 정하는 순수 함수(2026-10-18).
+// owner 결정(2026-10-18, 사용자가 거의 없어 환경 변수를 따로 넣지 않기로 함): **기본은 전체 켜짐**이다.
+//   - 끄기(킬 스위치): SW_INTERP_ENABLED=0
+//   - 일부에게만: SW_INTERP_ALLOWLIST에 쉼표로 구분한 사용자 id 또는 이메일을 넣는다("*"는 전체). 목록이 비어 있거나 없으면 전체.
 export type Allowlist = { all: boolean; ids: Set<string>; emails: Set<string> };
 
 export function parseAllowlist(raw: string | undefined | null): Allowlist {
@@ -14,9 +15,9 @@ export function parseAllowlist(raw: string | undefined | null): Allowlist {
 }
 
 export function isInterpEnabled(env: { SW_INTERP_ENABLED?: string; SW_INTERP_ALLOWLIST?: string }, userId: string, email?: string | null): boolean {
-  if (env.SW_INTERP_ENABLED !== "1") return false;
+  if (env.SW_INTERP_ENABLED === "0") return false;
   const a = parseAllowlist(env.SW_INTERP_ALLOWLIST);
-  if (a.all) return true;
+  if (a.all || (a.ids.size === 0 && a.emails.size === 0)) return true; // 목록이 없으면 전체
   if (a.ids.has(userId.toLowerCase())) return true;
   return !!email && a.emails.has(email.toLowerCase());
 }

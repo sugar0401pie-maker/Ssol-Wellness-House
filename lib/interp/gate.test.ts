@@ -4,26 +4,27 @@ import { interpRoutes, isInterpEnabled, MIN_CHARS, parseAllowlist, shouldAnalyze
 
 const U = "AAAAAAAA-0000-4000-8000-000000000001";
 
-test("스위치가 꺼져 있으면 허용 목록이 있어도 항상 꺼짐", () => {
-  assert.equal(isInterpEnabled({ SW_INTERP_ALLOWLIST: "*" }, U), false);
+test("환경 변수를 하나도 안 넣어도 기본은 전체 켜짐(owner 결정)", () => {
+  assert.equal(isInterpEnabled({}, U), true);
+  assert.equal(isInterpEnabled({ SW_INTERP_ALLOWLIST: "" }, U), true);
+  assert.equal(isInterpEnabled({ SW_INTERP_ALLOWLIST: "   " }, U), true);
+});
+
+test("SW_INTERP_ENABLED=0이면 허용 목록과 상관없이 항상 꺼짐(끄기 스위치)", () => {
+  assert.equal(isInterpEnabled({ SW_INTERP_ENABLED: "0" }, U), false);
   assert.equal(isInterpEnabled({ SW_INTERP_ENABLED: "0", SW_INTERP_ALLOWLIST: "*" }, U), false);
 });
 
-test("허용 목록이 비어 있으면 꺼짐(기본)", () => {
-  assert.equal(isInterpEnabled({ SW_INTERP_ENABLED: "1" }, U), false);
-  assert.equal(isInterpEnabled({ SW_INTERP_ENABLED: "1", SW_INTERP_ALLOWLIST: "" }, U), false);
-});
-
-test("사용자 id(대소문자 무시) 또는 이메일이 목록에 있을 때만 켜짐", () => {
-  const env = { SW_INTERP_ENABLED: "1", SW_INTERP_ALLOWLIST: ` ${U.toLowerCase()} , me@x.com ` };
+test("허용 목록을 넣으면 사용자 id(대소문자 무시) 또는 이메일이 있는 사람만 켜짐", () => {
+  const env = { SW_INTERP_ALLOWLIST: ` ${U.toLowerCase()} , me@x.com ` };
   assert.equal(isInterpEnabled(env, U), true);
   assert.equal(isInterpEnabled(env, "other-id", "ME@X.com"), true);
   assert.equal(isInterpEnabled(env, "other-id", "you@x.com"), false);
   assert.equal(isInterpEnabled(env, "other-id"), false);
 });
 
-test("'*'는 전체(약관 개정 시행일에 쓴다)", () => {
-  assert.equal(isInterpEnabled({ SW_INTERP_ENABLED: "1", SW_INTERP_ALLOWLIST: "*" }, "any"), true);
+test("'*'는 전체", () => {
+  assert.equal(isInterpEnabled({ SW_INTERP_ALLOWLIST: "*" }, "any"), true);
   assert.equal(parseAllowlist("*,a@b.com").all, true);
 });
 

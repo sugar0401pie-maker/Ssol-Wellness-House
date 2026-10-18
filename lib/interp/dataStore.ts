@@ -19,8 +19,16 @@ async function rows<T>(admin: Admin, table: string, cols: string): Promise<T[]> 
   return (data ?? []) as T[];
 }
 
-export async function getClassifierData(admin: Admin): Promise<{ claims: Claim[]; scenes: Scene[]; index: ClaimIndex }> {
-  if (cache && Date.now() - cache.at < TTL_MS) return { claims: cache.claims, scenes: cache.scenes, index: await cache.index };
+let loading: Promise<{ claims: Claim[]; scenes: Scene[]; index: ClaimIndex }> | null = null;
+
+// 여러 요청이 동시에 와도 읽기·임베딩 색인 만들기는 한 번만 한다(singleflight) — 같은 일을 겹쳐 하면 시간과 비용이 낭비되고 OpenAI 제한에 걸리기 쉽다.
+export function getClassifierData(admin: Admin): Promise<{ claims: Claim[]; scenes: Scene[]; index: ClaimIndex }> {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.index.then((index) => ({ claims: cache!.claims, scenes: cache!.scenes, index }));
+  if (!loading) loading = load(admin).finally(() => { loading = null; });
+  return loading;
+}
+
+async function load(admin: Admin): Promise<{ claims: Claim[]; scenes: Scene[]; index: ClaimIndex }> {
   const [claims, claimRoots, options, roots, scenes] = await Promise.all([
     rows<Parameters<typeof buildClaims>[0][number]>(admin, "sw_ob_claims", "claim_id,label,kind,scenes,examples_json,lean_json,counter_json,core_thoughts_json,show_if,generic,points,signal_ids"),
     rows<Parameters<typeof buildClaims>[1][number]>(admin, "sw_ob_claim_roots", "claim_id,root_id,link,polarity,cond"),
@@ -32,7 +40,8 @@ export async function getClassifierData(admin: Admin): Promise<{ claims: Claim[]
   K.setData({ claims: c, scenes: s });
   const sig = signature(c);
   const index = cache && cache.sig === sig ? cache.index : buildClaimIndex(c, embedTexts);
-  index.catch(() => { if (cache?.index === index) cache = null; }); // 임베딩이 실패하면 다음 요청에서 다시 시도
-  cache = { at: Date.now(), claims: c, scenes: s, index, sig };
+  const entry = { at: Date.now(), claims: c, scenes: s, index, sig };
+  cache = entry;
+  index.catch(() => { if (cache === entry) cache = null; }); // 임베딩이 실패하면 다음 요청에서 다시 시도
   return { claims: c, scenes: s, index: await index };
 }

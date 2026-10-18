@@ -252,3 +252,16 @@ Non-negotiable rules (source: `system_prompt` and `safety_rules` tables, SAFE-00
 - [ ] Crisis path and medical-boundary behavior unchanged or improved, and tested.
 - [ ] `npm run lint`, `npm run build` and tests pass (or failures are stated honestly).
 - [ ] Checkpoint committed; owner told what to do next outside the code.
+
+## 10. ⭐ ROADMAP — must-build later (owner highlight, 2026-10-18)
+
+> ### ⭐⭐ 나중에 반드시 만들 것: **모델 학습 활용 기능** (지금은 없음)
+> 마이페이지 체크박스("개인정보 및 식별 데이터를 제외한 정보를 모델 학습에 활용하는 것에 동의")를 받고 있고, 동의한 사용자의 정보(장부의 사용자 말 조각 포함)는 쌓이고 있지만, **그것을 실제로 학습에 쓰는 기능은 아직 없다.** 만들 때 아래를 **모두** 지킨다.
+> 1. **식별 정보 제거가 먼저(필수 선행):** 이름·연락처·주소·이메일·계정 id 등을 학습용으로 내보내기 전에 제거/가림. 체크박스 문구가 "개인정보 및 식별 데이터 제외"를 약속하므로 이 단계 없이 내보내면 안 된다.
+> 2. **동의한 사람만:** `profiles.ai_training_consent = true`인 사용자만 포함. 거부한 사람은 제외(이미 거부 시 문장 조각을 저장하지 않지만, 거부 전에 쌓인 조각도 내보내기에서 제외한다).
+> 3. **직접 건강 표현은 이미 `[건강]`으로 가려 저장**됨(`lib/interp/healthMask.ts`) — 내보내기 때도 다시 한 번 검사.
+> 4. 삭제 요청·탈퇴(`sw_purge_user`)가 내보내기 대상에서도 반영되게 한다(내보낸 사본이 남지 않도록 보관 기간·재생성 방식 정의).
+> 5. 약관·처리방침 문구와 실제 처리 범위가 일치하는지 법률 검토 때 함께 확인.
+>
+> 관련: `쏘웰라_약관_방침_추가문구_초안_v0.2.md`, 위 2026-10-18 결정 기록(마이페이지 학습 활용 동의 체크박스).
+

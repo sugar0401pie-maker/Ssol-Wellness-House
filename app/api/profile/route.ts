@@ -67,6 +67,7 @@ export async function PATCH(req: NextRequest) {
     phone?: unknown;
     address?: unknown;
     marketingConsent?: unknown;
+    aiTrainingConsent?: unknown;
   };
   try {
     body = await req.json();
@@ -112,13 +113,26 @@ export async function PATCH(req: NextRequest) {
     update.marketing_consent_at = consent ? new Date().toISOString() : null;
   }
 
-  if (Object.keys(update).length === 0) {
+  // 2026-10-18: 학습 활용 동의는 별도 칸이라 따로 저장한다 — 그 칸이 아직 없어도(마이그레이션 전) 다른 정보 저장은 성공해야 한다.
+  // 화면은 이 값을 사용자가 바꿨을 때만 보낸다.
+  const hasTraining = typeof body.aiTrainingConsent === "boolean";
+
+  if (Object.keys(update).length === 0 && !hasTraining) {
     return NextResponse.json({ error: "바꿀 내용이 없습니다." }, { status: 400 });
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update(update).eq("user_id", userId);
-  if (error) return NextResponse.json({ error: "저장에 실패했어요." }, { status: 500 });
+  if (Object.keys(update).length > 0) {
+    const { error } = await admin.from("profiles").update(update).eq("user_id", userId);
+    if (error) return NextResponse.json({ error: "저장에 실패했어요." }, { status: 500 });
+  }
+  if (hasTraining) {
+    const { error } = await admin
+      .from("profiles")
+      .update({ ai_training_consent: body.aiTrainingConsent as boolean, ai_training_consent_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    if (error) return NextResponse.json({ error: "학습 활용 설정을 저장하지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

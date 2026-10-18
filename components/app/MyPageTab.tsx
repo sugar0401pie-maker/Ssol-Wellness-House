@@ -272,6 +272,10 @@ export default function MyPageTab() {
                 <dt className="text-slate-400">마케팅 정보 활용 동의</dt>
                 <dd>{data.marketingConsent ? "동의함" : "동의 안 함"}</dd>
               </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-400">AI 서비스 개선(모델 학습) 활용 동의</dt>
+                <dd className="shrink-0">{data.aiTrainingConsent ? "동의함" : "동의 안 함"}</dd>
+              </div>
               {data.gender && (
                 <div className="flex justify-between">
                   <dt className="text-slate-400">성별</dt>

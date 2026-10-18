@@ -14,6 +14,8 @@ export type MyInfo = {
   phone: string | null;
   address: string | null;
   marketingConsent: boolean;
+  // 쏘웰라 AI 서비스 개선을 위한 모델 학습 활용 동의(기본 동의, 2026-10-18)
+  aiTrainingConsent: boolean;
 };
 
 // 2026-09-25 owner 요청: 마이페이지 "내 정보 확인"을 개별 필드 편집 대신, 비밀번호 확인 후
@@ -35,6 +37,7 @@ export default function MyInfoEditModal({
   const [address, setAddress] = useState(info.address ?? "");
   const [addressDetail, setAddressDetail] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(info.marketingConsent);
+  const [aiTrainingConsent, setAiTrainingConsent] = useState(info.aiTrainingConsent);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -76,6 +79,8 @@ export default function MyInfoEditModal({
           phone: phone.trim(),
           address: addressDetail.trim() ? `${address} ${addressDetail.trim()}` : address,
           marketingConsent,
+          // 바꾼 경우에만 보낸다(저장 칸이 아직 없는 상태에서도 다른 정보 저장이 막히지 않게)
+          ...(aiTrainingConsent !== info.aiTrainingConsent ? { aiTrainingConsent } : {}),
         }),
       });
       if (!res.ok) {
@@ -90,6 +95,7 @@ export default function MyInfoEditModal({
         phone: phone.trim() || null,
         address: (addressDetail.trim() ? `${address} ${addressDetail.trim()}` : address) || null,
         marketingConsent,
+        aiTrainingConsent,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "저장에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -304,6 +310,18 @@ export default function MyInfoEditModal({
                   className="mt-0.5"
                 />
                 <span>(선택) 마케팅 정보 활용에 동의합니다.</span>
+              </label>
+
+              <label className="flex items-start gap-2 text-[13px] leading-5 text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={aiTrainingConsent}
+                  onChange={(e) => setAiTrainingConsent(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  (선택) 쏘웰라 AI의 서비스 개선을 목적으로 개인정보 및 식별 데이터를 제외한 정보를 모델 학습에 활용하는 것에 동의합니다.
+                </span>
               </label>
 
               {error && <p className="text-[13px] text-red-600">{error}</p>}

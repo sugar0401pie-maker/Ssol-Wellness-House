@@ -7,6 +7,7 @@ import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
+import { planHypothesis } from "@/lib/interp/hypothesis";
 import { runInterpretation } from "@/lib/interp/run";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
 import { HISTORY_MESSAGE_LIMIT, SESSION_LIMIT_REPLY, sessionLimitState } from "@/lib/chat/sessionLimit";
@@ -250,6 +251,17 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     recentMessages,
   });
   timer.lap("dialogue_plan");
+  // 2026-10-18(개발 1·2·5번): 해석이 쌓인 뿌리가 있으면 이번 답변에 "이런 마음일 수도 있을까요?" 확인 문장을 건넨다(2~4번째 답변까지).
+  // 이론 질문 선택 흐름이 이번 턴을 쓰고 있으면 겹치지 않는다. 실패하면 말하지 않고 평소처럼 답한다.
+  const hypothesis = await planHypothesis({
+    admin,
+    userId,
+    sessionId,
+    route: decision.route,
+    recentMessages,
+    theoryActive: dialogue.generationExtras.dialogueMode !== undefined,
+  });
+  timer.lap("hypothesis_plan");
   const result = await generateAnswer({
     route: decision.route,
     matchedRuleIds: decision.matchedRuleIds,
@@ -262,11 +274,12 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     queryEmbedding,
     timer,
     ...dialogue.generationExtras,
+    ...hypothesis?.generationExtras,
   });
   timer.lap("generate_total");
 
   // 탐색 턴이면 AI가 쓴 앞부분에 DB의 검수된 질문/실천을 붙여 최종 답변을 만든다(그 외에는 그대로).
-  const finalReply = await dialogue.compose(result.reply, result.usedFallback);
+  const finalReply = hypothesis ? await hypothesis.compose(result.reply, result.usedFallback) : await dialogue.compose(result.reply, result.usedFallback);
 
   await admin.from("chat_messages").insert({
     session_id: sessionId,
@@ -277,6 +290,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     retrieved_chunk_ids: result.retrievedChunkIds.length ? result.retrievedChunkIds : null,
     framework_id: result.frameworkId,
     ...dialogue.logFields(),
+    ...hypothesis?.logFields(),
   });
 
   // 이번 답변이 저장된 뒤에야 상태를 저장하고, 안내(선택 칩/연장 칩)를 보낼 차례면 그 메시지를 이어서 저장한다.

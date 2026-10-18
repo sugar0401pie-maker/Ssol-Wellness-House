@@ -5,14 +5,17 @@ import * as RS from "./vendor/rootState.mjs";
 import { classifyUtterance } from "./classify";
 import { getClassifierData } from "./dataStore";
 import { embedTexts } from "./embed";
-import { interpRoutes, isInterpEnabled, shouldAnalyze } from "./gate";
+import { interpRoutes, shouldAnalyze } from "./gate";
+import { interpListed } from "./listed";
 import { maskEvents } from "./healthMask";
 import { trainingAllowed } from "@/lib/profile/aiTraining";
+import { handleAnswer } from "./hypothesis";
+import { SPEC_VERSION } from "./version";
 
 // 답변을 보낸 뒤 뒤에서 도는 발화 해석(2026-10-18). 결과는 다음 턴부터 반영된다(지연 0).
 // 흐름: 켜짐·대상 확인 → 분류(임베딩 후보 + 모델) → 장부에서 상태 다시 읽기 → 같은 의미 한 번만 반영 → sw_apply_ops(원자적·멱등) → 판정 기록.
 // 실패해도 채팅에는 영향이 없고, 대화 내용은 로그에 남기지 않는다(CLAUDE.md §8). 위기·폭력은 이 경로에 오지 않는다(앞 단계에서 끝남).
-export const SPEC_VERSION = "interp-v0.5/classifier-v0.2";
+export { SPEC_VERSION };
 
 export type InterpParams = {
   userId: string;
@@ -23,24 +26,18 @@ export type InterpParams = {
   lastBot?: string | null;
 };
 
-const emailCache = new Map<string, string | null>();
-async function emailOf(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string | null> {
-  if (emailCache.has(userId)) return emailCache.get(userId)!;
-  const { data } = await admin.auth.admin.getUserById(userId);
-  const email = data?.user?.email ?? null;
-  emailCache.set(userId, email);
-  return email;
-}
-
 async function work(p: InterpParams, at: (stage: string) => void): Promise<void> {
   {
     const env = process.env as { SW_INTERP_ENABLED?: string; SW_INTERP_ALLOWLIST?: string };
     if (env.SW_INTERP_ENABLED === "0") return; // 끄기 스위치
-    if (!shouldAnalyze(p.route, p.text, interpRoutes(process.env.SW_INTERP_ROUTES))) return;
     const admin = createAdminClient();
-    // 목록이 없으면 전체이므로 이메일 조회 없이 통과한다. 목록이 있을 때만 이메일을 확인한다.
-    const listed = isInterpEnabled(env, p.userId) || (!!env.SW_INTERP_ALLOWLIST?.trim() && isInterpEnabled(env, p.userId, await emailOf(admin, p.userId)));
-    if (!listed) return;
+    // 가설을 말한 직후의 답("맞아요")은 짧아서 아래 분석 기준에 안 걸리므로, 분석 여부와 상관없이 먼저 답을 받는다.
+    if (await interpListed(admin, p.userId)) {
+      at("answer");
+      await handleAnswer(admin, p).catch((e) => console.error("가설 답 처리 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+    }
+    if (!shouldAnalyze(p.route, p.text, interpRoutes(process.env.SW_INTERP_ROUTES))) return;
+    if (!(await interpListed(admin, p.userId))) return;
 
     at("data");
     const { index } = await getClassifierData(admin);

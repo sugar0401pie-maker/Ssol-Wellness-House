@@ -35,7 +35,7 @@ export type PersonaHint = {
   reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
-export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead";
+export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead" | "hypothesis_lead";
 
 const STAGE_GUIDE: Record<TheoryStage, string> = {
   OPEN: "상황과 감정을 사용자의 말로 풀어내도록 돕는 단계",
@@ -62,6 +62,10 @@ function voiceCardLines(card: VoiceCard | null | undefined): string[] {
 function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null | undefined): string {
   if (mode === "offer_follows") {
     return "이번 답변 바로 뒤에 시스템이 '지금 당장 해볼 수 있는 방법을 알려드릴까요, 아니면 고민을 더 깊게 알아볼까요?'라는 선택 안내를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 지금까지 들은 마음을 따뜻하게 반영하고 짧게 정리하는 것으로 마무리하세요. 구체적인 행동 제안은 사용자가 고른 뒤에 하므로 이번에는 하지 마세요. 선택 안내 문구 자체는 쓰지 마세요.";
+  }
+  if (mode === "hypothesis_lead") {
+    // 2026-10-18: 시스템이 이어서 "이런 마음일 수도 있을까요?" 식의 확인 문장(DB의 검수된 원문)을 붙인다. AI는 공감 앞부분만 쓴다.
+    return "방금 한 말에 담긴 마음을 한두 문장(120자 이내)으로 따뜻하게 반영하세요. 질문은 하지 마세요. 이 뒤에 시스템이 확인 문장을 이어서 붙입니다. 해결책이나 행동 제안, 이름 붙이기, 앞으로 이어질 문장을 미리 짐작해 쓰는 것은 하지 마세요.";
   }
   if (mode === "action") {
     return "사용자가 '행동 제안받기'를 직접 선택했습니다. 더 이상 확인 질문을 하지 말고, 지금까지 들은 내용을 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 단기적인 것 1~2개와 꾸준히 이어가면 좋을 중장기적인 것 1개를 총 3가지 안팎으로 구체적으로 제안하세요. 여러 감정이 함께 드러나 있다면 각각에 짝지어 제안하세요. 마지막에는 새 질문 대신 조정이 필요한 부분이 있는지 물어보며 마무리하세요.";

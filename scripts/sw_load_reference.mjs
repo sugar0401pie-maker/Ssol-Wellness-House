@@ -91,17 +91,32 @@ if (!APPLY) { console.log("검사만 했습니다(DB 변경 없음). 올리려�
 // ───── 적재: 부모 표 먼저(자기 자신을 가리키는 연결은 같은 요청 안에서 함께 들어가므로 괜찮음) ─────
 try { process.loadEnvFile(".env.local"); } catch { /* 환경 변수가 이미 있으면 됨 */ }
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+// 표 사이 연결이 서로를 가리키는 순환(예: 카드 ↔ 보기)은 한 요청씩 올리는 방식으로는 어느 쪽도 먼저 못 들어간다.
+// 순환에 걸린 연결 중 "비어도 되는 칸"은 처음에 비워 두고, 모든 표가 올라간 뒤 채운다(없으면 중단).
+const reach = (from, to, seen = new Set()) => { if (from === to) return true; if (seen.has(from)) return false; seen.add(from); return tables[from].fks.some((f) => f.ref !== from && reach(f.ref, to, seen)); };
+const deferred = []; // { table, fk }
+for (const [n, t] of Object.entries(tables)) for (const fk of t.fks) {
+  if (fk.ref === n || !reach(fk.ref, n)) continue; // 순환이 아닌 연결
+  const nullable = fk.cols.every((c) => !t.cols.find((x) => x.name === c).notNull);
+  if (nullable && !deferred.some((d) => d.table === n && d.fk === fk)) { deferred.push({ table: n, fk }); }
+}
+const isDeferred = (n, fk) => deferred.some((d) => d.table === n && d.fk === fk);
 const order = []; const done = new Set();
 const visit = (n, stack = []) => {
-  if (done.has(n)) return; if (stack.includes(n)) return;
-  for (const fk of tables[n].fks) if (fk.ref !== n) visit(fk.ref, [...stack, n]);
+  if (done.has(n)) return;
+  if (stack.includes(n)) { console.error(`✗ 순환 연결을 풀 수 없음(비어도 되는 칸이 없음): ${[...stack, n].join(" → ")}`); process.exit(1); }
+  for (const fk of tables[n].fks) if (fk.ref !== n && !isDeferred(n, fk)) visit(fk.ref, [...stack, n]);
   done.add(n); order.push(n);
 };
 Object.keys(tables).forEach((n) => visit(n));
+const deferCols = (n) => deferred.filter((d) => d.table === n).flatMap((d) => d.fk.cols);
+if (deferred.length) console.log(`순환 연결 ${deferred.length}개: ${deferred.map((d) => `${d.table}(${d.fk.cols})`).join(", ")} — 나중에 채움`);
 const BATCH = 400;
 let loaded = 0, skipped = 0;
 for (const name of order) {
-  const rows = data[name], t = tables[name];
+  const full = data[name], t = tables[name];
+  const dc = deferCols(name);
+  const rows = dc.length ? full.map((o) => ({ ...o, ...Object.fromEntries(dc.map((c) => [c, null])) })) : full;
   const { count, error: ce } = await admin.from(name).select("*", { count: "exact", head: true });
   if (ce) { console.error(`✗ ${name}: 표를 찾을 수 없음/읽기 실패 — ${ce.code} ${ce.message}`); process.exit(1); }
   const canUpsert = t.pk.length > 0 && t.pk.every((k) => rows[0] && k in rows[0]);
@@ -115,5 +130,15 @@ for (const name of order) {
     if (error) { console.error(`✗ ${name} ${i}~${i + part.length}: ${error.code} ${error.message}`); process.exit(1); }
   }
   loaded++; console.log(`  ✓ ${name} ${rows.length}행`);
+}
+// 2단계: 순환 칸 채우기(같은 기본키로 전체 행을 다시 올려서 덮어씀 — 여러 번 실행해도 안전)
+for (const n of new Set(deferred.map((d) => d.table))) {
+  const t = tables[n], cols = deferCols(n);
+  const todo = data[n].filter((o) => cols.some((c) => o[c] !== null));
+  for (let i = 0; i < todo.length; i += BATCH) {
+    const { error } = await admin.from(n).upsert(todo.slice(i, i + BATCH), { onConflict: t.pk.join(",") });
+    if (error) { console.error(`✗ ${n} 순환 칸 채우기 ${i}: ${error.code} ${error.message}`); process.exit(1); }
+  }
+  console.log(`  ✓ ${n} 순환 칸(${cols}) ${todo.length}행 채움`);
 }
 console.log(`적재 완료: 올린 표 ${loaded}개 · 이미 같은 행 수라 건너뛴 표 ${skipped}개`);

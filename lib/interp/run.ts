@@ -6,6 +6,7 @@ import { classifyUtterance } from "./classify";
 import { getClassifierData } from "./dataStore";
 import { embedTexts } from "./embed";
 import { interpRoutes, isInterpEnabled, shouldAnalyze } from "./gate";
+import { maskEvents } from "./healthMask";
 
 // 답변을 보낸 뒤 뒤에서 도는 발화 해석(2026-10-18). 결과는 다음 턴부터 반영된다(지연 0).
 // 흐름: 켜짐·대상 확인 → 분류(임베딩 후보 + 모델) → 장부에서 상태 다시 읽기 → 같은 의미 한 번만 반영 → sw_apply_ops(원자적·멱등) → 판정 기록.
@@ -48,7 +49,9 @@ export async function runInterpretation(p: InterpParams): Promise<void> {
     if (cls.safety_suspect) return; // 위기로 보이는 말 — 점수를 만들지 않는다(판단은 lib/safety)
     if (!cls.events.length) return;
 
-    const events = process.env.SW_STORE_EVIDENCE === "0" ? cls.events.map((e) => ({ ...e, evidence: undefined })) : cls.events;
+    // 장부에 저장하는 사용자 말 조각: 질병명·진단·약 같은 직접 건강 표현은 "[건강]"으로 가린다(owner 결정 2026-10-18 — 대화는 그대로 들어 주고
+    // 저장되는 조각에서만 가린다. 감정·컨디션 표현은 남음). SW_STORE_EVIDENCE=0이면 조각 자체를 저장하지 않는다.
+    const events = maskEvents(process.env.SW_STORE_EVIDENCE === "0" ? cls.events.map((e) => ({ ...e, evidence: undefined })) : cls.events);
     const { data: ledger, error: le } = await admin.rpc("sw_read_ledger", { p_user: p.userId });
     if (le) throw new Error(`sw_read_ledger ${le.code}`);
     const states = RS.hydrate(p.userId, ledger ?? [], []);

@@ -10,7 +10,7 @@ export const DISC_GAP = 1.0; // 1·2위 점수 차가 이 안이면 가르기 �
 export const MARKER_HYP = "sw-root";
 export const MARKER_DISC = "sw-disc";
 
-export type RootText = { root_id: string; name: string; reflect: string[]; check_q: string[]; counter: string[]; strength: string; sensitive: boolean };
+export type RootText = { root_id: string; name: string; reflect: string[]; check_q: string[]; counter: string[]; strength: string; report: string; sensitive: boolean };
 export type DiscGroup = { group_id: string; roots: string[]; ask: string; options: { answer_hint: string; root: string }[] };
 export type StateLite = { root_id: string; status: string; score: number; sources?: string[] };
 
@@ -107,12 +107,12 @@ export function parseDiscChoice(raw: string, g: DiscGroup): DiscChoice | null {
 }
 
 // 행 → 데이터 (DB 표 sw_ob_root_texts · sw_ob_roots · sw_ob_root_discriminators)
-type TextRow = { root_id: string; reflect_1?: string | null; reflect_2?: string | null; reflect_3?: string | null; check_q_1?: string | null; check_q_2?: string | null; counter_1?: string | null; counter_2?: string | null; strength?: string | null; sensitive?: boolean | string | null };
+type TextRow = { root_id: string; reflect_1?: string | null; reflect_2?: string | null; reflect_3?: string | null; check_q_1?: string | null; check_q_2?: string | null; counter_1?: string | null; counter_2?: string | null; strength?: string | null; report?: string | null; sensitive?: boolean | string | null };
 export function buildRootTexts(texts: TextRow[], roots: { root_id: string; name: string }[]): Record<string, RootText> {
   const name = new Map(roots.map((r) => [r.root_id, r.name]));
   const keep = (xs: (string | null | undefined)[]) => xs.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
   return Object.fromEntries(
-    texts.map((t) => [t.root_id, { root_id: t.root_id, name: name.get(t.root_id) ?? t.root_id, reflect: keep([t.reflect_1, t.reflect_2, t.reflect_3]), check_q: keep([t.check_q_1, t.check_q_2]), counter: keep([t.counter_1, t.counter_2]), strength: t.strength ?? "", sensitive: t.sensitive === true || t.sensitive === "true" || t.sensitive === "t" }]),
+    texts.map((t) => [t.root_id, { root_id: t.root_id, name: name.get(t.root_id) ?? t.root_id, reflect: keep([t.reflect_1, t.reflect_2, t.reflect_3]), check_q: keep([t.check_q_1, t.check_q_2]), counter: keep([t.counter_1, t.counter_2]), strength: t.strength ?? "", report: t.report ?? "", sensitive: t.sensitive === true || t.sensitive === "true" || t.sensitive === "t" }]),
   );
 }
 export function buildDiscGroups(rows: { group_id: string; roots: string; ask: string; options_json: unknown }[]): DiscGroup[] {

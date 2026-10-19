@@ -7,6 +7,7 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
+import InsightsSection from "./InsightsSection";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
 import type { TestGroup } from "@/lib/mypage/testTypes";
 
@@ -71,7 +72,7 @@ export default function MyPageTab() {
   const [testGroups, setTestGroups] = useState<TestGroup[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
+  const [open, setOpen] = useState<"type" | "insights" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -242,6 +243,10 @@ export default function MyPageTab() {
             ))}
           </SectionRow>
 
+          <SectionRow title="쏘웰라가 파악한 내용" open={open === "insights"} onToggle={() => setOpen(open === "insights" ? null : "insights")}>
+            {/* 2026-10-18(로드맵 10번): 열었을 때만 불러온다(열려 있는 동안만 마운트). */}
+            <InsightsSection />
+          </SectionRow>
           <SectionRow title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
             <dl className="space-y-2">
               <div className="flex justify-between">

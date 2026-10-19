@@ -1,4 +1,5 @@
 import "server-only";
+import { applyRootBoost, type RootBoostFn } from "@/lib/interp/rootBoostApply";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { domainRankScore, pickDailyPool } from "@/lib/rag/domainRank";
 import { passesHardFilter, scoreSoftPreference, type OnboardingPrefs, type PracticeEligibility } from "@/lib/onboarding/practiceFilter";
@@ -170,6 +171,7 @@ export async function searchWellnessPractices(
   onboardingPrefs: OnboardingPrefs,
   serving: ServingContext,
   traumaStage: TraumaStage | null = null,
+  rootBoost: RootBoostFn | null = null, // 2026-10-18: 해석된 뿌리로 순서 조정(순위 가산 + 맞지 않는 실천 제외). 없으면 이전과 같다.
 ): Promise<PracticeResult[]> {
   // 이론 기반 실천 노출 제한(after_explore·exposure·위기 이력) — 트라우마 대화(T0/T1)에서는 exposure를 전부 뺀다.
   const ctx: ServingContext = traumaStage ? { ...serving, excludeExposure: true } : serving;
@@ -191,10 +193,13 @@ export async function searchWellnessPractices(
   const qBigrams = bigrams(contextText);
   const domain = guessDomain(contextText);
 
-  const scored = rows.map((p) => ({
-    ...p,
-    score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + domainRankScore(p, domain),
-  }));
+  const scored = applyRootBoost(
+    rows.map((p) => ({
+      ...p,
+      score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + domainRankScore(p, domain),
+    })),
+    rootBoost,
+  );
 
   // 2026-09-22 결정: "단기(가볍게 시작)와 중장기(꾸준히 이어가기·장기 습관)를 섞어서 ~3개
   // 제안"하려면 후보 자체에 tier 다양성이 있어야 한다. 순수 점수 정렬만 하면 "가볍게 시작"

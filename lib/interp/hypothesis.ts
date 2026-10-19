@@ -27,10 +27,10 @@ export type HypothesisPlan = {
 
 // ───── 문장 데이터(sw_ob_*) 10분 캐시 ─────
 let dataCache: { at: number; texts: Record<string, RootText>; groups: DiscGroup[] } | null = null;
-async function loadData(admin: Admin) {
+export async function loadData(admin: Admin) {
   if (dataCache && Date.now() - dataCache.at < 10 * 60 * 1000) return dataCache;
   const [t, r, d] = await Promise.all([
-    admin.from("sw_ob_root_texts").select("root_id,reflect_1,reflect_2,reflect_3,check_q_1,check_q_2,counter_1,counter_2,strength,sensitive").limit(1000),
+    admin.from("sw_ob_root_texts").select("root_id,reflect_1,reflect_2,reflect_3,check_q_1,check_q_2,counter_1,counter_2,strength,report,sensitive").limit(1000),
     admin.from("sw_ob_roots").select("root_id,name").limit(1000),
     admin.from("sw_ob_root_discriminators").select("group_id,roots,ask,options_json").limit(1000),
   ]);
@@ -39,7 +39,7 @@ async function loadData(admin: Admin) {
   return dataCache;
 }
 
-async function readStates(admin: Admin, userId: string): Promise<StateLite[]> {
+export async function readStates(admin: Admin, userId: string): Promise<StateLite[]> {
   const { data, error } = await admin.rpc("sw_read_ledger", { p_user: userId });
   if (error) throw new Error(`sw_read_ledger ${error.code}`);
   return Object.values(RS.hydrate(userId, data ?? [], [])) as unknown as StateLite[];

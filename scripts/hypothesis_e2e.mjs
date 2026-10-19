@@ -46,7 +46,7 @@ try {
   if (process.env.SHOW_REPLY) console.log("   [2번째 답변]\n" + t2.reply.replace(/^/gm, "   | "));
   console.log("   답변 길이", t2.reply.length, "자 · 문단", t2.reply.split(/\n\n/).length);
 
-  const t3 = await chat("네 맞아요", sid);
+  await chat("네 맞아요", sid);
   await sleep(9000); // 뒤에서 도는 답 처리 대기
   const a3 = await assistants(sid);
   ok(a3[1].reflection_response === "agree", `"맞아요" 기록됨 (reflection_response=${a3[1].reflection_response})`);
@@ -61,7 +61,7 @@ try {
   console.log("   4번째 route:", t4.route);
   ok(/^sw-root:/.test(a4[3]?.reflection_signal_id ?? "") && a4[3].reflection_signal_id.includes(B), `4번째 답변: 다른 뿌리(${B}) 가설, 이미 확인된 ${A}는 건너뜀 (${a4[3]?.reflection_signal_id})`);
 
-  const t5 = await chat("아니에요, 그건 아닌 것 같아요", sid);
+  await chat("아니에요, 그건 아닌 것 같아요", sid);
   await sleep(9000);
   const a5 = await assistants(sid);
   ok(a5[3].reflection_response === "disagree", `"아니에요" 기록됨 (${a5[3].reflection_response})`);
@@ -69,7 +69,7 @@ try {
   ok(states3[B]?.status === "rejected", `장부 상태 ${B}=rejected`);
   ok(a5[4]?.reflection_signal_id == null, "5번째 답변: 가설 없음(답 받는 턴)");
 
-  const t6 = await chat("오늘 하루는 좀 쉬어볼까 해요", sid);
+  await chat("오늘 하루는 좀 쉬어볼까 해요", sid);
   const a6 = await assistants(sid);
   ok(a6[5]?.reflection_signal_id == null, "6번째 답변: 4턴 이후 가설 없음");
 

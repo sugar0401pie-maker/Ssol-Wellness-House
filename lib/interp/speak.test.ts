@@ -45,7 +45,7 @@ test("가르기 질문이 없거나 이미 물었으면 1위 가설을 말한다
 });
 
 test("반영 문장 + 확인 질문을 DB 원문 그대로 잇고, 턴에 따라 변형을 돌린다", () => {
-  const t = { root_id: "R", name: "n", reflect: ["반영1", "반영2"], check_q: ["질문1", "질문2"], counter: [], strength: "", sensitive: false };
+  const t = { root_id: "R", name: "n", reflect: ["반영1", "반영2"], check_q: ["질문1", "질문2"], counter: [], strength: "", report: "", sensitive: false };
   assert.equal(hypothesisBlock(t, 2), "반영1 질문1");
   assert.equal(hypothesisBlock(t, 3), "반영2 질문2");
   assert.equal(hypothesisBlock({ ...t, reflect: [] }, 2), "질문1");

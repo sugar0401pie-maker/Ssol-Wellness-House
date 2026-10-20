@@ -30,7 +30,13 @@ test("요청 값 검사", () => {
   assert.ok(isRootId("ROOT-48") && isRootId("ROOT-S09") && !isRootId("ROOT-48; drop") && !isRootId(5) && !isRootId("root-1"));
 });
 
-test("출처 표시: 대화 근거가 있으면 chat, 테스트 근거만이면 test", () => {
+test("출처 표시: 대화 근거가 있으면 chat, 고른 답(테스트·온보딩)만이면 answers", () => {
   const r = buildInsights([S("A", 2, "candidate", ["test"]), S("B", 2, "candidate", ["test", "chat"])], { A: T("A"), B: T("B") });
-  assert.deepEqual(r.map((x) => [x.rootId, x.from]).sort(), [["A", "test"], ["B", "chat"]]);
+  assert.deepEqual(r.map((x) => [x.rootId, x.from]).sort(), [["A", "answers"], ["B", "chat"]]);
+});
+
+test("대화 근거 없이 고른 답만으로는 점수 2.0 이상일 때만 보여 준다", () => {
+  const texts = { A: T("A"), B: T("B"), C: T("C") };
+  const r = buildInsights([S("A", 1.5, "candidate", ["onboarding"]), S("B", 2.0, "candidate", ["onboarding", "test"]), S("C", 1.0, "candidate", ["chat"])], texts);
+  assert.deepEqual(r.map((x) => x.rootId).sort(), ["B", "C"]);
 });

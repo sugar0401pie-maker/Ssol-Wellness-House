@@ -48,14 +48,14 @@ export default function InsightsSection() {
   return (
     <div className="space-y-3">
       <p className="text-[13px] leading-5 text-slate-500">
-        쏘웰라와의 이야기와 심리테스트 결과로 짐작해 본 마음이에요. 정확하지 않을 수 있어서, 아니라면 알려주세요. 지우면 더는 쓰지 않아요.
+        쏘웰라와의 이야기와 고르신 답(심리테스트·온보딩·점성술)으로 짐작해 본 마음이에요. 정확하지 않을 수 있어서, 아니라면 알려주세요. 지우면 더는 쓰지 않아요.
       </p>
       {error && <p className="text-[13px] text-red-600">{error}</p>}
       {items === null && !error && <p className="text-[13px] text-slate-400">불러오는 중…</p>}
       {items?.length === 0 && <p className="text-[13px]">아직 정리된 내용이 없어요. 쏘웰라와 더 이야기를 나누면 여기에 쌓여요.</p>}
       {items?.map((it) => (
         <div key={it.rootId} className="rounded-xl border border-line p-3">
-          <p className="mb-1 text-[12px] text-slate-400">{it.status === "confirmed" ? "맞다고 하신 마음" : it.from === "chat" ? "이야기에서 짐작한 마음" : "테스트 결과에서 짐작한 마음"}</p>
+          <p className="mb-1 text-[12px] text-slate-400">{it.status === "confirmed" ? "맞다고 하신 마음" : it.from === "chat" ? "이야기에서 짐작한 마음" : "고르신 답(테스트·온보딩·점성술)에서 짐작한 마음"}</p>
           <p className="text-[14px] leading-6 text-foreground">{it.text}</p>
           {it.strength && <p className="mt-1.5 text-[13px] leading-5 text-slate-500">{it.strength}</p>}
           <div className="mt-2.5 flex flex-wrap gap-2">

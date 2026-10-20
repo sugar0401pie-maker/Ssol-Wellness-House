@@ -11,6 +11,8 @@ import { maskEvents } from "./healthMask";
 import { trainingAllowed } from "@/lib/profile/aiTraining";
 import { handleAnswer } from "./hypothesis";
 import { syncTestEvidence } from "./testSync";
+import { syncOnboardingEvidence } from "./onboardingSync";
+import { syncAstroEvidence } from "./astroSync";
 import { CARD_ROUTES } from "@/lib/cards/flow";
 import { cardsOnFor } from "@/lib/cards/offer";
 import { noteScene } from "@/lib/cards/session";
@@ -41,6 +43,12 @@ async function work(p: InterpParams, at: (stage: string) => void): Promise<void>
       // 심리테스트 결과를 근거로 합친다(다음 턴 이후의 가설·실천 순서에 쓰인다). 실패해도 계속한다.
       at("test");
       await syncTestEvidence(admin, p.userId).catch((e) => console.error("테스트 근거 반영 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+      // 온보딩 답(개인화 동의 + 끝낸 사용자)을 근거로 합친다. 실패해도 계속한다. 끄기: SW_ONBOARDING_CUES=0
+      at("onboarding");
+      await syncOnboardingEvidence(admin, p.userId).catch((e) => console.error("온보딩 근거 반영 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+      // 점성술 결과(답 Q1~Q3·유형·태양 별자리)를 근거로 합친다. 실패해도 계속한다. 끄기: SW_ASTRO_CUES=0
+      at("astro");
+      await syncAstroEvidence(admin, p.userId).catch((e) => console.error("점성술 근거 반영 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
       at("answer");
       await handleAnswer(admin, p).catch((e) => console.error("가설 답 처리 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
     }

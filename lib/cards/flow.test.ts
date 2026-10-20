@@ -2,13 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CARD_ROUTES, cardPayload, cardsEnabled, confirmPayload, offerExpired, parseCardPick, tapMarker, toEnginePick } from "./flow.ts";
 
-test("기본은 꺼짐 · 1이어야 켜짐 · 허용 목록이 있으면 그 사람만", () => {
-  assert.equal(cardsEnabled({}, "u1"), false);
-  assert.equal(cardsEnabled({ SW_CARDS_ENABLED: "true" }, "u1"), false);
+test("기본은 켜짐 · 0이면 꺼짐 · 허용 목록이 있으면 그 사람만", () => {
+  assert.equal(cardsEnabled({}, "u1"), true);
   assert.equal(cardsEnabled({ SW_CARDS_ENABLED: "1" }, "u1"), true);
-  assert.equal(cardsEnabled({ SW_CARDS_ENABLED: "1", SW_CARDS_ALLOWLIST: "u2,a@b.com" }, "u1"), false);
-  assert.equal(cardsEnabled({ SW_CARDS_ENABLED: "1", SW_CARDS_ALLOWLIST: "u2,a@b.com" }, "u1", "A@B.com"), true);
+  assert.equal(cardsEnabled({ SW_CARDS_ENABLED: "0" }, "u1"), false);
   assert.equal(cardsEnabled({ SW_CARDS_ENABLED: "0", SW_CARDS_ALLOWLIST: "u1" }, "u1"), false);
+  assert.equal(cardsEnabled({ SW_CARDS_ALLOWLIST: "u2,a@b.com" }, "u1"), false);
+  assert.equal(cardsEnabled({ SW_CARDS_ALLOWLIST: "u2,a@b.com" }, "u1", "A@B.com"), true);
 });
 
 test("카드를 여는 경로는 일상 고민·삶의 결정뿐", () => {

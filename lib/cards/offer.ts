@@ -12,7 +12,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 export async function cardsOnFor(admin: Admin, userId: string): Promise<boolean> {
   const env = process.env as { SW_CARDS_ENABLED?: string; SW_CARDS_ALLOWLIST?: string };
-  if (env.SW_CARDS_ENABLED !== "1") return false;
+  if (env.SW_CARDS_ENABLED === "0") return false; // 끄기 스위치
   return cardsEnabled(env, userId, env.SW_CARDS_ALLOWLIST?.trim() ? await emailOf(admin, userId) : null);
 }
 

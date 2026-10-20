@@ -8,9 +8,9 @@ export const CARD_OFFER_TTL_MS = 15 * 60 * 1000; // 장면을 감지한 뒤 이 
 export const TAP_MARK = "sw-cardtap"; // 카드 보기를 누른 사용자 메시지 표시 — AI 비용이 없어 하루/대화당 메시지 수에서 뺀다
 export const CARD_MARK = "sw-card"; // 카드를 보여 준 쏘웰라 메시지 표시
 
-// 기본 꺼짐. 켜려면 SW_CARDS_ENABLED=1, 일부에게만 열려면 SW_CARDS_ALLOWLIST(사용자 id 또는 이메일, 쉼표 구분; 비어 있으면 전체).
+// 기본 켜짐(대표님 결정 2026-10-20: 환경 변수를 따로 넣지 않는다). 끄기: SW_CARDS_ENABLED=0. 일부에게만: SW_CARDS_ALLOWLIST(사용자 id 또는 이메일, 쉼표 구분; 비어 있으면 전체).
 export function cardsEnabled(env: { SW_CARDS_ENABLED?: string; SW_CARDS_ALLOWLIST?: string }, userId: string, email?: string | null): boolean {
-  if (env.SW_CARDS_ENABLED !== "1") return false;
+  if (env.SW_CARDS_ENABLED === "0") return false;
   return isInterpEnabled({ SW_INTERP_ALLOWLIST: env.SW_CARDS_ALLOWLIST }, userId, email);
 }
 

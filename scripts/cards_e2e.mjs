@@ -1,5 +1,5 @@
-// 선택지 카드 실전 확인(2026-10-20, 로드맵 3·4번) — SW_CARDS_ENABLED=1로 띄운 dev 서버에 임시 계정으로 대화한다.
-// 준비: SW_CARDS_ENABLED=1 npx next dev -p 3100. 실행: node --env-file=.env.local scripts/cards_e2e.mjs
+// 선택지 카드 실전 확인(2026-10-20, 로드맵 3·4번) — dev 서버에 임시 계정으로 대화한다.
+// 준비: npx next dev -p 3100(카드는 기본 켜짐). 실행: node --env-file=.env.local scripts/cards_e2e.mjs
 // 장면 감지는 AI라 흔들릴 수 있어, 감지가 안 되면 같은 상태(열 준비 세션)를 직접 만들어 이후 흐름을 확인한다. 끝나면 계정·기록 삭제.
 import { createClient } from "@supabase/supabase-js";
 const BASE = process.env.SAFETY_EVAL_BASE_URL || "http://localhost:3100";

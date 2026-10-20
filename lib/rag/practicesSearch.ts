@@ -125,6 +125,11 @@ function filterByEligibility<T extends { id: string }>(
   });
 }
 
+// 폭력·통제 관계 신호가 있을 때(D6) 파트너가 필요한 실천("상대에게 내 마음 전하기" 등)을 뺀다. 필터 뒤 후보가 0개여도 되돌리지 않는다(더 조심스러운 쪽).
+function dropPartnerPractices<T extends { id: string }>(items: T[], eligibilityMap: Map<string, PracticeEligibility>, on: boolean | undefined): T[] {
+  return on ? items.filter((i) => !eligibilityMap.get(i.id)?.requiresPartner) : items;
+}
+
 function bigrams(text: string): Set<string> {
   const clean = text.replace(/\s+/g, "");
   const set = new Set<string>();
@@ -188,6 +193,8 @@ export async function searchWellnessPractices(
     const filtered = filterByEligibility(rows, eligibilityMap, onboardingPrefs);
     if (filtered.length) rows = filtered; // 다 걸러져 후보가 0개면(드묾) 안전하게 필터 전 목록으로 되돌아간다
   }
+  rows = dropPartnerPractices(rows, eligibilityMap, ctx.excludePartnerPractices);
+  if (!rows.length) return [];
 
   const contextText = [...recentMessages.slice(-4).map((m) => m.content), message].join(" ");
   const qBigrams = bigrams(contextText);
@@ -322,7 +329,7 @@ export async function pickCommitPractices(params: {
   const ctx: ServingContext = { ...params.serving, allowAfterExplore: true, excludeExposure: params.traumaStage != null || params.serving.excludeExposure };
   const shown = params.alreadyShownText ?? "";
   let rows = rowsAll.filter((p) => !conflict.has(p.id) && passesServingRules(p, ctx) && !(shown && shown.includes(p.title)));
-  rows = filterByEligibility(rows, eligibilityMap, params.onboardingPrefs);
+  rows = dropPartnerPractices(filterByEligibility(rows, eligibilityMap, params.onboardingPrefs), eligibilityMap, ctx.excludePartnerPractices);
   const q = bigrams(params.messages.slice(-3).join(" "));
   const candidates = rows
     .filter((p) => fit.has(p.id) || p.sourceTheoryId === params.theoryId)

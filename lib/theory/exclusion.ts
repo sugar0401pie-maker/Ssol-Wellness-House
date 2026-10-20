@@ -32,7 +32,7 @@ export const THEORY_EXCLUSION_SIGNALS: Record<Exclude<ExclusionReason, IllnessRe
   death_imagery: ["장례식", "유서를", "유서 쓰", "유서 써", "묘비", "내 죽음", "제 죽음", "죽음을 상상", "죽는다고 상상", "죽음 이미지"],
   forgiveness: ["용서"],
   // 실제 라우터 확인(2026-10-07): 아동 학대·성적 피해는 violence, 섭식 문제·유산은 clinical_distress로 이미 막힘. 이 목록은 분류기가 다르게 판단할 때를 위한 안전망이다.
-  safety_net: ["성추행", "성폭행", "성폭력", "성희롱", "아이를 때렸", "아이를 학대", "아이를 폭행", "학대를 당", "학대당", "먹고 나면 토", "먹고 토", "폭식", "거식", "구토를 유도", "토하게 만"],
+  safety_net: ["성추행", "성폭행", "성폭력", "성희롱", "아이를 때렸", "아이를 학대", "아이를 폭행", "학대를 당", "학대당", "먹고 나면 토", "먹고 토", "폭식", "거식", "구토를 유도", "토하게 만", "자꾸 토해", "거의 안 먹", "며칠째 안 먹", "아무것도 안 먹"], // 2026-10-19 상담사 검토(시트 5): 섭식 문제는 안전망으로 안내 — "며칠째 거의 안 먹어요"류 추가
 };
 const SIGNALS = THEORY_EXCLUSION_SIGNALS;
 
@@ -85,4 +85,10 @@ export function detectTheoryExclusion(message: string, recentUserMessages: strin
     if (owner) return owner;
   }
   return null;
+}
+
+// 2026-10-19 상담사 검토 D6: 폭력·통제 관계가 느껴지는 대화에서는 "상대와 직접 대화하기" 실천을 추천에서 뺀다(위험한 관계에서는 해결이 아니라 벗어나는 것이 우선).
+// 이번 메시지와 직전 사용자 발화 두 개를 본다. 탐색 대화를 여는지와는 별개의 판단이라(폭력·통제 관계도 탐색은 열 수 있음 — D19) 이 함수만 따로 둔다.
+export function hasUnsafeRelationshipSignal(message: string, recentUserMessages: string[] = []): boolean {
+  return [message, ...recentUserMessages.slice(-2)].some((t) => SIGNALS.unsafe_relationship.some((w) => t.includes(w)));
 }

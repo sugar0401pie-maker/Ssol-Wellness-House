@@ -7,6 +7,7 @@ import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
 import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
 import { searchWellnessPractices } from "@/lib/rag/practicesSearch";
 import { loadRootBoost } from "@/lib/interp/rootBoost";
+import { hasUnsafeRelationshipSignal } from "@/lib/theory/exclusion";
 import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
 import { buildSystemPrompt, type DialogueMode, type PersonaHint } from "@/lib/rag/prompt.ts";
 import type { TheoryGuide } from "@/lib/theory/types";
@@ -183,7 +184,7 @@ export async function generateAnswer(params: {
   const practicesP = (async () => {
     if (!wantsPractices) return [];
     const [onboardingPrefs, hasCrisis, rootBoost] = await Promise.all([loadOnboardingPrefs(admin, params.userId), hasCrisisHistory(admin, params.userId), loadRootBoost(admin, params.userId)]);
-    return searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, { hasCrisisHistory: hasCrisis }, traumaStage, rootBoost);
+    return searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, { hasCrisisHistory: hasCrisis, excludePartnerPractices: hasUnsafeRelationshipSignal(params.message, params.recentMessages.filter((m) => m.role === "user").map((m) => m.content)) }, traumaStage, rootBoost);
   })();
   // (3) 사용자가 "이 대화를 기억하기"를 선택한 이전 세션의 요약(참고용일 뿐, 검색·안전 판단에는 쓰지 않는다)과 세션 정보
   const [{ chunks: knowledgeChunks, services: serviceResults, framework: frameworkHint }, { data: memoryRow }, { data: sessionMeta }, practiceResults] =

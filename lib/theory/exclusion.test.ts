@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { detectTheoryExclusion } from "./exclusion.ts";
+import { detectTheoryExclusion, hasUnsafeRelationshipSignal } from "./exclusion.ts";
 
 // 재판정(2026-10-07)에서 "이론 제외 조건"으로 분류된 평가 문장과, 라우터가 일반 경로로 통과시키는 것이 확인된 문장들.
 describe("detectTheoryExclusion", () => {
@@ -51,7 +51,7 @@ describe("detectTheoryExclusion", () => {
     assert.equal(detectTheoryExclusion("가장 친한 친구가 갑자기 죽었어요"), "bereavement");
     assert.equal(detectTheoryExclusion("직장 상사가 성추행을 했어요"), "safety_net");
     assert.equal(detectTheoryExclusion("화가 나서 아이를 때렸어요"), "safety_net");
-    assert.equal(detectTheoryExclusion("먹고 나면 자꾸 토해요"), null); // 일상적인 표현만으로는 걸리지 않는다(라우터 담당)
+    assert.equal(detectTheoryExclusion("먹고 나면 자꾸 토해요"), "safety_net"); // 2026-10-19 상담사 검토(시트 5)로 더 조심스럽게 바꿈: 섭식 문제는 안전망으로 닫는다(이전에는 라우터에만 맡겼다)
     assert.equal(detectTheoryExclusion("먹고 나면 토하는 일이 반복돼요"), "safety_net");
   });
 
@@ -112,4 +112,22 @@ describe("detectTheoryExclusion", () => {
   });
 
   test("빈 입력은 걸리지 않는다", () => assert.equal(detectTheoryExclusion("", []), null));
+
+  test("상담사 검토(시트 5): 섭식 문제 표현은 안전망으로 닫는다", () => {
+    assert.equal(detectTheoryExclusion("며칠째 거의 안 먹어요"), "safety_net");
+    assert.equal(detectTheoryExclusion("먹고 나면 자꾸 토해요"), "safety_net");
+    assert.equal(detectTheoryExclusion("오늘은 점심을 거의 먹었어요"), null);
+  });
+});
+
+describe("hasUnsafeRelationshipSignal (D6)", () => {
+  test("폭력·통제 관계 신호가 이번 메시지나 직전 두 발화에 있으면 true", () => {
+    assert.equal(hasUnsafeRelationshipSignal("남자친구가 화나면 물건을 던져요"), true);
+    assert.equal(hasUnsafeRelationshipSignal("그래서 힘들어요", ["남편이 휴대폰을 검사해요", "네"]), true);
+    assert.equal(hasUnsafeRelationshipSignal("그래서 힘들어요", ["남편이 휴대폰을 검사해요", "네", "음"]), false);
+  });
+  test("일상 대화는 false", () => {
+    assert.equal(hasUnsafeRelationshipSignal("연인과 소통이 잘 안 돼요"), false);
+    assert.equal(hasUnsafeRelationshipSignal(""), false);
+  });
 });

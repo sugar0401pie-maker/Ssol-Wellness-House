@@ -11,7 +11,8 @@ export const TEST_DOMAINS: Record<string, string[]> = {
 export const TEST_PAIRS: [string, string][] = [["ROOT-77", "ROOT-81"], ["ROOT-41", "ROOT-58"], ["ROOT-72", "ROOT-47"]];
 
 export type QuizRow = { id?: string | null; type_key?: string | null; factor_scores?: unknown; sub_scores?: unknown; created_at?: string | null };
-export type TestInput = { test_id: string; factorScores: Record<string, number>; main_domain: string; coping: string; copingSub: Record<string, number>; at?: string };
+export const INSTRUMENT = "dessert_v2"; // 디저트 웰니스 유형 테스트(검사별 표 — CSO DB v1.9). 다른 검사는 표·조건을 따로 둔다.
+export type TestInput = { instrument: string; test_id: string; factorScores: Record<string, number>; main_domain: string; coping: string; copingSub: Record<string, number>; at?: string };
 
 const asObj = (v: unknown): Record<string, unknown> | null => {
   if (typeof v === "string") { try { v = JSON.parse(v); } catch { return null; } }
@@ -26,7 +27,7 @@ export function buildTestInput(row: QuizRow | null | undefined): TestInput | nul
   const factorScores = nums(asObj(row.factor_scores));
   if (!Object.keys(factorScores).length) return null;
   const [main_domain, coping] = String(row.type_key ?? "").split("-");
-  return { test_id: String(row.id), factorScores, main_domain: main_domain ?? "", coping: coping ?? "", copingSub: nums(asObj(row.sub_scores)), ...(row.created_at ? { at: row.created_at } : {}) };
+  return { instrument: INSTRUMENT, test_id: String(row.id), factorScores, main_domain: main_domain ?? "", coping: coping ?? "", copingSub: nums(asObj(row.sub_scores)), ...(row.created_at ? { at: row.created_at } : {}) };
 }
 
 type CueRow = { cue_id: string; source: string | null; cond_json: unknown; root_id: string | null; points: number | string | null; direction: string | null; entry_hyps: string | null };
@@ -41,3 +42,13 @@ export function buildCues(rows: CueRow[]) {
 }
 export const buildBands = (rows: { band: string; lo: number | string; hi: number | string; label?: string | null }[]): [string, number, number, string][] =>
   rows.map((b) => [b.band, Number(b.lo), Number(b.hi), b.label ?? ""] as [string, number, number, string]).sort((a, b) => a[1] - b[1]);
+
+// DB v1.9부터 검사 표에 instrument 칸이 있다. 아직 v1.6 모양(칸 없음)이어도 같은 결과가 나오도록 비어 있으면 디저트 테스트로 본다.
+export const forInstrument = <T extends { instrument?: string | null }>(rows: T[], inst = INSTRUMENT): T[] => rows.filter((r) => (r.instrument ?? INSTRUMENT) === inst);
+// sw_ob_test_domains(영역·요인·순서) → {CAR:[…]}, sw_ob_test_root_pairs → [[a,b]]. 표가 비어 있으면 호출하는 쪽이 상수를 쓴다.
+export function buildDomains(rows: { domain: string; factor: string; ord: number | string }[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const r of [...rows].sort((a, b) => Number(a.ord) - Number(b.ord))) (out[r.domain] ??= []).push(r.factor);
+  return out;
+}
+export const buildPairs = (rows: { root_a: string; root_b: string }[]): [string, string][] => rows.map((r) => [r.root_a, r.root_b]);

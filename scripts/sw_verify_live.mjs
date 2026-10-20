@@ -1,5 +1,5 @@
 // 쏘웰라 해석 DB v1.6 적용 후 검증 — 2026-10-18
-// apply_v1.6.sql 실행 + sw_load_reference.mjs --apply 이후에 돌린다. 임시 사용자 2명(mailinator)을 만들어 시험하고, 끝나면(실패해도) 지운다.
+// apply_v1.9.sql 실행 + sw_load_reference.mjs --apply 이후에 돌린다. 임시 사용자 2명(mailinator)을 만들어 시험하고, 끝나면(실패해도) 지운다.
 // 하나라도 실패하면 종료 코드 1 — 그때는 supabase/sw_interp/rollback_v1.6.sql 로 되돌린다.
 //   node scripts/sw_verify_live.mjs --dir <CSV 폴더>
 import fs from "node:fs";
@@ -15,7 +15,7 @@ const results = [];
 const t = (name, ok, detail = "") => { results.push({ name, ok }); console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`); };
 const near = (a, b) => Math.abs(Number(a) - b) < 1e-9;
 
-const REF = fs.readFileSync("supabase/sw_interp/apply_v1.6.sql", "utf8");
+const REF = fs.readFileSync("supabase/sw_interp/apply_v1.9.sql", "utf8");
 const obTables = [...REF.matchAll(/create table if not exists public\.(sw_ob_\w+) \(/g)].map((m) => m[1]);
 const stateTables = ["sw_user_signals", "sw_user_root_state", "sw_evidence_events", "sw_choice_sessions", "sw_root_turn_log", "sw_hs_sessions", "sw_hs_root_judgments", "sw_hs_safety", "sw_hypothesis_log"];
 const count = async (tb) => { const { count: c, error } = await admin.from(tb).select("*", { count: "exact", head: true }); return error ? { error } : { c }; };
@@ -45,7 +45,7 @@ try {
       const { c } = await count(tb);
       if (c !== expected) bad.push(`${tb} ${c}/${expected}`);
     }
-    t("참조표 55개 행 수가 CSV와 정확히 같음", bad.length === 0, bad.slice(0, 5).join(", "));
+    t(`참조표 ${obTables.length}개 행 수가 CSV와 정확히 같음`, bad.length === 0, bad.slice(0, 5).join(", "));
   }
   const roots = await count("sw_ob_roots"); t("뿌리 106개", roots.c === 106, `실제 ${roots.c}`);
 

@@ -1,8 +1,9 @@
 // 쏘웰라 해석 DB 참조표(sw_ob_*) CSV 적재 — 2026-10-18
-// 기본은 "검사만"(네트워크 없음): CSV 머리글·형식·기본키 중복·표 사이 연결(FK)을 apply_v1.6.sql의 표 정의와 맞춰 본다.
+// 기본은 "검사만"(네트워크 없음): CSV 머리글·형식·기본키 중복·표 사이 연결(FK)을 apply_v1.9.sql의 표 정의와 맞춰 본다.
 // --apply 를 붙여야 실제로 DB에 올린다(서버 키 필요, .env.local). 이미 같은 행이 있으면 건너뛰거나 같은 키로 덮어쓰기라 여러 번 실행해도 안전하다.
 //   node scripts/sw_load_reference.mjs --dir <CSV 폴더>            # 검사만
-//   node scripts/sw_load_reference.mjs --dir <CSV 폴더> --apply    # 적재
+//   node scripts/sw_load_reference.mjs --dir <CSV 폴더> --apply    # 적재(이미 같은 행 수인 표는 건너뜀)
+//   node scripts/sw_load_reference.mjs --dir <CSV 폴더> --apply --force   # 새 버전으로 갱신(전부 기본키로 덮어씀)
 // 원본 데이터(엑셀·CSV)는 저장소 밖에 둔다(CLAUDE.md: 지식 원본은 저장소 밖). 이 스크립트는 값을 출력하지 않는다.
 import fs from "node:fs";
 import path from "node:path";
@@ -14,10 +15,11 @@ const flag = (n) => args.includes(n);
 const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
 const DIR = opt("--dir");
 const APPLY = flag("--apply");
-const SQL = path.resolve("supabase/sw_interp/apply_v1.6.sql");
+const SQL = path.resolve(opt("--sql") ?? "supabase/sw_interp/apply_v1.9.sql");
+const FORCE = flag("--force"); // 새 버전 데이터로 갱신할 때: 행 수가 같아도 건너뛰지 않고 기본키로 전부 덮어쓴다(2026-10-20 — 같은 행 수라도 내용이 바뀐 표가 있어서)
 if (!DIR) { console.error("사용법: --dir <CSV 폴더> [--apply]"); process.exit(2); }
 
-// ───── 표 정의 읽기(apply_v1.6.sql의 sw_ob_ 표) ─────
+// ───── 표 정의 읽기(apply_v1.9.sql의 sw_ob_ 표) ─────
 const sql = fs.readFileSync(SQL, "utf8");
 const tables = {};
 for (const m of sql.matchAll(/create table if not exists public\.(sw_ob_\w+) \(\n([\s\S]*?)\n\);/g)) {
@@ -120,7 +122,7 @@ for (const name of order) {
   const { count, error: ce } = await admin.from(name).select("*", { count: "exact", head: true });
   if (ce) { console.error(`✗ ${name}: 표를 찾을 수 없음/읽기 실패 — ${ce.code} ${ce.message}`); process.exit(1); }
   const canUpsert = t.pk.length > 0 && t.pk.every((k) => rows[0] && k in rows[0]);
-  if (count === rows.length) { skipped++; continue; }
+  if (count === rows.length && !FORCE) { skipped++; continue; }
   if (!canUpsert && count > 0) { console.error(`✗ ${name}: 기본키로 덮어쓸 수 없는 표인데 이미 ${count}행이 있어 중단(수동 확인 필요)`); process.exit(1); }
   const oneBatch = t.fks.some((f) => f.ref === name) ? rows.length : BATCH; // 자기 연결이 있는 표는 한 요청에 전부
   for (let i = 0; i < rows.length; i += oneBatch) {

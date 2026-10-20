@@ -1,22 +1,33 @@
 import "server-only";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import * as RS from "./vendor/rootState.mjs";
-import { buildBands, buildCues, buildTestInput, TEST_DOMAINS, TEST_PAIRS, type QuizRow } from "./testInput";
+import { buildBands, buildCues, buildDomains, buildPairs, buildTestInput, forInstrument, TEST_DOMAINS, TEST_PAIRS, type QuizRow } from "./testInput";
 
 // 심리테스트(디저트 v2) 결과를 해석 장부에 근거 D등급으로 반영한다(2026-10-18, 로드맵 7번 — 테스트 단서).
 // 대표 유형으로 정한 응시 기록(없으면 최신)을 쓰고, 재검사·대표 변경이면 이전 테스트 근거를 모두 대체한다(엔진 TRR-01·A-3).
 // ssol_quiz_results는 다른 앱 소유라 읽기만 한다. 같은 결과를 다시 넣어도 장부는 바뀌지 않는다(멱등). 끄기: SW_TEST_CUES=0. 실패해도 채팅에는 영향 없음.
 type Admin = ReturnType<typeof createAdminClient>;
 
-let tbl: { at: number; cues: ReturnType<typeof buildCues>; bands: ReturnType<typeof buildBands> } | null = null;
+let tbl: { at: number; cues: ReturnType<typeof buildCues>; bands: ReturnType<typeof buildBands>; domains: Record<string, string[]>; pairs: [string, string][] } | null = null;
 async function loadTables(admin: Admin) {
   if (tbl && Date.now() - tbl.at < 10 * 60 * 1000) return tbl;
-  const [c, b] = await Promise.all([
-    admin.from("sw_ob_test_root_cues").select("cue_id,source,cond_json,root_id,points,direction,entry_hyps").limit(2000),
-    admin.from("sw_ob_test_bands").select("band,lo,hi,label").limit(50),
+  // select("*")로 읽어 DB v1.6(instrument 칸 없음)과 v1.9(있음) 어느 쪽이어도 동작한다. 영역·짝 표는 v1.9부터 있어 없으면 상수를 쓴다.
+  const [c, b, d, p] = await Promise.all([
+    admin.from("sw_ob_test_root_cues").select("*").limit(2000),
+    admin.from("sw_ob_test_bands").select("*").limit(100),
+    admin.from("sw_ob_test_domains").select("*").limit(200),
+    admin.from("sw_ob_test_root_pairs").select("*").limit(100),
   ]);
   if (c.error || b.error) throw new Error(`테스트 단서 표 읽기 실패: ${(c.error ?? b.error)?.code}`);
-  tbl = { at: Date.now(), cues: buildCues(c.data ?? []), bands: buildBands(b.data ?? []) };
+  const dom = d.error ? {} : buildDomains(forInstrument(d.data ?? []));
+  const pairs = p.error ? [] : buildPairs(forInstrument(p.data ?? []));
+  tbl = {
+    at: Date.now(),
+    cues: buildCues(forInstrument(c.data ?? [])),
+    bands: buildBands(forInstrument(b.data ?? [])),
+    domains: Object.keys(dom).length ? dom : TEST_DOMAINS,
+    pairs: pairs.length ? pairs : TEST_PAIRS,
+  };
   return tbl;
 }
 
@@ -41,12 +52,12 @@ export async function syncTestEvidence(admin: Admin, userId: string): Promise<vo
   const key = `${test.test_id}|${test.at ?? ""}`;
   if (memo.get(userId) === key) return;
   const t = await loadTables(admin);
-  RS.setData({ testTable: { bands: t.bands, pairs: TEST_PAIRS, domains: TEST_DOMAINS, cues: t.cues } });
+  RS.setData({ testTable: { bands: t.bands, pairs: t.pairs, domains: t.domains, cues: t.cues } });
   const { data, error } = await admin.rpc("sw_read_ledger", { p_user: userId });
   if (error) throw new Error(`sw_read_ledger ${error.code}`);
   const states = RS.hydrate(userId, data ?? [], []);
   const sink: unknown[] = [];
-  RS.applyTestCues(states, userId, test, t.cues, sink);
+  RS.applyTestCues(states, userId, test, t.cues as never, sink); // 엔진 v0.7의 추론 타입이 null이라 형태만 맞춰 넘긴다
   if (sink.length) {
     const { error: oe } = await admin.rpc("sw_apply_ops", { p_user: userId, p_ops: sink });
     if (oe) throw new Error(`sw_apply_ops ${oe.code}`);

@@ -123,6 +123,7 @@ for (const name of order) {
   if (ce) { console.error(`✗ ${name}: 표를 찾을 수 없음/읽기 실패 — ${ce.code} ${ce.message}`); process.exit(1); }
   const canUpsert = t.pk.length > 0 && t.pk.every((k) => rows[0] && k in rows[0]);
   if (count === rows.length && !FORCE) { skipped++; continue; }
+  if (!canUpsert && count === rows.length) { skipped++; console.log(`  = ${name}: 기본키가 없는 표라 덮어쓸 수 없지만 행 수가 같아 건너뜀(내용 비교는 sw_compare_reference.mjs로)`); continue; }
   if (!canUpsert && count > 0) { console.error(`✗ ${name}: 기본키로 덮어쓸 수 없는 표인데 이미 ${count}행이 있어 중단(수동 확인 필요)`); process.exit(1); }
   const oneBatch = t.fks.some((f) => f.ref === name) ? rows.length : BATCH; // 자기 연결이 있는 표는 한 요청에 전부
   for (let i = 0; i < rows.length; i += oneBatch) {

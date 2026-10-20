@@ -7,7 +7,7 @@ export const INSIGHT_MIN_SCORE = 1.0;
 export const INSIGHT_MAX_ITEMS = 6;
 
 export type InsightStatus = "confirmed" | "guess";
-export type Insight = { rootId: string; status: InsightStatus; text: string; strength: string };
+export type Insight = { rootId: string; status: InsightStatus; text: string; strength: string; from: "chat" | "test" }; // from: 대화에서 비친 적이 있으면 chat, 테스트 등 다른 근거만이면 test
 
 const RANK: Record<string, number> = { confirmed: 2, likely: 1, candidate: 0 };
 
@@ -20,7 +20,7 @@ export function buildInsights(states: StateLite[], texts: Record<string, RootTex
     })
     .sort((a, b) => RANK[b.status] - RANK[a.status] || b.score - a.score || a.root_id.localeCompare(b.root_id))
     .slice(0, INSIGHT_MAX_ITEMS)
-    .map((s) => ({ rootId: s.root_id, status: s.status === "confirmed" ? "confirmed" : "guess", text: texts[s.root_id].report, strength: texts[s.root_id].strength }));
+    .map((s) => ({ rootId: s.root_id, status: s.status === "confirmed" ? "confirmed" : "guess", text: texts[s.root_id].report, strength: texts[s.root_id].strength, from: (s.sources ?? []).includes("chat") ? "chat" : "test" }));
 }
 
 export type InsightAction = "confirm" | "reject" | "remove";

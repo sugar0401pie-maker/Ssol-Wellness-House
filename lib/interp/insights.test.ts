@@ -4,7 +4,7 @@ import { buildInsights, isInsightAction, isRootId, INSIGHT_MAX_ITEMS } from "./i
 import type { RootText, StateLite } from "./speak.ts";
 
 const T = (id: string, over: Partial<RootText> = {}): RootText => ({ root_id: id, name: id, reflect: [], check_q: ["q"], counter: [], strength: "강점", report: `${id} 문장`, sensitive: false, ...over });
-const S = (root_id: string, score: number, status = "candidate"): StateLite => ({ root_id, score, status });
+const S = (root_id: string, score: number, status = "candidate", sources: string[] = ["chat"]): StateLite => ({ root_id, score, status, sources });
 
 test("확인된 것 → 가능성 높은 것 → 점수 순으로, 거절·민감·문장 없음·낮은 점수는 뺀다", () => {
   const texts = Object.fromEntries([T("A"), T("B"), T("C"), T("D", { sensitive: true }), T("E", { report: "" }), T("F"), T("G")].map((t) => [t.root_id, t]));
@@ -28,4 +28,9 @@ test("최대 개수를 넘기지 않는다", () => {
 test("요청 값 검사", () => {
   assert.ok(isInsightAction("remove") && !isInsightAction("delete") && !isInsightAction(undefined));
   assert.ok(isRootId("ROOT-48") && isRootId("ROOT-S09") && !isRootId("ROOT-48; drop") && !isRootId(5) && !isRootId("root-1"));
+});
+
+test("출처 표시: 대화 근거가 있으면 chat, 테스트 근거만이면 test", () => {
+  const r = buildInsights([S("A", 2, "candidate", ["test"]), S("B", 2, "candidate", ["test", "chat"])], { A: T("A"), B: T("B") });
+  assert.deepEqual(r.map((x) => [x.rootId, x.from]).sort(), [["A", "test"], ["B", "chat"]]);
 });

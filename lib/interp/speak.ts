@@ -20,9 +20,11 @@ export function inSpeakWindow(assistantTurn: number): boolean {
 
 // 말할 수 있는 후보: 아직 확인·거절되지 않았고(candidate/likely), 점수가 기준 이상이며, 이 대화에서 이미 말한 뿌리가 아닌 것.
 // 정렬: 점수 ↑ → 출처 수 ↑ → 뿌리 번호(항상 같은 결과가 되도록).
-export function rankRoots(states: StateLite[], exclude: Set<string>, minScore = SPEAK_MIN_SCORE): StateLite[] {
+// 2026-10-18(로드맵 7번): 테스트·온보딩 같은 다른 근거가 합쳐져도, 대화에서 실제로 비친 적이 없는 뿌리(대화 근거 없음)는 말하지 않는다 —
+// 사용자가 한 이야기와 상관없는 짐작을 불쑥 건네면 엉뚱하게 들린다. 다른 근거는 점수·순위·상태에 반영된다.
+export function rankRoots(states: StateLite[], exclude: Set<string>, minScore = SPEAK_MIN_SCORE, needSource: string | null = "chat"): StateLite[] {
   return states
-    .filter((s) => (s.status === "candidate" || s.status === "likely") && s.score >= minScore && !exclude.has(s.root_id))
+    .filter((s) => (s.status === "candidate" || s.status === "likely") && s.score >= minScore && !exclude.has(s.root_id) && (!needSource || (s.sources ?? []).includes(needSource)))
     .sort((a, b) => b.score - a.score || (b.sources?.length ?? 0) - (a.sources?.length ?? 0) || a.root_id.localeCompare(b.root_id));
 }
 

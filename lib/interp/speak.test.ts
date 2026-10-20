@@ -103,3 +103,7 @@ test("DB 행 → 데이터 변환: 빈 문장은 건너뛰고, 형식이 이상�
   assert.deepEqual(g.map((x) => x.group_id), ["DG-01"]);
   assert.deepEqual(g[0].roots, ["ROOT-77", "ROOT-81"]);
 });
+
+test("대화에서 비친 적 없는 뿌리(테스트 근거만)는 말하지 않지만, 대화 근거가 섞이면 말한다", () => {
+  assert.deepEqual(rankRoots([S("T", 2, "candidate", ["test"]), S("C", 1, "candidate", ["chat"]), S("M", 3, "likely", ["test", "chat"])], new Set()).map((x) => x.root_id), ["M", "C"]);
+});

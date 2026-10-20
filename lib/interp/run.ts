@@ -10,6 +10,7 @@ import { interpListed } from "./listed";
 import { maskEvents } from "./healthMask";
 import { trainingAllowed } from "@/lib/profile/aiTraining";
 import { handleAnswer } from "./hypothesis";
+import { syncTestEvidence } from "./testSync";
 import { SPEC_VERSION } from "./version";
 
 // 답변을 보낸 뒤 뒤에서 도는 발화 해석(2026-10-18). 결과는 다음 턴부터 반영된다(지연 0).
@@ -33,6 +34,9 @@ async function work(p: InterpParams, at: (stage: string) => void): Promise<void>
     const admin = createAdminClient();
     // 가설을 말한 직후의 답("맞아요")은 짧아서 아래 분석 기준에 안 걸리므로, 분석 여부와 상관없이 먼저 답을 받는다.
     if (await interpListed(admin, p.userId)) {
+      // 심리테스트 결과를 근거로 합친다(다음 턴 이후의 가설·실천 순서에 쓰인다). 실패해도 계속한다.
+      at("test");
+      await syncTestEvidence(admin, p.userId).catch((e) => console.error("테스트 근거 반영 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
       at("answer");
       await handleAnswer(admin, p).catch((e) => console.error("가설 답 처리 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
     }

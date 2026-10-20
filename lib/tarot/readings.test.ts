@@ -18,7 +18,7 @@ test("카드 이름·위치·방향과 분류 이름으로 바꾼다", () => {
   const r = toReading(row, "https://t")!;
   assert.equal(r.cards[1].name, "부풀어 오른 마음");
   assert.equal(r.cards[1].reversed, true);
-  assert.equal(r.cards[1].positionName, "나를 붙잡는 것");
+  assert.equal(r.cards[1].positionName, "지금의 흐름");
   assert.equal(r.cards[0].image, "https://t/images/tarot/card-00-splash.webp");
   assert.deepEqual(r.topic, { domain: "연애", emotions: ["서운함", "외로움"], need: "연결" });
 });

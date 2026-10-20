@@ -140,9 +140,9 @@ export const TAROT_CARDS: Record<string, { no: number; name: string; character: 
 };
 
 export const TAROT_POSITIONS: Record<string, string> = {
-  "now": "지금의 마음",
-  "hold": "나를 붙잡는 것",
-  "step": "다음 한 걸음"
+  "now": "지나온 길",
+  "hold": "지금의 흐름",
+  "step": "앞으로의 열쇠"
 };
 
 export const TAROT_DOMAINS: Record<string, string> = {

@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // 외부(CSO) 코드 보관본 — 수정하지 않으므로 lint 대상에서 뺀다
     "lib/interp/vendor/**",
+    "lib/cards/vendor/**",
+    "lib/cards/engine.test.mjs",
   ]),
 ]);
 

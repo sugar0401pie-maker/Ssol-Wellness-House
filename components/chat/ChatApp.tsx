@@ -10,11 +10,13 @@ import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
 import { choicesForMessage } from "@/lib/theory/offer";
 import ThinkingBubble from "./ThinkingBubble";
+import CardChoices from "./CardChoices";
+import type { CardPayload, CardPick } from "@/lib/cards/flow";
 import type { Choice, ChoiceId } from "@/lib/theory/types";
 
 // choices: 이 말풍선 아래에 보여줄 선택 칩("행동 제안받기"/"내 고민 더 알아보기" — lib/theory).
 // 대화의 맨 마지막 말풍선이고 아직 답하지 않았을 때만 화면에 나온다.
-type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[] };
+type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[]; card?: CardPayload };
 
 // 저장된 대화를 다시 불러올 때(서버는 role/content만 준다), 마지막 말이 선택 안내/연장 안내이면 칩을 되살린다.
 function withOfferChoices(list: Message[]): Message[] {
@@ -69,6 +71,9 @@ export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // 선택지 카드의 "다른 이유가 있어요": 다음에 쓰는 글을 그 카드의 직접 쓴 답으로 보낸다(2026-10-20).
+  const [otherFor, setOtherFor] = useState<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [memoryPrompt, setMemoryPrompt] = useState<"idle" | "asking" | "saving">("idle");
   const [showSuggested, setShowSuggested] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -168,7 +173,7 @@ export default function ChatApp() {
   }
 
   // 완성된(이미 안전 검사를 통과한) 답변을 타이핑되듯 보여준다.
-  function revealAssistantMessage(fullText: string, onDone?: () => void) {
+  function revealAssistantMessage(fullText: string, onDone?: () => void): number {
     const id = nextId.current++;
     setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
     cancelReveal.current?.();
@@ -181,12 +186,14 @@ export default function ChatApp() {
       undefined,
       onDone,
     );
+    return id;
   }
 
-  async function send(text: string, options?: { isPersonaQuestion?: boolean; choiceId?: ChoiceId }) {
+  async function send(text: string, options?: { isPersonaQuestion?: boolean; choiceId?: ChoiceId; cardPick?: CardPick }) {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
     setInput("");
+    setOtherFor(null);
     appendMessage("user", trimmed);
     setSending(true);
 
@@ -205,6 +212,7 @@ export default function ChatApp() {
           sessionId: sessionId.current,
           isPersonaQuestion: options?.isPersonaQuestion ?? false,
           ...(options?.choiceId ? { choiceId: options.choiceId } : {}),
+          ...(options?.cardPick ? { cardPick: options.cardPick } : {}),
         }),
       });
 
@@ -221,23 +229,26 @@ export default function ChatApp() {
         note?: string;
         paywallBlocked?: boolean;
         sessionLimitReached?: boolean;
-        followUp?: { text: string; choices: Choice[] };
+        followUp?: { text: string; choices: Choice[]; card?: CardPayload };
+        card?: CardPayload; // 보기를 누른 요청에 대한 다음 카드/확인 카드(AI 없이 바로 옴)
       };
       sessionId.current = data.sessionId;
       saveActiveSessionId(data.sessionId);
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
       const followUp = data.followUp;
       const limitReached = data.sessionLimitReached === true;
-      revealAssistantMessage(
+      const replyCard = data.card;
+      const replyId = revealAssistantMessage(
         data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`,
         // 답변이 다 보인 다음에 선택 안내 말풍선과 칩이 이어서 나오고(서버에는 이미 저장돼 있다),
         // 대화 상한에 도달했다면 새 대화 안내 팝업이 뜬다.
-        followUp || limitReached
+        followUp || limitReached || replyCard
           ? () => {
+              if (replyCard) setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, card: replyCard } : m)));
               if (followUp) {
                 setMessages((prev) => [
                   ...prev,
-                  { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices },
+                  { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices, card: followUp.card },
                 ]);
               }
               if (limitReached) setShowSessionLimit(true);
@@ -250,6 +261,11 @@ export default function ChatApp() {
       appendMessage("assistant", "네트워크 문제로 응답을 받지 못했어요. 다시 시도해주세요.");
     }
     setSending(false);
+  }
+
+  function submitInput() {
+    if (otherFor) void send(input, { cardPick: { cardId: otherFor, other: true } });
+    else void send(input);
   }
 
   async function openHistory() {
@@ -429,6 +445,14 @@ export default function ChatApp() {
         {messages.map((m, i) => (
           <div key={m.id} className="space-y-2">
             <Bubble role={m.role} content={m.content} />
+            {m.card && i === messages.length - 1 && !sending && (
+              <CardChoices
+                card={m.card}
+                disabled={sending}
+                onPick={(pick, label) => void send(label, { cardPick: pick })}
+                onOther={(cardId) => { setOtherFor(cardId); inputRef.current?.focus(); }}
+              />
+            )}
             {m.choices && i === messages.length - 1 && !sending && (
               <div className="flex flex-wrap gap-1.5 pl-1">
                 {m.choices.map((c) => (
@@ -457,7 +481,7 @@ export default function ChatApp() {
             className="flex items-end gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void send(input);
+              submitInput();
             }}
           >
             <textarea
@@ -467,12 +491,13 @@ export default function ChatApp() {
                 // 한글 입력 중(조합 중)에는 Enter를 전송으로 처리하지 않음
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
-                  void send(input);
+                  submitInput();
                 }
               }}
+              ref={inputRef}
               rows={1}
               maxLength={1000}
-              placeholder="마음에 있는 이야기를 적어주세요"
+              placeholder={otherFor ? "떠오르는 다른 이유를 적어주세요" : "마음에 있는 이야기를 적어주세요"}
               aria-label="메시지 입력"
               disabled={sending}
               // 2026-10-01 owner 요청: placeholder가 좁은 입력창 폭(옆에 "추천 질문"·"보내기"

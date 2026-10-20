@@ -7,6 +7,9 @@ import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
+import { CARD_ROUTES, TAP_MARK, parseCardPick, tapMarker } from "@/lib/cards/flow";
+import { cardMessageMark, endOffer, handlePick } from "@/lib/cards/session";
+import { cardsOnFor, planCardOffer } from "@/lib/cards/offer";
 import { planHypothesis } from "@/lib/interp/hypothesis";
 import { runInterpretation } from "@/lib/interp/run";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
@@ -56,7 +59,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown };
+  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown; cardPick?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -67,6 +70,8 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   const isPersonaQuestion = body.isPersonaQuestion === true;
   // "행동 제안받기 / 내 고민 더 알아보기" 칩(THEORY_OFFER_ENABLED가 켜졌을 때만 의미가 있다).
   const choiceId = isChoiceId(body.choiceId) ? body.choiceId : null;
+  // 선택지 카드 보기를 누른 요청(2026-10-20). 모양만 확인하고, 실제로 보여 준 보기인지는 카드 엔진이 다시 검증한다.
+  const cardPick = parseCardPick(body.cardPick);
   if (!message) return NextResponse.json({ error: "메시지를 입력해주세요." }, { status: 400 });
   if (message.length > MAX_MESSAGE_LENGTH) {
     return NextResponse.json({ error: `메시지가 너무 길어요 (최대 ${MAX_MESSAGE_LENGTH}자).` }, { status: 400 });
@@ -132,6 +137,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       role: "user",
       content: message,
       route: decision.route,
+      ...(cardPick ? { reflection_signal_id: tapMarker(cardPick) } : {}), // 카드 보기 누름 표시 — 하루/대화당 메시지 수에서 뺀다(AI 비용 없음)
     }),
     admin.from("chat_sessions").select("safety_flag, topic_tag").eq("session_id", sessionId).single(),
   ]);
@@ -178,6 +184,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       .eq("user_id", userId)
       .eq("role", "user")
       .not("route", "in", "(crisis,violence)")
+      .or(`reflection_signal_id.is.null,reflection_signal_id.not.like.${TAP_MARK}%`) // 카드 보기 누름은 AI 비용이 없어 세지 않는다
       .gte("created_at", startOfTodayKST().toISOString()),
     // route 3~7만 "한 대화당 사용자 메시지 20개" 상한을 적용한다(위기·폭력·분류기 장애 응답은 이미 위에서 반환되었고, 이 집계에서도
     // 그 두 route는 제외한다 — 위기 대응은 상한과 무관하게 항상 동작).
@@ -186,7 +193,8 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       .select("*", { count: "exact", head: true })
       .eq("session_id", sessionId)
       .eq("role", "user")
-      .not("route", "in", "(crisis,violence)"),
+      .not("route", "in", "(crisis,violence)")
+      .or(`reflection_signal_id.is.null,reflection_signal_id.not.like.${TAP_MARK}%`),
   ]);
   if (!access.allowed) {
     const reply = "무료체험 기간이 끝났어요. 이용권을 구매하시면 계속 대화를 나눌 수 있어요.";
@@ -201,6 +209,28 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       paywallBlocked: true,
       ...routingMeta,
     });
+  }
+
+  // 2026-10-20(로드맵 3·4번): 선택지 카드 보기를 눌렀다면 AI 없이 다음 카드·확인 카드를 바로 돌려준다(하루/대화당 제한에도 걸리지 않음).
+  // 안전 라우터가 먼저 이 말(보기 글자 또는 직접 쓴 말)을 검사했고, 위기·폭력이면 위에서 이미 끝났다. 허용 경로가 아니면 카드를 접고 평소 대화로 간다.
+  let cardTapStopped = false;
+  if (cardPick && (await cardsOnFor(admin, userId))) {
+    if (!CARD_ROUTES.has(decision.route)) {
+      await endOffer(admin, userId, sessionId, "route_changed");
+    } else {
+      try {
+        const picked = await handlePick(admin, { userId, chatId: sessionId, pick: cardPick, text: message });
+        if (picked.kind === "reply") {
+          await admin.from("chat_messages").insert({
+            session_id: sessionId, user_id: userId, role: "assistant", content: picked.payload.text, route: decision.route, reflection_signal_id: cardMessageMark(picked.payload),
+          });
+          return NextResponse.json({ sessionId, route: decision.route, reply: picked.payload.text, card: picked.payload, done: true, ...routingMeta });
+        }
+        cardTapStopped = true; // 멈춤(끝 보기·확인 뒤·직접 쓴 말 등) → 평소 대화가 이어서 받는다
+      } catch (e) {
+        console.warn("카드 처리 실패, 평소 대화로 진행:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
+      }
+    }
   }
 
   // route 3~7만 하루 사용량 제한을 적용한다(crisis·violence·classifierUnavailable은 이미 위에서 반환됨).
@@ -251,6 +281,11 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     recentMessages,
   });
   timer.lap("dialogue_plan");
+  // 2026-10-20(로드맵 3·4번): 장면이 감지돼 열 준비된 선택지 카드가 있으면 이번 답변 뒤에 첫 카드를 붙인다(기본 꺼짐). 이론 탐색 흐름이 이번 턴을 쓰면 겹치지 않는다.
+  const cardPlan = await planCardOffer({
+    admin, userId, sessionId, route: decision.route, message, recentUserMessages: recentMessages.filter((m) => m.role === "user").map((m) => m.content),
+    otherFlowActive: dialogue.generationExtras.dialogueMode !== undefined, tapped: cardPick !== null || cardTapStopped,
+  });
   // 2026-10-18(개발 1·2·5번): 해석이 쌓인 뿌리가 있으면 이번 답변에 "이런 마음일 수도 있을까요?" 확인 문장을 건넨다(2~4번째 답변까지).
   // 이론 질문 선택 흐름이 이번 턴을 쓰고 있으면 겹치지 않는다. 실패하면 말하지 않고 평소처럼 답한다.
   const hypothesis = await planHypothesis({
@@ -259,7 +294,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     sessionId,
     route: decision.route,
     recentMessages,
-    theoryActive: dialogue.generationExtras.dialogueMode !== undefined,
+    theoryActive: dialogue.generationExtras.dialogueMode !== undefined || cardPlan !== null,
   });
   timer.lap("hypothesis_plan");
   const result = await generateAnswer({
@@ -274,6 +309,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     queryEmbedding,
     timer,
     ...dialogue.generationExtras,
+    ...cardPlan?.generationExtras,
     ...hypothesis?.generationExtras,
   });
   timer.lap("generate_total");
@@ -295,7 +331,9 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
 
   // 이번 답변이 저장된 뒤에야 상태를 저장하고, 안내(선택 칩/연장 칩)를 보낼 차례면 그 메시지를 이어서 저장한다.
   timer.lap("save_assistant");
-  const { followUp } = await dialogue.finalize({ usedFallback: result.usedFallback });
+  const { followUp: theoryFollowUp } = await dialogue.finalize({ usedFallback: result.usedFallback });
+  const cardFollowUp = cardPlan ? await cardPlan.finalize(result.usedFallback) : undefined;
+  const followUp = theoryFollowUp ?? cardFollowUp;
 
   // 2026-10-18: 발화 해석(CSO 해석 엔진) — 답변을 보낸 뒤 뒤에서 돌고 결과는 다음 턴부터 반영된다(지연 0). 기본 꺼짐:
   // SW_INTERP_ENABLED=1 이고 SW_INTERP_ALLOWLIST에 있는 사용자만. 실패해도 채팅에는 영향이 없다(lib/interp/run.ts).

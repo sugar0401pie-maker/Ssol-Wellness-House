@@ -35,7 +35,7 @@ export type PersonaHint = {
   reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
-export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead" | "hypothesis_lead";
+export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead" | "hypothesis_lead" | "card_follows";
 
 const STAGE_GUIDE: Record<TheoryStage, string> = {
   OPEN: "상황과 감정을 사용자의 말로 풀어내도록 돕는 단계",
@@ -62,6 +62,10 @@ function voiceCardLines(card: VoiceCard | null | undefined): string[] {
 function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null | undefined): string {
   if (mode === "offer_follows") {
     return "이번 답변 바로 뒤에 시스템이 '지금 당장 해볼 수 있는 방법을 알려드릴까요, 아니면 고민을 더 깊게 알아볼까요?'라는 선택 안내를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 지금까지 들은 마음을 따뜻하게 반영하고 짧게 정리하는 것으로 마무리하세요. 구체적인 행동 제안은 사용자가 고른 뒤에 하므로 이번에는 하지 마세요. 선택 안내 문구 자체는 쓰지 마세요.";
+  }
+  if (mode === "card_follows") {
+    // 2026-10-20: 이 답변 바로 뒤에 시스템이 "가능한 이유"를 고르는 선택 카드(보기 3개)를 붙인다. AI는 마음을 반영하는 것으로 마무리한다.
+    return "이번 답변 바로 뒤에 시스템이 '지금 마음에 가장 가까운 이유를 고르는 선택 카드'를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 방금 한 말에 담긴 마음을 따뜻하게 한두 문장(150자 이내)으로 반영하는 것으로 마무리하세요. 이유를 짐작해 말하거나 해결책·행동 제안을 먼저 내놓지 마세요. 선택 카드 문구 자체는 쓰지 마세요.";
   }
   if (mode === "hypothesis_lead") {
     // 2026-10-18: 시스템이 이어서 "이런 마음일 수도 있을까요?" 식의 확인 문장(DB의 검수된 원문)을 붙인다. AI는 공감 앞부분만 쓴다.

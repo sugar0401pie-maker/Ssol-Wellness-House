@@ -3,7 +3,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { isInterpEnabled } from "./gate";
 
 const emailCache = new Map<string, string | null>();
-async function emailOf(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string | null> {
+export async function emailOf(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string | null> {
   if (emailCache.has(userId)) return emailCache.get(userId)!;
   const { data } = await admin.auth.admin.getUserById(userId);
   const email = data?.user?.email ?? null;

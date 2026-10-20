@@ -11,6 +11,10 @@ import { maskEvents } from "./healthMask";
 import { trainingAllowed } from "@/lib/profile/aiTraining";
 import { handleAnswer } from "./hypothesis";
 import { syncTestEvidence } from "./testSync";
+import { CARD_ROUTES } from "@/lib/cards/flow";
+import { cardsOnFor } from "@/lib/cards/offer";
+import { noteScene } from "@/lib/cards/session";
+import { detectTheoryExclusion } from "@/lib/theory/exclusion";
 import { SPEC_VERSION } from "./version";
 
 // 답변을 보낸 뒤 뒤에서 도는 발화 해석(2026-10-18). 결과는 다음 턴부터 반영된다(지연 0).
@@ -52,6 +56,10 @@ async function work(p: InterpParams, at: (stage: string) => void): Promise<void>
       { embed: embedTexts, index, callModel: callClassifierModel },
     );
     if (cls.safety_suspect) return; // 위기로 보이는 말 — 점수를 만들지 않는다(판단은 lib/safety)
+    // 2026-10-20(로드맵 3·4번): 분류기가 선택지 카드 장면을 처음 꺼낸 말로 읽었다면 "열 준비" 세션을 만든다(보여 주는 것은 이어지는 다음 말에서).
+    if (cls.scene_key && CARD_ROUTES.has(p.route) && !detectTheoryExclusion(p.text) && (await cardsOnFor(admin, p.userId))) {
+      await noteScene(admin, p.userId, p.sessionId, cls.scene_key).catch((e) => console.error("카드 장면 기록 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+    }
     if (!cls.events.length) return;
 
     // 장부에 저장하는 사용자 말 조각: 질병명·진단·약 같은 직접 건강 표현은 "[건강]"으로 가린다(owner 결정 2026-10-18 — 대화는 그대로 들어 주고

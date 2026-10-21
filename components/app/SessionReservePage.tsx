@@ -12,6 +12,7 @@ import {
   REFERRAL_SOURCES,
   MIN_PREFERRED_TIMES,
   MAX_PREFERRED_TIMES,
+  NAVER_BOOKING_URL,
 } from "@/lib/counselor/booking";
 
 // 2026-10-01 owner 요청: "상담 신청하는 페이지 별도로 분리 안돼있는데 session reserve
@@ -112,6 +113,20 @@ export default function SessionReservePage() {
       <button type="button" onClick={() => router.push("/mypage")} className="mb-4 self-start text-[13px] text-slate-500">
         ← 뒤로
       </button>
+
+      {/* 2026-10-21 대표님 요청: 맨 위에 네이버 예약하기 버튼(네이버 N 로고 + 네이버 초록). 새 창으로 열리는 외부 서비스라 아래에 안내를 붙인다. */}
+      <a
+        href={NAVER_BOOKING_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-1 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-[#03C75A] text-[15px] font-bold text-white active:bg-[#02b350]"
+      >
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" className="shrink-0">
+          <path fill="#fff" d="M13.56 10.7 6.2 0H0v20h6.44V9.3L13.8 20H20V0h-6.44z" />
+        </svg>
+        네이버 예약하기
+      </a>
+      <p className="mb-5 text-center text-[11.5px] leading-4 text-slate-400">네이버 예약 페이지가 새 창으로 열려요(외부 서비스).</p>
 
       <h1 className="text-[19px] font-medium text-foreground">웰니스 상담 신청</h1>
 

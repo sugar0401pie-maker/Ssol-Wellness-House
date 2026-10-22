@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/persona/suggestedQuestions";
+import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/persona/suggestedQuestions";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
@@ -100,7 +100,12 @@ export default function ChatApp() {
   // 2026-09-28 owner 요청(시안 .chipq): 대화 시작 전(메시지가 아직 없을 때)엔 첫 인사말 밑에
   // 눌러볼 만한 질문 몇 개를 칩으로 랜덤 노출한다 — lazy initializer로 마운트 시 한 번만 뽑아서
   // 리렌더될 때마다 바뀌지 않게 한다. 대화가 시작되면(messages.length>0) 더 이상 안 보인다.
-  const [starterChips] = useState(() => pickRandomSuggestedQuestions(3));
+  // 2026-10-22: 성향 질문은 테스트 결과가 있는 사용자에게만. 없으면(점성술 등으로 들어온 분 포함) 일상 고민 시작 문구 — 위 설명과 lib/persona/suggestedQuestions.ts 참고.
+  // 테스트 결과 여부를 알기 전(null)에는 칩을 보이지 않는다(잘못된 칩이 잠깐 보였다 바뀌는 것을 막음).
+  const [hasPersona, setHasPersona] = useState<boolean | null>(null);
+  const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
+  const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
+  const starterChips = hasPersona === null ? [] : hasPersona ? personaChips : everydayChips;
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -131,6 +136,25 @@ export default function ChatApp() {
       }
     }
     void checkAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkPersona() {
+      const token = await getAccessToken();
+      if (!token) return;
+      try {
+        const res = await fetch("/api/chat/persona-status", { headers: authHeaders(token) });
+        const json = res.ok ? ((await res.json()) as { hasPersona?: boolean }) : null;
+        if (!cancelled) setHasPersona(json?.hasPersona === true);
+      } catch {
+        if (!cancelled) setHasPersona(false); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
+      }
+    }
+    void checkPersona();
     return () => {
       cancelled = true;
     };
@@ -346,7 +370,7 @@ export default function ChatApp() {
 
   function selectSuggestedQuestion(text: string) {
     setShowSuggested(false);
-    void send(text, { isPersonaQuestion: true });
+    void send(text, { isPersonaQuestion: hasPersona === true });
   }
 
   function resetChat() {
@@ -434,7 +458,7 @@ export default function ChatApp() {
               <button
                 key={q.id}
                 type="button"
-                onClick={() => void send(q.text, { isPersonaQuestion: true })}
+                onClick={() => void send(q.text, { isPersonaQuestion: hasPersona === true })}
                 className="rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] text-foreground active:border-navy active:text-navy"
               >
                 {q.text}
@@ -673,10 +697,12 @@ export default function ChatApp() {
               </button>
             </div>
             <p className="px-4 pt-3 text-[12px] leading-5 text-slate-500">
-              웰니스 유형(성향) 테스트 결과를 바탕으로 답해요. 아직 테스트를 하지 않으셨다면 먼저 안내해드려요.
+              {hasPersona
+                ? "웰니스 유형(성향) 테스트 결과를 바탕으로 답해요."
+                : "요즘 마음에 걸리는 이야기를 골라 보내 보세요. 편하게 이어서 말씀해 주시면 돼요."}
             </p>
             <div className="flex-1 overflow-y-auto px-4 pb-4">
-              {SUGGESTED_QUESTION_GROUPS.map((group) => (
+              {(hasPersona ? SUGGESTED_QUESTION_GROUPS : EVERYDAY_QUESTION_GROUPS).map((group) => (
                 <div key={group.title} className="mt-4">
                   <p className="text-[12px] font-medium text-slate-400">{group.title}</p>
                   <div className="mt-1.5 divide-y divide-line rounded-xl border border-line">

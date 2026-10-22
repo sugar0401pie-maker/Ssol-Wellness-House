@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/persona/suggestedQuestions";
+import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions, type SuggestedQuestionGroup } from "@/lib/persona/suggestedQuestions";
+import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting, type WelcomeStatus } from "@/lib/persona/welcome";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
@@ -33,9 +34,7 @@ type SessionSummary = {
   safetyFlag: "none" | "elevated" | "crisis";
 };
 
-// 첫 인사말 (초안). 시스템 프롬프트의 Identity/Goal 섹션과 같은 취지로 작성.
-const GREETING =
-  "안녕하세요, 쏠 웰니스 하우스예요. 저는 웰니스 관련 상담에 도움을 드릴 수 있습니다. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주시기 바랍니다.";
+// 첫 인사말은 lib/persona/welcome.ts(기본 인사 + 점성술에서 온 사용자용 환영 인사)에 있다.
 
 // 2026-09-28: 홈/채팅/마이페이지가 "/home", "/chat", "/mypage" 개별 주소로 나뉘면서, 채팅 탭을
 // 벗어났다 돌아오면 이 컴포넌트가 새로 마운트된다(예전엔 세 탭을 전부 마운트해두고 CSS로만
@@ -102,10 +101,19 @@ export default function ChatApp() {
   // 리렌더될 때마다 바뀌지 않게 한다. 대화가 시작되면(messages.length>0) 더 이상 안 보인다.
   // 2026-10-22: 성향 질문은 테스트 결과가 있는 사용자에게만. 없으면(점성술 등으로 들어온 분 포함) 일상 고민 시작 문구 — 위 설명과 lib/persona/suggestedQuestions.ts 참고.
   // 테스트 결과 여부를 알기 전(null)에는 칩을 보이지 않는다(잘못된 칩이 잠깐 보였다 바뀌는 것을 막음).
-  const [hasPersona, setHasPersona] = useState<boolean | null>(null);
+  // 점성술(쏠 아스트로 하우스)을 보고 넘어온 사용자는 환영 인사와, 그때 고른 영역에 맞춘 시작 문구를 본다(lib/persona/welcome.ts).
+  const [welcome, setWelcome] = useState<WelcomeStatus | null>(null);
   const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
   const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
-  const starterChips = hasPersona === null ? [] : hasPersona ? personaChips : everydayChips;
+  const starter = welcome ? chooseStarterChips(welcome, { persona: personaChips, everyday: everydayChips }) : { chips: [], persona: false };
+  const starterChips = starter.chips;
+  const hasPersona = welcome?.hasPersona === true;
+  // "추천 질문" 목록: 점성술에서 고른 영역이 있으면 그 이야기를 맨 위에(이미 일상 묶음과 같은 것이면 중복하지 않음), 그다음 테스트 결과 여부에 따른 목록.
+  const astroArea = welcome?.astroQ1 ? ASTRO_Q1_CHIPS[welcome.astroQ1] : undefined;
+  const suggestedGroups: SuggestedQuestionGroup[] = [
+    ...(astroArea && !EVERYDAY_QUESTION_GROUPS.some((g) => g.questions === astroArea) ? [{ title: `${welcome?.astroQ1} 이야기`, questions: astroArea }] : []),
+    ...(hasPersona ? SUGGESTED_QUESTION_GROUPS : EVERYDAY_QUESTION_GROUPS),
+  ];
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -148,10 +156,10 @@ export default function ChatApp() {
       if (!token) return;
       try {
         const res = await fetch("/api/chat/persona-status", { headers: authHeaders(token) });
-        const json = res.ok ? ((await res.json()) as { hasPersona?: boolean }) : null;
-        if (!cancelled) setHasPersona(json?.hasPersona === true);
+        const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null });
       } catch {
-        if (!cancelled) setHasPersona(false); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
+        if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
       }
     }
     void checkPersona();
@@ -368,9 +376,10 @@ export default function ChatApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function selectSuggestedQuestion(text: string) {
+  function selectSuggestedQuestion(q: { id: string; text: string }) {
     setShowSuggested(false);
-    void send(text, { isPersonaQuestion: hasPersona === true });
+    // 성향 질문 목록에서 고른 것만 성향 질문 방식으로 보낸다(그 외는 일반 대화).
+    void send(q.text, { isPersonaQuestion: SUGGESTED_QUESTION_GROUPS.some((g) => g.questions.some((x) => x.id === q.id)) });
   }
 
   function resetChat() {
@@ -435,7 +444,7 @@ export default function ChatApp() {
       </header>
 
       <main className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
-        <Bubble role="assistant" content={GREETING} />
+        <Bubble role="assistant" content={welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING} />
         {onboarding && onboarding.showPrompt && (
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-2xl bg-navy-soft px-4 py-2.5 text-[15px] leading-6 text-foreground">
@@ -458,7 +467,7 @@ export default function ChatApp() {
               <button
                 key={q.id}
                 type="button"
-                onClick={() => void send(q.text, { isPersonaQuestion: hasPersona === true })}
+                onClick={() => void send(q.text, { isPersonaQuestion: starter.persona })}
                 className="rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] text-foreground active:border-navy active:text-navy"
               >
                 {q.text}
@@ -702,7 +711,7 @@ export default function ChatApp() {
                 : "요즘 마음에 걸리는 이야기를 골라 보내 보세요. 편하게 이어서 말씀해 주시면 돼요."}
             </p>
             <div className="flex-1 overflow-y-auto px-4 pb-4">
-              {(hasPersona ? SUGGESTED_QUESTION_GROUPS : EVERYDAY_QUESTION_GROUPS).map((group) => (
+              {suggestedGroups.map((group) => (
                 <div key={group.title} className="mt-4">
                   <p className="text-[12px] font-medium text-slate-400">{group.title}</p>
                   <div className="mt-1.5 divide-y divide-line rounded-xl border border-line">
@@ -710,7 +719,7 @@ export default function ChatApp() {
                       <button
                         key={q.id}
                         type="button"
-                        onClick={() => selectSuggestedQuestion(q.text)}
+                        onClick={() => selectSuggestedQuestion(q)}
                         className="block w-full px-3.5 py-3 text-left text-[14px] leading-5 text-foreground active:bg-background"
                       >
                         {q.text}

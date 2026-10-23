@@ -191,6 +191,8 @@ export function buildSystemPrompt(params: {
   // 켜졌을 때만 넘어온다). 값이 없으면 아래 모든 동작이 이전과 완전히 같다.
   dialogueMode?: DialogueMode;
   theoryGuide?: TheoryGuide | null;
+  // 2026-10-23: SAFE-018~021 답변 지침(lib/safety/supplemental.ts guidanceBlock). 없으면 아래 블록이 들어가지 않는다.
+  safetyGuidance?: string | null;
 }): string {
   const parts: string[] = [];
 
@@ -205,6 +207,10 @@ export function buildSystemPrompt(params: {
         ...params.matchedRules.map((r) => `- (${r.rule_id} ${r.category}) ${r.rule_text}`),
       ].join("\n"),
     );
+  }
+
+  if (params.safetyGuidance) {
+    parts.push(`이번 메시지에서 특히 지켜야 할 안전 지침(전문위원 검수 반영):\n${params.safetyGuidance}`);
   }
 
   if (params.userMemory) {

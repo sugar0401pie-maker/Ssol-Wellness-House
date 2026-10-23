@@ -128,6 +128,8 @@ export async function generateAnswer(params: {
   // 2026-10-05: 이론 질문 선택 흐름(lib/theory)에서만 넘어온다. 없으면 이전과 완전히 같게 동작한다.
   dialogueMode?: DialogueMode;
   theoryGuide?: TheoryGuide | null;
+  // 2026-10-23: SAFE-018~021 답변 지침(lib/safety/supplemental.ts). 없으면 이전과 같다.
+  safetyGuidance?: string | null;
 }): Promise<{
   reply: string;
   retrievedChunkIds: string[];
@@ -219,6 +221,7 @@ export async function generateAnswer(params: {
     },
     dialogueMode: params.dialogueMode,
     theoryGuide: params.theoryGuide,
+    safetyGuidance: params.safetyGuidance,
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
     traumaStage,
     // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에

@@ -5,6 +5,7 @@ import { determineRoute } from "@/lib/safety/route";
 import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
 import { runScreening } from "@/lib/safety/screeningFlow";
 import { canSoftenCrisis } from "@/lib/safety/screening";
+import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTopics, guidanceBlock, perceptionRepeated } from "@/lib/safety/supplemental";
 import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
@@ -115,7 +116,9 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   const queryEmbedding = instantHit(findKeywordHits(message, earlyRules)) ? undefined : embedQuery(message);
   queryEmbedding?.catch(() => undefined); // 쓰이지 않고 끝나는 경우에도 "처리되지 않은 오류"가 남지 않게 표시만 해 둔다
 
-  const decision = await determineRoute(message, recentMessages);
+  let decision = await determineRoute(message, recentMessages);
+  // 음주운전을 분류기가 폭력·위기로 잘못 본 경우만 일반 대화로 되돌린다(supplemental.ts — 엄격한 조건, 상담사님: 자해가 아니라 안전 안내 대상).
+  if (canSoftenDrunkDriving(decision, message)) decision = { ...decision, route: "wellness" };
   timer.lap("classify");
   // 라우팅 메타데이터(route/confidence/source)는 민감정보가 아니라 응답에 그대로 포함한다.
   // 안전 평가 스크립트(scripts/safety-eval.mjs)가 이 값으로 실제 판정 품질을 확인한다.
@@ -127,7 +130,10 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
 
   // 사용자 메시지는 판정 결과(route)와 함께 항상 저장한다.
   // 세션 안전 상태는 올라가기만 한다 (CLAUDE.md: 세션 중 자동으로 낮추지 않는다).
-  const newFlag = safetyFlagFor(decision.route);
+  // 2026-10-23(SAFE-018~021): 일반 대화로 답하되 주의할 주제(섭식·현실감·술·약 등). 섭식·현실감은 운영 검토를 위해 세션 안전 표시를 올린다(대화 열람 근거 = 약관 예고 4항).
+  const guidanceTopics = detectGuidanceTopics(message);
+  const recentUserTexts = recentMessages.filter((m) => m.role === "user").map((m) => m.content);
+  const newFlag = guidanceTopics.some((t) => WATCH_TOPICS.includes(t)) && safetyFlagFor(decision.route) === "none" ? "elevated" : safetyFlagFor(decision.route);
   // 메시지 저장과 세션 상태 조회는 서로 필요하지 않아 동시에 한다(2026-10-16).
   // 2026-10-18: 발화 해석이 이 메시지를 가리킬 수 있게 id를 먼저 정해 저장한다(사건 id에 쓰인다).
   const userMessageId = crypto.randomUUID();
@@ -289,11 +295,13 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
   const { rules: safetyRules } = await getSafetyData();
   // 이론 질문 선택 흐름(준비 단계). 기능이 꺼져 있으면(기본값) 즉시 빈 계획을 돌려주고 아무 조회도 하지 않는다.
+  // 섭식·현실감·과음 상태에서는 이론 탐색·선택 카드·가설 말하기를 열지 않는다(CSO SAFE-018·020·021: 걱정을 전하고 전문 도움 안내가 먼저).
+  const suppressOffers = guidanceTopics.some((t) => SUPPRESS_OFFERS.includes(t));
   const dialogue = await planDialogue({
     admin,
     userId,
     sessionId,
-    route: decision.route,
+    route: suppressOffers ? "clinical_distress" : decision.route, // 제안 흐름은 일반 경로에서만 열린다 — 임상 경로로 넘겨 열리지 않게 한다(답변 생성에는 실제 route를 그대로 쓴다)
     isPersonaQuestion,
     choiceId,
     message,
@@ -302,7 +310,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   timer.lap("dialogue_plan");
   // 2026-10-20(로드맵 3·4번): 장면이 감지돼 열 준비된 선택지 카드가 있으면 이번 답변 뒤에 첫 카드를 붙인다(기본 꺼짐). 이론 탐색 흐름이 이번 턴을 쓰면 겹치지 않는다.
   const cardPlan = await planCardOffer({
-    admin, userId, sessionId, route: decision.route, message, recentUserMessages: recentMessages.filter((m) => m.role === "user").map((m) => m.content),
+    admin, userId, sessionId, route: suppressOffers ? "clinical_distress" : decision.route, message, recentUserMessages: recentUserTexts,
     otherFlowActive: dialogue.generationExtras.dialogueMode !== undefined, tapped: cardPick !== null || cardTapStopped,
   });
   // 2026-10-18(개발 1·2·5번): 해석이 쌓인 뿌리가 있으면 이번 답변에 "이런 마음일 수도 있을까요?" 확인 문장을 건넨다(2~4번째 답변까지).
@@ -311,7 +319,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     admin,
     userId,
     sessionId,
-    route: decision.route,
+    route: suppressOffers ? "clinical_distress" : decision.route,
     recentMessages,
     theoryActive: dialogue.generationExtras.dialogueMode !== undefined || cardPlan !== null,
   });
@@ -330,6 +338,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     ...dialogue.generationExtras,
     ...cardPlan?.generationExtras,
     ...hypothesis?.generationExtras,
+    safetyGuidance: guidanceBlock(guidanceTopics, { perceptionRepeated: perceptionRepeated(message, recentUserTexts) }),
   });
   timer.lap("generate_total");
 

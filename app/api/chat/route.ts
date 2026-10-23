@@ -3,6 +3,8 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { determineRoute } from "@/lib/safety/route";
 import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
+import { runScreening } from "@/lib/safety/screeningFlow";
+import { canSoftenCrisis } from "@/lib/safety/screening";
 import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
@@ -153,6 +155,23 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     .eq("session_id", sessionId);
 
   timer.lap("save_user_and_session");
+
+  // 2026-10-23(안전 설계 v0.3, 1단계): 스크리닝 질문·답 처리·중단 안내. AI 호출이 없고 하루 사용량·이용권 제한과 무관하게(위기·폭력과 같은 취급) 분류기 장애 안내보다 먼저 확인한다.
+  // 기본 꺼짐(SW_SCREENING_ENABLED=1일 때만). 안전 라우터가 위기·폭력으로 판정한 메시지는 아래 기존 고정 응답이 처리하므로 여기서는 끼어들지 않는다.
+  const screening = await runScreening({
+    admin, userId, sessionId, message, recentMessages,
+    // 분류기만 위기로 본 "죽음 이미지 활동 요청"은 질문 먼저(canSoftenCrisis의 엄격한 조건 — screening.ts 참고). 나머지 위기·폭력은 아래 기존 고정 응답이 그대로 처리한다.
+    routeIsFixed: (decision.route === "crisis" || decision.route === "violence") && !canSoftenCrisis(decision, message),
+  });
+  if (screening) {
+    await admin.from("chat_messages").insert({
+      session_id: sessionId, user_id: userId, role: "assistant", content: screening.reply, route: screening.route, reflection_signal_id: screening.marker,
+    });
+    if (screening.raiseFlag && FLAG_RANK[screening.raiseFlag] > Math.max(currentRank, FLAG_RANK[newFlag])) {
+      await admin.from("chat_sessions").update({ safety_flag: screening.raiseFlag }).eq("session_id", sessionId);
+    }
+    return NextResponse.json({ sessionId, route: screening.route, reply: screening.reply, done: true, screening: true, ...routingMeta });
+  }
 
   // 분류기를 아예 부르지 못한 경우: 내용을 지어내지 않고 안전한 안내만 준다.
   if (decision.classifierUnavailable) {

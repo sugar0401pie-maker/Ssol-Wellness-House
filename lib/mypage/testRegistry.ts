@@ -3,6 +3,8 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { loadQuizReportsList } from "./loadQuizReportsList";
 import { loadAstroResultsList } from "./loadAstroResultsList";
 import { astroResultUrl, ASTRO_SITE_URL } from "./astroResultUrl";
+import { loadTarotReadings } from "@/lib/tarot/loadTarotReadings";
+import { TAROT_ORIGIN } from "@/lib/tarot/catalog";
 import { runTestProviders, type TestProvider } from "./testRunner";
 import type { TestGroup } from "./testTypes";
 
@@ -42,6 +44,20 @@ const TEST_PROVIDERS: TestProvider<Ctx>[] = [
         title: r.nickname ? `${r.nickname}님의 점성술 결과` : "점성술 결과",
         badge: r.paid ? "리포트" : undefined,
         open: { label: "자세히 보기", href: astroResultUrl(r.id, r.lastPage), external: true },
+      })),
+  },
+  {
+    // 2026-10-26: 쏠 타로 하우스(별도 저장소 ssol-tarot) 결과. tarot_sessions는 그 앱 소유라 읽기만 한다(고민 원문은 목록에 싣지 않음).
+    key: "tarot",
+    title: "타로 테스트",
+    emptyMessage: "아직 이 계정에 연결된 타로 결과가 없어요. 로그인한 상태로 타로를 보면 여기에 나타나요.",
+    start: { label: "타로 보러 가기", href: TAROT_ORIGIN },
+    load: async ({ admin, userId }) =>
+      (await loadTarotReadings(admin, userId)).map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt,
+        title: r.cards.length ? `앞으로의 열쇠 ‘${r.cards[r.cards.length - 1].name}’` : "타로 결과",
+        open: { label: "자세히 보기", href: `${TAROT_ORIGIN}/result/${r.id}`, external: true },
       })),
   },
 ];

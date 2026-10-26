@@ -28,9 +28,27 @@ export const ASTRO_Q1_CHIPS: Record<string, SuggestedQuestion[]> = {
   ],
 };
 
-export type WelcomeStatus = { hasPersona: boolean; astroQ1: string | null; fromAstro: boolean; nickname: string | null };
+// tarot: 쏠 타로 하우스 결과 10쪽 버튼(…/chat?from=tarot&result=id)으로 넘어온 경우 그 결과의 고민 글과 세 번째 카드(2026-10-26 owner 결정 — 고민 내용까지 언급).
+export type TarotWelcome = { worry: string | null; card: string | null };
+export type WelcomeStatus = { hasPersona: boolean; astroQ1: string | null; fromAstro: boolean; nickname: string | null; tarot?: TarotWelcome | null };
 
-export function welcomeGreeting(s: Pick<WelcomeStatus, "fromAstro" | "nickname">): string {
+/** 인사말에 넣을 고민 글 앞부분(줄바꿈은 띄어쓰기로, 길면 max자에서 자르고 …). */
+export function worryExcerpt(text: string | null | undefined, max = 40): string | null {
+  const t = (text ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  return t.length <= max ? t : t.slice(0, max).trimEnd() + "…";
+}
+
+export function welcomeGreeting(s: Pick<WelcomeStatus, "fromAstro" | "nickname" | "tarot">): string {
+  if (s.tarot) {
+    const name = s.nickname?.trim() ? `${s.nickname.trim()}님, ` : "";
+    const worry = worryExcerpt(s.tarot.worry);
+    const parts = [`안녕하세요, ${name}쏠 타로 하우스에서 오셨군요. 반가워요!`];
+    if (worry) parts.push(`‘${worry}’ 고민으로 세 장을 뽑으셨죠.`);
+    parts.push(s.tarot.card ? `앞으로의 열쇠로 나온 ‘${s.tarot.card}’ 이야기를 이어서 나눠 볼까요?` : "타로에서 본 이야기를 이어서 나눠 볼까요?");
+    parts.push("결과를 보며 마음에 남은 문장이 있다면 편하게 들려주세요.");
+    return parts.join(" ");
+  }
   if (!s.fromAstro) return DEFAULT_GREETING;
   const name = s.nickname?.trim() ? `${s.nickname.trim()}님, ` : "";
   return `안녕하세요, ${name}쏠 아스트로 하우스에서 오셨군요. 반가워요! 결과를 보며 마음에 남은 이야기가 있다면 편하게 들려주세요. 아래에서 고르셔도 좋아요.`;

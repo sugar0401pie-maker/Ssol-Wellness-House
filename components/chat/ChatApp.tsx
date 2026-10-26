@@ -103,6 +103,13 @@ export default function ChatApp() {
   // 테스트 결과 여부를 알기 전(null)에는 칩을 보이지 않는다(잘못된 칩이 잠깐 보였다 바뀌는 것을 막음).
   // 점성술(쏠 아스트로 하우스)을 보고 넘어온 사용자는 환영 인사와, 그때 고른 영역에 맞춘 시작 문구를 본다(lib/persona/welcome.ts).
   const [welcome, setWelcome] = useState<WelcomeStatus | null>(null);
+  // 2026-10-26: 쏠 타로 하우스 결과 10쪽 버튼(…/chat?from=tarot&result=<id>)으로 들어온 경우 그 결과 id.
+  // 첫 인사(persona-status)와, 이 화면에서 시작하는 대화가 참고할 타로 결과(채팅 API의 tarotResultId)에 쓴다. 주소만 읽어 화면에 그리지 않으므로 서버 렌더와 어긋나지 않는다.
+  const [tarotResultId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const q = new URLSearchParams(window.location.search);
+    return q.get("from") === "tarot" ? q.get("result") : null;
+  });
   const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
   const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
   const starter = welcome ? chooseStarterChips(welcome, { persona: personaChips, everyday: everydayChips }) : { chips: [], persona: false };
@@ -155,9 +162,10 @@ export default function ChatApp() {
       const token = await getAccessToken();
       if (!token) return;
       try {
-        const res = await fetch("/api/chat/persona-status", { headers: authHeaders(token) });
+        const q = tarotResultId ? `?tarot=${encodeURIComponent(tarotResultId)}` : "";
+        const res = await fetch(`/api/chat/persona-status${q}`, { headers: authHeaders(token) });
         const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
-        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null });
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, tarot: json?.tarot ?? null });
       } catch {
         if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
       }
@@ -245,6 +253,7 @@ export default function ChatApp() {
           isPersonaQuestion: options?.isPersonaQuestion ?? false,
           ...(options?.choiceId ? { choiceId: options.choiceId } : {}),
           ...(options?.cardPick ? { cardPick: options.cardPick } : {}),
+          ...(tarotResultId ? { tarotResultId } : {}),
         }),
       });
 
@@ -372,7 +381,8 @@ export default function ChatApp() {
     }
     // loadSession은 그 안에서 setState를 곧바로 호출하므로, 이펙트 본문에서 직접 부르지 않고
     // 마이크로태스크로 한 틱 미룬다(react-hooks/set-state-in-effect 회피).
-    if (savedId) void Promise.resolve().then(() => loadSession(savedId));
+    // 타로에서 막 넘어왔으면 이어 보던 대화 대신 새 대화로 시작한다 — 맞춤 첫 인사가 보이고, 새 대화가 그 타로 결과를 참고하도록.
+    if (savedId && !tarotResultId) void Promise.resolve().then(() => loadSession(savedId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

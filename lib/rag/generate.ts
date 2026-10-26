@@ -16,6 +16,7 @@ import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 import { loadAstroInsight } from "@/lib/mypage/loadAstroInsight";
+import { loadTarotInsight } from "@/lib/tarot/loadTarotInsight";
 import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
 import { detectTraumaStage } from "@/lib/safety/traumaStage";
@@ -64,6 +65,7 @@ async function loadPersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   sessionId: string,
+  tarotResultId?: string | null,
 ): Promise<PersonaSnapshot> {
   const { data: session } = await admin.from("chat_sessions").select("persona_snapshot").eq("session_id", sessionId).maybeSingle();
   if (session?.persona_snapshot) {
@@ -71,24 +73,26 @@ async function loadPersonaHint(
     return session.persona_snapshot as PersonaSnapshot;
   }
 
-  const snapshot = await computePersonaHint(admin, userId);
+  const snapshot = await computePersonaHint(admin, userId, tarotResultId);
   await admin.from("chat_sessions").update({ persona_snapshot: snapshot }).eq("session_id", sessionId);
   return snapshot;
 }
 
 // 2026-10-08: 쏠 점성술 하우스 결과 요약(astro)도 같은 스냅샷에 담는다(디저트 테스트를 안 했어도 따로 쓰일 수 있음).
-type PersonaSnapshot = { label: string | null; hint: PersonaHint | null; astro?: string | null };
+// 2026-10-26: 쏠 타로 하우스 결과 요약(tarot — 고민 원문 + 결과 글, owner 결정)도 같은 스냅샷에. 그 전에 캐시된 대화엔 없다(새 대화부터).
+type PersonaSnapshot = { label: string | null; hint: PersonaHint | null; astro?: string | null; tarot?: string | null };
 
 async function computePersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
+  tarotResultId?: string | null,
 ): Promise<PersonaSnapshot> {
-  const astro = await loadAstroInsight(admin, userId);
+  const [astro, tarot] = await Promise.all([loadAstroInsight(admin, userId), loadTarotInsight(admin, userId, tarotResultId)]);
   // 2026-09-24: 마이페이지와 같은 방식(ssol_quiz_results 직접 조회)으로 통일 — 예전엔
   // wellness_profiles를 봤지만 실제 퀴즈 결과와 연결되지 않아 실사용자 기준으로 항상
   // 비어 있었다(위 파일 상단 import의 loadQuizPersona 주석 참고).
   const persona = await loadQuizPersona(admin, userId);
-  if (!persona) return { label: null, hint: null, astro };
+  if (!persona) return { label: null, hint: null, astro, tarot };
 
   return {
     label: persona.name,
@@ -102,6 +106,7 @@ async function computePersonaHint(
       reportInsight: persona.reportInsight ?? undefined,
     },
     astro,
+    tarot,
   };
 }
 
@@ -121,6 +126,8 @@ export async function generateAnswer(params: {
   userId: string;
   sessionId: string;
   isPersonaQuestion?: boolean;
+  // 2026-10-26: 타로 결과에서 넘어온 대화의 결과 id(새 대화의 스냅샷을 만들 때만 쓰인다).
+  tarotResultId?: string | null;
   // 채팅 API가 안전 분류와 동시에 미리 시작해 둔 검색용 임베딩(없으면 검색 단계에서 직접 만든다).
   queryEmbedding?: Promise<number[]>;
   // 단계별 시간 측정용(없으면 아무 일도 안 한다). 내부 lap은 generate_total 안의 세부 단계다.
@@ -145,7 +152,7 @@ export async function generateAnswer(params: {
     .filter((r) => params.matchedRuleIds.includes(r.rule_id))
     .map((r) => ({ rule_id: r.rule_id, category: r.category, rule_text: r.rule_text }));
 
-  const { label: personaLabel, hint: personaHint, astro: astroInsight } = await loadPersonaHint(admin, params.userId, params.sessionId);
+  const { label: personaLabel, hint: personaHint, astro: astroInsight, tarot: tarotInsight } = await loadPersonaHint(admin, params.userId, params.sessionId, params.tarotResultId);
   params.timer?.lap("g_persona");
 
   if (params.isPersonaQuestion && !personaHint) {
@@ -214,6 +221,7 @@ export async function generateAnswer(params: {
     userMemory: memoryRow?.summary,
     personaHint,
     astroInsight: astroInsight ?? undefined,
+    tarotInsight: tarotInsight ?? undefined,
     // 심층 리포트는 전체가 아니라 지금 이야기와 관련 있어 보이는 섹션만 넣는다(prompt.ts/reportSelect.ts).
     reportQuery: {
       message: params.message,

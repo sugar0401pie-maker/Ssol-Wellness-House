@@ -477,3 +477,26 @@ describe("buildSystemPrompt — 쏠 점성술 하우스 요약(astroInsight)", (
     assert.match(p, /쏠 점성술 하우스 리포트 요약/);
   });
 });
+
+describe("buildSystemPrompt — 쏠 타로 하우스 요약(tarotInsight, 2026-10-26)", () => {
+  const TAROT = [
+    "[고민 원문] 다음 달 말까지 이직 제안에 답을 줘야 해요.",
+    "[결과 정보] 쏠 타로 하우스 · 2026-10-26 · 무료 결과(결제 전 — 5쪽 결론부터는 아직 열지 않음)",
+    "[2. 첫 번째 카드 · 지나온 길] 그동안 감정을 안으로 삼켜 왔을 겁니다.",
+  ].join("\n");
+  const base = { sections: SECTIONS, matchedRules: [], route: "wellness" as const, usedClinicalChunk: false };
+
+  test("없으면 타로 블록이 들어가지 않는다", () => {
+    assert.doesNotMatch(buildSystemPrompt(base), /쏠 타로 하우스/);
+  });
+
+  test("있으면 고민 원문·결과를 그대로 넣고, 예측·결정 대신·역방향 부정·지어내기를 막는 지침이 함께 들어간다", () => {
+    const p = buildSystemPrompt({ ...base, personaHint: null, tarotInsight: TAROT });
+    assert.match(p, /\[고민 원문\] 다음 달 말까지 이직 제안에 답을 줘야 해요\./);
+    assert.match(p, /\[2\. 첫 번째 카드 · 지나온 길\]/);
+    assert.match(p, /미래를 맞히는 점괘가 아니라/);
+    assert.match(p, /결정을 대신하지 않는다/);
+    assert.match(p, /역방향을 나쁘거나 불길한 뜻으로 말하지 않고/);
+    assert.match(p, /지어내지 않는다/);
+  });
+});

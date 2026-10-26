@@ -28,9 +28,10 @@ export const ASTRO_Q1_CHIPS: Record<string, SuggestedQuestion[]> = {
   ],
 };
 
+// astroGreeting: 점성술 [쏘웰라와 대화 시작하기]로 들어온 직후에만 오는 그 결과의 맞춤 첫 인사(lib/persona/astroGreeting.ts, 2026-10-26).
 // tarot: 쏠 타로 하우스 결과 10쪽 버튼(…/chat?from=tarot&result=id)으로 넘어온 경우 그 결과의 고민 글과 세 번째 카드(2026-10-26 owner 결정 — 고민 내용까지 언급).
 export type TarotWelcome = { worry: string | null; card: string | null };
-export type WelcomeStatus = { hasPersona: boolean; astroQ1: string | null; fromAstro: boolean; nickname: string | null; tarot?: TarotWelcome | null };
+export type WelcomeStatus = { hasPersona: boolean; astroQ1: string | null; fromAstro: boolean; nickname: string | null; astroGreeting?: string | null; tarot?: TarotWelcome | null };
 
 /** 인사말에 넣을 고민 글 앞부분(줄바꿈은 띄어쓰기로, 길면 max자에서 자르고 …). */
 export function worryExcerpt(text: string | null | undefined, max = 40): string | null {
@@ -39,7 +40,8 @@ export function worryExcerpt(text: string | null | undefined, max = 40): string 
   return t.length <= max ? t : t.slice(0, max).trimEnd() + "…";
 }
 
-export function welcomeGreeting(s: Pick<WelcomeStatus, "fromAstro" | "nickname" | "tarot">): string {
+export function welcomeGreeting(s: Pick<WelcomeStatus, "fromAstro" | "nickname" | "astroGreeting" | "tarot">): string {
+  if (s.astroGreeting) return s.astroGreeting;
   if (s.tarot) {
     const name = s.nickname?.trim() ? `${s.nickname.trim()}님, ` : "";
     const worry = worryExcerpt(s.tarot.worry);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseAstroOpening } from "@/lib/persona/astroGreeting";
+import { loadAstroGreeting } from "@/lib/mypage/loadAstroGreeting";
 import { determineRoute } from "@/lib/safety/route";
 import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
 import { runScreening } from "@/lib/safety/screeningFlow";
@@ -62,7 +64,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown; cardPick?: unknown; tarotResultId?: unknown };
+  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown; cardPick?: unknown; opening?: unknown; tarotResultId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -106,6 +108,17 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     const { data, error } = await admin.from("chat_sessions").insert({ user_id: userId }).select("session_id").single();
     if (error || !data) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 });
     sessionId = data.session_id;
+    // 2026-10-26: 점성술 [쏘웰라와 대화 시작하기]로 들어와 맞춤 첫 인사를 본 뒤의 첫 메시지면, 그 인사를 대화의 첫 답변으로 저장하고
+    // 이번 답변 문맥에도 넣는다(사용자가 인사에 답하는 것이므로 AI가 자기가 한 인사를 알아야 함). 문장은 브라우저가 보낸 글자가 아니라
+    // 서버가 그 사용자의 점성술 결과에서 다시 읽는다. 새 대화를 만들 때만이고, 읽지 못하면 그냥 넘어간다(채팅은 그대로).
+    const opening = parseAstroOpening(body.opening);
+    if (opening) {
+      const greeting = await loadAstroGreeting(admin, userId, opening.resultId).catch(() => null);
+      if (greeting) {
+        const { error: gErr } = await admin.from("chat_messages").insert({ session_id: sessionId, user_id: userId, role: "assistant", content: greeting });
+        if (!gErr) recentMessages = [{ role: "assistant", content: greeting }];
+      }
+    }
   }
   if (!sessionId) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 }); // TS 안전망(도달 안 함)
 

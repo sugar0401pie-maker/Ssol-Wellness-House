@@ -46,3 +46,10 @@ test("타로: 고민을 건너뛰었거나 카드를 못 찾으면 그 문장만
   assert.match(g, /타로에서 본 이야기를 이어서/);
   assert.equal(worryExcerpt("  짧은\n고민 "), "짧은 고민");
 });
+
+test("점성술 버튼으로 들어와 맞춤 첫 인사가 있으면 그 문장을, 없으면 기존 환영 인사", () => {
+  const custom = "지우님, 여기까지 와 줘서 고마워요. 올해를 '고생'이라고 고른 마음이 오래 남았어요.";
+  assert.equal(welcomeGreeting({ fromAstro: true, nickname: "지우", astroGreeting: custom }), custom);
+  assert.match(welcomeGreeting({ fromAstro: true, nickname: "지우", astroGreeting: null }), /쏠 아스트로 하우스에서 오셨군요/);
+  assert.equal(welcomeGreeting({ fromAstro: false, nickname: null }), DEFAULT_GREETING);
+});

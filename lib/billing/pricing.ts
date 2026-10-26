@@ -51,15 +51,15 @@ export const PROMO_QUARTERLY_PRICE = 8700;
 export const PROMO_QUARTERLY_MONTHLY_EQUIVALENT = Math.round(PROMO_QUARTERLY_PRICE / 3); // 2,900원
 export const PROMO_ANNUAL_PRICE = 22800;
 export const PROMO_ANNUAL_MONTHLY_EQUIVALENT = Math.round(PROMO_ANNUAL_PRICE / 12); // 1,900원
-export const PROMO_LABEL = "10월 오픈 기념 특별가";
-export const PROMO_PERIOD_LABEL = "프로모션 기간: 2026년 10월 1일 ~ 10월 31일";
+export const PROMO_LABEL = "오픈 기념 특별가";
 
-// KST(UTC+9) 기준 2026-10-01 00:00:00 ~ 2026-11-01 00:00:00(=10/31 23:59:59.999까지 포함).
+// 2026-10-26 owner 결정: 특가를 11월 이후에도 "그대로" 이어가고 "10월"이라는 말만 뺀다(원래는 KST 2026-11-01 00:00에 끝나 정가·3개월권
+// 판매 종료로 자동 전환되게 해 뒀었다). 그래서 종료 날짜를 없애고 시작일(2026-10-01 00:00 KST) 이후는 계속 특가다. 특가를 끝내고 싶어지면
+// PROMO_END를 다시 두면 가격·화면·체크아웃이 한꺼번에 정가로 돌아간다(isPromoActive 한 곳에서만 판단).
 const PROMO_START = new Date("2026-10-01T00:00:00+09:00");
-const PROMO_END = new Date("2026-11-01T00:00:00+09:00");
 
 export function isPromoActive(now: Date = new Date()): boolean {
-  return now >= PROMO_START && now < PROMO_END;
+  return now >= PROMO_START;
 }
 
 // 실제로 결제될(또는 화면에 보여줄) 금액. 프로모션 기간이 아니면 평소 정가.

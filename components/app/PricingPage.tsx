@@ -15,7 +15,6 @@ import {
   PROMO_ANNUAL_PRICE,
   PROMO_ANNUAL_MONTHLY_EQUIVALENT,
   PROMO_LABEL,
-  PROMO_PERIOD_LABEL,
   isPromoActive,
   type PlanId,
 } from "@/lib/billing/pricing";
@@ -61,14 +60,14 @@ const QUARTERLY_FEATURES = [
   "SSOL AI 웰니스 채팅 3개월 이용",
   "개인화된 일일 작은 제안",
   "온보딩 정보 기반 맞춤 대화",
-  "10월 한정 3개월 특가 적용",
+  "3개월 특가 적용",
 ];
 
 const ANNUAL_FEATURES = [
   "SSOL AI 웰니스 채팅 12개월 이용",
   "개인화된 일일 작은 제안",
   "온보딩 정보 기반 맞춤 대화",
-  "10월 한정 연간 오픈 특가 적용",
+  "연간 오픈 특가 적용",
 ];
 
 export default function PricingPage() {
@@ -196,12 +195,11 @@ export default function PricingPage() {
 
       {promoActive ? (
         <>
-          <h1 className="text-[19px] font-medium text-foreground">10월 한정 · 오픈 기념 이용권 할인</h1>
+          <h1 className="text-[19px] font-medium text-foreground">오픈 기념 이용권 할인</h1>
           <p className="mt-1.5 text-[15px] font-medium text-foreground">매일, 마음을 정리하는 가장 가벼운 루틴</p>
           <p className="mt-2 text-[14px] leading-6 text-slate-500">
             쏘웰라와 부담 없이 대화하며 생각을 정리하고, 지금의 나에게 맞는 작은 변화를 만들어보세요.
           </p>
-          <p className="mt-2 text-[12.5px] font-medium text-navy">{PROMO_PERIOD_LABEL}</p>
         </>
       ) : (
         <>

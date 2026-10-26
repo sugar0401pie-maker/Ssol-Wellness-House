@@ -17,7 +17,7 @@ export type TrialExpiringVariant = "d2" | "d1";
 const COPY: Record<TrialExpiringVariant, { lead: string; body: string }> = {
   d2: {
     lead: "무료 체험 기간이 딱 이틀 남았어요!",
-    body: "10월 한 달간 오픈 기념으로 저렴하게 구독할 수 있어요.",
+    body: "오픈 기념으로 저렴하게 구독할 수 있어요.",
   },
   d1: {
     lead: "쏘웰라를 확실히 곁에 두는 방법을 알려드려요.",

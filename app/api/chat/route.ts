@@ -5,7 +5,9 @@ import { parseAstroOpening } from "@/lib/persona/astroGreeting";
 import { loadAstroGreeting } from "@/lib/mypage/loadAstroGreeting";
 import { determineRoute } from "@/lib/safety/route";
 import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
-import { runScreening } from "@/lib/safety/screeningFlow";
+import { runScreening, screeningOn } from "@/lib/safety/screeningFlow";
+import { VERDICT_SECOND_REPLY } from "@/lib/safety/screeningTexts";
+import { VERDICT_FIRST_BLOCK, VERDICT_REPEAT_BLOCK, situationGuidance, verdictAction } from "@/lib/safety/situations";
 import { canSoftenCrisis } from "@/lib/safety/screening";
 import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTopics, guidanceBlock, perceptionRepeated } from "@/lib/safety/supplemental";
 import { embedQuery } from "@/lib/rag/retrieve";
@@ -307,6 +309,16 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     });
   }
 
+  // 2026-10-23(상담사님 R1, 3단계 S5): 점수·진단·원인 확정 요청. 첫 요청은 아래 생성 단계에서 "마음 반영 + 이면의 욕구 질문" 지침으로, **같은 대화 안의 두 번째 요청**은 AI 없이 고정 안내(개인 웰니스 세션 제안)로 답한다.
+  // 일반 대화 경로(wellness·life_decision)에서만, 고문구 확정 전이라 스크리닝 스위치(SW_SCREENING_ENABLED)와 함께 켜진다. 진단 요청은 임상 경로가 처리한다.
+  const recentAssistantTexts = recentMessages.filter((m) => m.role === "assistant").map((m) => m.content);
+  const s5Allowed = (decision.route === "wellness" || decision.route === "life_decision") && (await screeningOn(admin, userId));
+  const s5 = s5Allowed ? verdictAction(message, recentMessages.filter((m) => m.role === "user").map((m) => m.content), recentAssistantTexts) : "none";
+  if (s5 === "second") {
+    await admin.from("chat_messages").insert({ session_id: sessionId, user_id: userId, role: "assistant", content: VERDICT_SECOND_REPLY, route: decision.route });
+    return NextResponse.json({ sessionId, route: decision.route, reply: VERDICT_SECOND_REPLY, done: true, ...routingMeta });
+  }
+
   // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
   const { rules: safetyRules } = await getSafetyData();
   // 이론 질문 선택 흐름(준비 단계). 기능이 꺼져 있으면(기본값) 즉시 빈 계획을 돌려주고 아무 조회도 하지 않는다.
@@ -354,7 +366,13 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     ...dialogue.generationExtras,
     ...cardPlan?.generationExtras,
     ...hypothesis?.generationExtras,
-    safetyGuidance: guidanceBlock(guidanceTopics, { perceptionRepeated: perceptionRepeated(message, recentUserTexts) }),
+    // SAFE-018~021 지침 + 사별·질병 지침(R3) + 점수·진단 확정 요청 첫 번째/되풀이 지침(S5)을 한 블록으로 합친다.
+    safetyGuidance:
+      [
+        guidanceBlock(guidanceTopics, { perceptionRepeated: perceptionRepeated(message, recentUserTexts) }),
+        situationGuidance(message, recentUserTexts, recentAssistantTexts),
+        s5 === "first" ? `- ${VERDICT_FIRST_BLOCK}` : s5 === "repeat" ? `- ${VERDICT_REPEAT_BLOCK}` : null,
+      ].filter(Boolean).join("\n") || null,
   });
   timer.lap("generate_total");
 

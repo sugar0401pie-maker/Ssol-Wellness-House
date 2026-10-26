@@ -73,6 +73,13 @@ function isExempt(reason: string, text: string): boolean {
   return false;
 }
 
+// 상실 이야기인지(최근/오래전). 최근이면 급성기로 보고 공감·안정화가 먼저, 오래전이면 일반 애도로 본다(상담사님 R3-1). 지침은 lib/safety/situations.ts.
+export function lossTalk(text: string): "recent" | "old" | null {
+  const hit = SIGNALS.bereavement.some((w) => text.includes(w)) || CLOSE_DEATH.test(text);
+  if (!hit) return null;
+  return OLD_LOSS.test(text) ? "old" : "recent";
+}
+
 // 이번 메시지와 직전 사용자 발화 두 개를 본다(한 번 걸린 신호는 다음 한두 턴 동안 유지 — 곧바로 탐색으로 돌아가지 않기 위해).
 export function detectTheoryExclusion(message: string, recentUserMessages: string[] = []): ExclusionReason | null {
   const texts = [message, ...recentUserMessages.slice(-2)];
@@ -80,10 +87,8 @@ export function detectTheoryExclusion(message: string, recentUserMessages: strin
     if (OPEN_ALLOWED_REASONS.includes(reason)) continue;
     if (texts.some((t) => !isExempt(reason, t) && (SIGNALS[reason].some((w) => t.includes(w)) || (reason === "bereavement" && CLOSE_DEATH.test(t))))) return reason;
   }
-  for (const t of texts) {
-    const owner = isExempt("illness", t) ? null : illnessOwner(t);
-    if (owner) return owner;
-  }
+  // 2026-10-23 상담사님 R3-2·R3-3(대표님 확정): 본인·가족·타인의 질병 이야기도 "일반 사례처럼" 이론 탐색을 열고, 의학적 판단·내용은 전문가와 상의하도록 안내한다
+  // (그 안내는 lib/safety/situations.ts의 답변 지침이 맡는다). 그래서 질병은 더 이상 탐색을 닫는 신호가 아니다. 누구의 병인지는 illnessOwner로 계속 가를 수 있다.
   return null;
 }
 

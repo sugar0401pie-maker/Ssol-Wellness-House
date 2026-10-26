@@ -12,10 +12,11 @@ import type { RouteId } from "./types";
 // (스크리닝은 기존 라우터 위에 얹는 추가 장치이고, 기존 위기·폭력 처리는 이 모듈과 무관하게 먼저 동작한다).
 type Admin = ReturnType<typeof createAdminClient>;
 
-// 켜기: SW_SCREENING_ENABLED=1 (기본 꺼짐 — 상담사님이 고정 문구를 확정하기 전). SW_SCREENING_ALLOWLIST(사용자 id 또는 이메일, 쉼표 구분)가 있으면 그 사용자만.
+// 기본 켜짐(2026-10-26 대표님 결정: 기능을 개별로 열지 않고 한 번에 오픈, 아직 활성 사용자 없음). 끄기: SW_SCREENING_ENABLED=0.
+// SW_SCREENING_ALLOWLIST(사용자 id 또는 이메일, 쉼표 구분)가 있으면 그 사용자만. 고정 문구는 상담사 검토 전 개발 초안이며 screeningTexts.ts만 고치면 된다.
 export async function screeningOn(admin: Admin, userId: string): Promise<boolean> {
   const env = process.env as { SW_SCREENING_ENABLED?: string; SW_SCREENING_ALLOWLIST?: string };
-  if (env.SW_SCREENING_ENABLED !== "1") return false;
+  if (env.SW_SCREENING_ENABLED === "0") return false;
   const list = env.SW_SCREENING_ALLOWLIST?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) ?? [];
   if (!list.length) return true;
   if (list.includes(userId.toLowerCase())) return true;

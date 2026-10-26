@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting } from "./welcome.ts";
+import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting, worryExcerpt } from "./welcome.ts";
 import { EVERYDAY_QUESTION_GROUPS } from "./suggestedQuestions.ts";
 
 const pools = { persona: [{ id: "p1", text: "성향" }], everyday: [{ id: "e1", text: "일상" }] };
@@ -30,6 +30,21 @@ test("Q1 영역 6개가 모두 있고, 문구는 겹치지 않으며 진단·위
   assert.equal(new Set(own.map((q) => q.id)).size, own.length);
   for (const q of own) assert.ok(!bad.test(q.text), q.text);
   assert.equal(ASTRO_Q1_CHIPS["직업·커리어"], EVERYDAY_QUESTION_GROUPS[0].questions);
+});
+
+test("타로에서 온 사용자: 닉네임·고민 앞부분·세 번째 카드를 넣은 인사(점성술보다 우선)", () => {
+  const g = welcomeGreeting({ fromAstro: true, nickname: "민준", tarot: { worry: "다음 달 말까지 이직 제안에 답을 줘야 해요.\n지금 회사가 싫은 건지 이 일 자체가 싫은 건지 모르겠어요.", card: "진주를 품는 힘" } });
+  assert.match(g, /^안녕하세요, 민준님, 쏠 타로 하우스에서 오셨군요\./);
+  assert.match(g, /‘다음 달 말까지 이직 제안에 답을 줘야 해요\. 지금 회사가 싫은 건지 이…’ 고민으로 세 장을 뽑으셨죠\./);
+  assert.match(g, /앞으로의 열쇠로 나온 ‘진주를 품는 힘’ 이야기/);
+  assert.doesNotMatch(g, /아스트로/);
+});
+
+test("타로: 고민을 건너뛰었거나 카드를 못 찾으면 그 문장만 빠진다", () => {
+  const g = welcomeGreeting({ fromAstro: false, nickname: null, tarot: { worry: null, card: null } });
+  assert.doesNotMatch(g, /고민으로/);
+  assert.match(g, /타로에서 본 이야기를 이어서/);
+  assert.equal(worryExcerpt("  짧은\n고민 "), "짧은 고민");
 });
 
 test("점성술 버튼으로 들어와 맞춤 첫 인사가 있으면 그 문장을, 없으면 기존 환영 인사", () => {

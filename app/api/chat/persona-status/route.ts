@@ -3,6 +3,8 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
+import { loadTarotWelcome } from "@/lib/tarot/loadTarotInsight";
+import { TAROT_CARDS } from "@/lib/tarot/catalog";
 import { loadAstroGreeting } from "@/lib/mypage/loadAstroGreeting";
 import { astroOpeningFromSearch } from "@/lib/persona/astroGreeting";
 
@@ -19,12 +21,21 @@ export async function GET(req: NextRequest) {
   // 점성술 [쏘웰라와 대화 시작하기]로 들어온 경우(?from=astro&result=…)만 그 결과의 맞춤 첫 인사를 함께 준다(2026-10-26).
   const opening = astroOpeningFromSearch(req.nextUrl.search);
   const safe = async <T,>(f: () => PromiseLike<T>, fallback: T): Promise<T> => { try { return await f(); } catch { return fallback; } };
-  const [persona, astro, profile, astroGreeting] = await Promise.all([
+    // 2026-10-26: 타로 결과 10쪽 버튼으로 넘어오면 ?tarot=<결과 id> — 본인 결과일 때만 고민 글·세 번째 카드로 맞춤 인사.
+  const tarotId = req.nextUrl.searchParams.get("tarot");
+  const [persona, astro, profile, astroGreeting, tarotRow] = await Promise.all([
     safe(() => loadQuizPersona(admin, userId, { includeReport: false }), null),
     safe(async () => (await admin.from("astro_results").select("answers, nickname").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle()).data, null),
     safe(async () => (await admin.from("profiles").select("nickname, display_name").eq("user_id", userId).maybeSingle()).data, null),
     opening ? safe(() => loadAstroGreeting(admin, userId, opening.resultId), null) : Promise.resolve(null),
+    tarotId ? safe(() => loadTarotWelcome(admin, userId, tarotId), null) : Promise.resolve(null),
   ]);
+  let tarot: { worry: string | null; card: string | null } | null = null;
+  if (tarotRow) {
+    const picks = Array.isArray(tarotRow.picks) ? (tarotRow.picks as { id?: string; position?: string }[]) : [];
+    const key = picks.find((p) => p.position === "step") ?? picks[2];
+    tarot = { worry: tarotRow.worry, card: (key?.id && TAROT_CARDS[key.id]?.name) || null };
+  }
   let q1: string | null = null;
   if (astro) {
     let a: unknown = astro.answers;
@@ -39,6 +50,7 @@ export async function GET(req: NextRequest) {
     fromAstro: !!astro,
     astroQ1: q1,
     astroGreeting,
-    nickname: profile?.nickname || profile?.display_name || (astro?.nickname as string | null) || null,
+    tarot,
+    nickname: profile?.nickname || profile?.display_name || tarotRow?.nickname || (astro?.nickname as string | null) || null,
   });
 }

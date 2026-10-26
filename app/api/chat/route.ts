@@ -66,7 +66,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown; cardPick?: unknown; opening?: unknown };
+  let body: { message?: unknown; sessionId?: unknown; isPersonaQuestion?: unknown; choiceId?: unknown; cardPick?: unknown; opening?: unknown; tarotResultId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -75,6 +75,8 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
   const isPersonaQuestion = body.isPersonaQuestion === true;
+  // 2026-10-26: 타로 결과에서 넘어온 대화면 그 결과 id(본인 결과인지는 loadTarotInsight가 user_id로 확인). 새 대화의 첫 메시지 때만 쓰인다(세션 스냅샷에 저장).
+  const tarotResultId = typeof body.tarotResultId === "string" ? body.tarotResultId.slice(0, 64) : null;
   // "행동 제안받기 / 내 고민 더 알아보기" 칩(THEORY_OFFER_ENABLED가 켜졌을 때만 의미가 있다).
   const choiceId = isChoiceId(body.choiceId) ? body.choiceId : null;
   // 선택지 카드 보기를 누른 요청(2026-10-20). 모양만 확인하고, 실제로 보여 준 보기인지는 카드 엔진이 다시 검증한다.
@@ -358,6 +360,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     userId,
     sessionId,
     isPersonaQuestion,
+    tarotResultId,
     queryEmbedding,
     timer,
     ...dialogue.generationExtras,

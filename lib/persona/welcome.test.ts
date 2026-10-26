@@ -38,3 +38,22 @@ test("점성술 버튼으로 들어와 맞춤 첫 인사가 있으면 그 문장
   assert.match(welcomeGreeting({ fromAstro: true, nickname: "지우", astroGreeting: null }), /쏠 아스트로 하우스에서 오셨군요/);
   assert.equal(welcomeGreeting({ fromAstro: false, nickname: null }), DEFAULT_GREETING);
 });
+
+// 2026-10-26: 디저트 테스트 결과가 있는 사람의 첫 인사
+test("디저트 결과가 있으면 유형 이름으로 인사(리포트 없음)", () => {
+  const g = welcomeGreeting({ fromAstro: false, nickname: "수진", hasPersona: true, typeName: "피스타치오 크루아상", hasReport: false });
+  assert.match(g, /수진님, 피스타치오 크루아상 유형 결과를 보고 오셨군요/);
+  assert.doesNotMatch(g, /리포트/);
+});
+test("리포트가 있으면 리포트도 함께 언급", () => {
+  const g = welcomeGreeting({ fromAstro: false, nickname: null, hasPersona: true, typeName: "베리 소르베", hasReport: true });
+  assert.match(g, /베리 소르베 유형 결과와 심층 리포트/);
+  assert.doesNotMatch(g, /님,/);
+});
+test("결과가 없거나 유형 이름을 모르면 기본 인사", () => {
+  assert.equal(welcomeGreeting({ fromAstro: false, nickname: "수진", hasPersona: false, typeName: null }), DEFAULT_GREETING);
+  assert.equal(welcomeGreeting({ fromAstro: false, nickname: "수진", hasPersona: true, typeName: " " }), DEFAULT_GREETING);
+});
+test("점성술에서 온 사람은 점성술 인사가 우선", () => {
+  assert.match(welcomeGreeting({ fromAstro: true, nickname: "수진", hasPersona: true, typeName: "베리 소르베", hasReport: true }), /쏠 아스트로 하우스에서 오셨군요/);
+});

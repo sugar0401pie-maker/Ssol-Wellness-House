@@ -307,7 +307,8 @@ describe("buildSystemPrompt", () => {
   test("정확히 2번째 답변(turnCount 1)에서는 대략적인 방향 제시 + 더 구체적으로 원하는지 확인하라는 지침이 들어간다", () => {
     // 2026-09-24: "2번째부터 대략적으로 안내하고 더 구체적으로 설명해달라 하고, 3번째부터
     // 무조건 실질적으로" 요청 반영 — 3단계(1턴/2턴/3턴 이상)로 나눔.
-    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 1 });
+    // 2026-10-26: 일반 대화 경로(wellness·life_decision)는 층위 구조가 속도를 정하므로 이 기존 기준은 그 밖의 경로(service_info)에서 확인한다.
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "service_info", usedClinicalChunk: false, turnCount: 1 });
     assert.match(p, /2번째 답변입니다/);
     assert.match(p, /대략적인 방향이나 일반적인 수준의 도움말을 먼저/);
     // 아직 3번째 답변이 아니므로, 여러 감정에 실질적 해결책을 짝짓는 강한 지침은 없어야 한다.
@@ -315,7 +316,7 @@ describe("buildSystemPrompt", () => {
   });
 
   test("3번째 답변부터(turnCount 2 이상)는 여러 감정에 실질적 해결책을 짝지어 한 번에 제시하라는 지침이 들어간다", () => {
-    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "service_info", usedClinicalChunk: false, turnCount: 2 });
     assert.match(p, /각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어/);
   });
 
@@ -343,8 +344,14 @@ describe("buildSystemPrompt", () => {
     // 요청 반영 — 그냥 "2~3가지"가 아니라 단기/중장기 구분이 명시적으로 들어가야 한다.
     // 2026-09-24: "1~2회 정도만 구체화하고 이후부터는 구체적인 답변을" 요청으로 turnCount>=3
     // 이었던 기준을 turnCount>=2로 한 턴 앞당김.
-    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
+    const p = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "service_info", usedClinicalChunk: false, turnCount: 2 });
     assert.match(p, /지금 상황은 이런 것 같아요/);
+    // 일반 대화 경로는 4번째 답변부터(대표님 2026-10-26)
+    const w3 = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 3 });
+    assert.match(w3, /지금 상황은 이런 것 같아요/);
+    assert.match(w3, /단기적인 것과 꾸준히 이어가면 좋을 중장기적인 것을 구분/);
+    const w2 = buildSystemPrompt({ sections: SECTIONS, matchedRules: [], route: "wellness", usedClinicalChunk: false, turnCount: 2 });
+    assert.doesNotMatch(w2, /지금 상황은 이런 것 같아요/);
     assert.match(p, /단기적인 것과 꾸준히 이어가면 좋을 중장기적인 것을 구분/);
   });
 
@@ -385,7 +392,7 @@ describe("buildSystemPrompt", () => {
     const base = { sections: SECTIONS, matchedRules: [], route: "wellness" as const, usedClinicalChunk: false };
 
     test("dialogueMode가 없으면 기존 동작과 완전히 같다 — 선택 흐름 지시가 하나도 들어가지 않는다", () => {
-      const p = buildSystemPrompt({ ...base, turnCount: 1 });
+      const p = buildSystemPrompt({ ...base, route: "service_info", turnCount: 1 });
       assert.doesNotMatch(p, /내 고민 더 알아보기/);
       assert.doesNotMatch(p, /행동 제안받기/);
       assert.match(p, /이번이 이 대화의 2번째 답변입니다/); // 기본 페이싱은 그대로
@@ -509,9 +516,17 @@ describe("역할 층위 지침", () => {
     assert.match(p, /한 번에 한 층씩 아래로/);
     assert.match(p, /물음표가 하나인 한 문장/);
   });
-  test("두 번째 답변: 층위 4를 가설로(단정·진단 금지) / 세 번째부터: 해결책을 층위 4에 맞춤", () => {
-    assert.match(buildSystemPrompt({ ...base, route: "wellness", turnCount: 1 }), /가설로 한두 가지만 짚어/);
-    assert.match(buildSystemPrompt({ ...base, route: "life_decision", turnCount: 2 }), /층위 4\)에 맞춘 것/);
+  test("두 번째: 한 칸 더 아래 후보 / 세 번째: 층위 4 가설 / 네 번째부터: 해결책을 층위 4에 맞춤", () => {
+    assert.match(buildSystemPrompt({ ...base, route: "wellness", turnCount: 1 }), /한 칸 더 아래로 내려가세요/);
+    const third = buildSystemPrompt({ ...base, route: "wellness", turnCount: 2 });
+    assert.match(third, /가설로 한두 가지만 짚고/);
+    assert.match(third, /해결책은 이번에는 아직 나열하지 마세요/);
+    assert.match(buildSystemPrompt({ ...base, route: "life_decision", turnCount: 3 }), /층위 4\)에 맞춘 것/);
+  });
+  test("해결책을 직접 요청하면 어느 턴이든 앞당긴다", () => {
+    const p = buildSystemPrompt({ ...base, route: "wellness", turnCount: 0, reportQuery: { message: "그래서 어떻게 하면 좋을까요?" } });
+    assert.match(p, /이제 해결책을 낼 차례입니다/);
+    assert.match(p, /지금 상황은 이런 것 같아요/);
   });
   test("층위 5·6 경계: 개인 웰니스 세션은 원할 때 한 번만, 병리적 원인·약·치료는 전문 기관", () => {
     const p = buildSystemPrompt({ ...base, route: "wellness", turnCount: 0 });
@@ -530,7 +545,7 @@ describe("역할 층위 지침", () => {
     assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: 0, dialogueMode: "action" }), /한 번에 한 층씩/);
   });
   test("'~할 수 없어요' 거절 표현이 없다", () => {
-    for (const n of [0, 1, 2]) assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: n }).split("\n\n").filter((x) => /층/.test(x)).join(" "), /(할|드릴)\s*수\s*없어요/);
+    for (const n of [0, 1, 2, 3]) assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: n }).split("\n\n").filter((x) => /층/.test(x)).join(" "), /(할|드릴)\s*수\s*없어요/);
   });
 });
 

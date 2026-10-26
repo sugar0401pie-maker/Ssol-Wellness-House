@@ -4,7 +4,7 @@ import type { RouteId } from "../safety/types.ts";
 import type { TheoryGuide, TheoryStage, VoiceCard } from "../theory/types.ts";
 import { selectReportSections, splitReportInsight } from "./reportSelect.ts";
 import type { TraumaStage } from "../safety/traumaStage.ts";
-import { GENERAL_LAYER_ROUTES, isLayer5Signal, layerHandoffBlock, layerPacingBlock } from "./layers.ts";
+import { GENERAL_LAYER_ROUTES, SOLVE_FROM_TURN, isLayer5Signal, isSolveNowRequest, layerHandoffBlock, layerPacingBlock } from "./layers.ts";
 
 type SectionLike = { section_name: string; prompt_text: string; priority: string };
 type RuleLike = { rule_id: string; category: string; rule_text: string };
@@ -395,12 +395,15 @@ export function buildSystemPrompt(params: {
   // ("1~2회 정도만 구체화하고 이후부터는 구체적인 답변을" → "2번째부터는 대략 안내하고
   // 구체적으로 원하는지 물은 뒤, 3번째부터는 무조건 실질적으로" 로 owner가 재조정한 기준.)
   const dialoguePacing = params.dialogueMode !== undefined; // 선택 흐름이 페이싱을 대신한다
-  if (!dialoguePacing && (params.turnCount ?? 0) === 1) {
+  // 2026-10-26(대표님): 일반 대화 경로의 일반 답변은 층위 구조(lib/rag/layers.ts)가 속도를 정한다 — 해결책은 4번째 답변부터(사용자가 직접 해결책을 물으면 앞당김). 그 밖의 경로·턴은 위 2026-09-24 기준 그대로.
+  const layered = !dialoguePacing && GENERAL_LAYER_ROUTES.includes(params.route) && !params.safetyGuidance && params.personaMode !== "characterization";
+  const solveNow = layered && !!params.reportQuery?.message && isSolveNowRequest(params.reportQuery.message);
+  if (!dialoguePacing && !layered && (params.turnCount ?? 0) === 1) {
     parts.push(
       "이번이 이 대화의 2번째 답변입니다. 아직 완전히 구체화하지 않아도 되니, 지금까지 들은 내용을 바탕으로 대략적인 방향이나 일반적인 수준의 도움말을 먼저 이야기하세요. 상황을 더 파악하기 위한 확인 질문(예: 언제·누가·어떤 식으로 그러는지)은 이번 턴에서 하지 마세요 — 그런 질문은 다음 턴에서 구체적으로 제안할 때 필요하면 자연스럽게 녹여서 쓰면 됩니다. 이번 턴은 반드시 '지금 말한 정도의 방향이면 괜찮은지, 아니면 더 구체적으로 알려줄지'를 묻는 것으로만 마무리하세요.",
     );
   }
-  if (!dialoguePacing && (params.turnCount ?? 0) >= 2) {
+  if (!dialoguePacing && (params.turnCount ?? 0) >= (layered ? SOLVE_FROM_TURN : 2) || (layered && solveNow)) {
     parts.push(
       "이미 이 대화에서 몇 차례 들었습니다. 더 이상 새로운 확인 질문만 반복하지 말고, 지금까지 들은 내용을 바탕으로 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 단기적인 것과 꾸준히 이어가면 좋을 중장기적인 것을 구분해서 총 3가지 안팎으로 구체적으로 제안하세요. 마지막에는 새 질문 하나 대신, 추가로 궁금하거나 다르게 다루고 싶은 부분이 있는지 물어보며 마무리하세요.",
     );
@@ -411,8 +414,8 @@ export function buildSystemPrompt(params: {
 
   // 2026-10-26(대표님 확정 역할 층위, docs/제품_역할_층위.md): 일반 대화 경로의 일반 답변은 "한 번에 한 층씩 아래로 → 층위 4(성향·바라는 것) 가설 → 그에 맞춘 해결책"으로 진행하고,
   // 층위 5(왜 생겼는지·관리·극복)는 원할 때만 개인 웰니스 세션으로, 층위 6(병리적 원인·약·치료)은 전문 기관으로 안내한다. 선택 흐름·안전 지침(사별·섭식 등)이 있는 턴·캐릭터 해석 질문에서는 붙이지 않는다.
-  if (!dialoguePacing && GENERAL_LAYER_ROUTES.includes(params.route) && !params.safetyGuidance && params.personaMode !== "characterization") {
-    parts.push(layerPacingBlock(params.turnCount ?? 0));
+  if (layered) {
+    parts.push(layerPacingBlock(params.turnCount ?? 0, { solveNow }));
     parts.push(layerHandoffBlock({ humanSessionAlreadyOffered: params.humanSessionAlreadyOffered, layer5Now: !!params.reportQuery?.message && isLayer5Signal(params.reportQuery.message) }));
   }
 

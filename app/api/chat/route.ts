@@ -9,6 +9,7 @@ import { runScreening, screeningOn } from "@/lib/safety/screeningFlow";
 import { VERDICT_SECOND_REPLY } from "@/lib/safety/screeningTexts";
 import { VERDICT_FIRST_BLOCK, VERDICT_REPEAT_BLOCK, situationGuidance, verdictAction } from "@/lib/safety/situations";
 import { canSoftenCrisis } from "@/lib/safety/screening";
+import { isLayer5Signal } from "@/lib/rag/layers";
 import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTopics, guidanceBlock, perceptionRepeated } from "@/lib/safety/supplemental";
 import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
@@ -323,7 +324,8 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   const { rules: safetyRules } = await getSafetyData();
   // 이론 질문 선택 흐름(준비 단계). 기능이 꺼져 있으면(기본값) 즉시 빈 계획을 돌려주고 아무 조회도 하지 않는다.
   // 섭식·현실감·과음 상태에서는 이론 탐색·선택 카드·가설 말하기를 열지 않는다(CSO SAFE-018·020·021: 걱정을 전하고 전문 도움 안내가 먼저).
-  const suppressOffers = guidanceTopics.some((t) => SUPPRESS_OFFERS.includes(t));
+  // 2026-10-26: 사용자가 "왜 이런 성향이 생겼는지·어떻게 관리할지"(층위 5)를 직접 물은 턴에도 카드·가설 말하기를 열지 않는다 — 그 질문에 휴먼 웰니스 세션 안내로 답해야 하기 때문(lib/rag/layers.ts).
+  const suppressOffers = guidanceTopics.some((t) => SUPPRESS_OFFERS.includes(t)) || ((decision.route === "wellness" || decision.route === "life_decision") && isLayer5Signal(message));
   const dialogue = await planDialogue({
     admin,
     userId,

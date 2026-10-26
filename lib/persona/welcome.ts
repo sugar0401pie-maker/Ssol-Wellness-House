@@ -28,9 +28,11 @@ export const ASTRO_Q1_CHIPS: Record<string, SuggestedQuestion[]> = {
   ],
 };
 
-export type WelcomeStatus = { hasPersona: boolean; astroQ1: string | null; fromAstro: boolean; nickname: string | null };
+// astroGreeting: 점성술 [쏘웰라와 대화 시작하기]로 들어온 직후에만 오는 그 결과의 맞춤 첫 인사(lib/persona/astroGreeting.ts, 2026-10-26).
+export type WelcomeStatus = { hasPersona: boolean; astroQ1: string | null; fromAstro: boolean; nickname: string | null; astroGreeting?: string | null };
 
-export function welcomeGreeting(s: Pick<WelcomeStatus, "fromAstro" | "nickname">): string {
+export function welcomeGreeting(s: Pick<WelcomeStatus, "fromAstro" | "nickname" | "astroGreeting">): string {
+  if (s.astroGreeting) return s.astroGreeting;
   if (!s.fromAstro) return DEFAULT_GREETING;
   const name = s.nickname?.trim() ? `${s.nickname.trim()}님, ` : "";
   return `안녕하세요, ${name}쏠 아스트로 하우스에서 오셨군요. 반가워요! 결과를 보며 마음에 남은 이야기가 있다면 편하게 들려주세요. 아래에서 고르셔도 좋아요.`;

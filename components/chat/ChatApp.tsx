@@ -6,6 +6,7 @@ import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions, type SuggestedQuestionGroup } from "@/lib/persona/suggestedQuestions";
 import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting, type WelcomeStatus } from "@/lib/persona/welcome";
+import { ASTRO_OPENING_FROM, astroOpeningFromSearch, type AstroOpening } from "@/lib/persona/astroGreeting";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
@@ -103,6 +104,9 @@ export default function ChatApp() {
   // 테스트 결과 여부를 알기 전(null)에는 칩을 보이지 않는다(잘못된 칩이 잠깐 보였다 바뀌는 것을 막음).
   // 점성술(쏠 아스트로 하우스)을 보고 넘어온 사용자는 환영 인사와, 그때 고른 영역에 맞춘 시작 문구를 본다(lib/persona/welcome.ts).
   const [welcome, setWelcome] = useState<WelcomeStatus | null>(null);
+  // 2026-10-26: 점성술 [쏘웰라와 대화 시작하기]로 들어왔는지(/chat?from=astro&result=…). 들어온 그 순간의 새 대화에서만
+  // 그 결과의 맞춤 첫 인사를 보여 주고, 첫 메시지와 함께 서버에 알려 인사를 대화 기록에도 남긴다(lib/persona/astroGreeting.ts).
+  const astroOpening = useRef<AstroOpening | null>(typeof window === "undefined" ? null : astroOpeningFromSearch(window.location.search));
   const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
   const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
   const starter = welcome ? chooseStarterChips(welcome, { persona: personaChips, everyday: everydayChips }) : { chips: [], persona: false };
@@ -155,9 +159,11 @@ export default function ChatApp() {
       const token = await getAccessToken();
       if (!token) return;
       try {
-        const res = await fetch("/api/chat/persona-status", { headers: authHeaders(token) });
+        const o = astroOpening.current;
+        const qs = o ? `?from=${ASTRO_OPENING_FROM}${o.resultId ? `&result=${o.resultId}` : ""}` : "";
+        const res = await fetch(`/api/chat/persona-status${qs}`, { headers: authHeaders(token) });
         const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
-        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null });
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null });
       } catch {
         if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
       }
@@ -243,6 +249,8 @@ export default function ChatApp() {
           message: trimmed,
           sessionId: sessionId.current,
           isPersonaQuestion: options?.isPersonaQuestion ?? false,
+          // 맞춤 첫 인사를 본 새 대화의 첫 메시지에만(인사 문장은 서버가 다시 읽는다)
+          ...(astroOpening.current && !sessionId.current && welcome?.astroGreeting ? { opening: { from: ASTRO_OPENING_FROM, resultId: astroOpening.current.resultId } } : {}),
           ...(options?.choiceId ? { choiceId: options.choiceId } : {}),
           ...(options?.cardPick ? { cardPick: options.cardPick } : {}),
         }),
@@ -337,6 +345,12 @@ export default function ChatApp() {
     }
   }
 
+  // 맞춤 첫 인사는 점성술에서 들어온 그 대화에서만 — 새 대화를 시작하거나 지난 대화를 열면 기본 인사로 돌아간다.
+  function endAstroOpening() {
+    astroOpening.current = null;
+    setWelcome((w) => (w && w.astroGreeting ? { ...w, astroGreeting: null } : w));
+  }
+
   async function loadSession(id: string) {
     if (loadingSessionId) return;
     setLoadingSessionId(id);
@@ -347,6 +361,7 @@ export default function ChatApp() {
       if (!res.ok) throw new Error();
       const data = (await res.json()) as { messages: { role: "user" | "assistant"; content: string }[] };
       cancelReveal.current?.();
+      endAstroOpening();
       nextId.current = 1;
       setMessages(withOfferChoices(data.messages.map((m) => ({ id: nextId.current++, role: m.role, content: m.content }))));
       sessionId.current = id;
@@ -370,6 +385,17 @@ export default function ChatApp() {
     } catch {
       // localStorage를 못 읽으면 그냥 새 대화로 시작한다.
     }
+    // 점성술에서 막 들어왔으면 이어 보던 대화 대신 새 대화로 시작한다(맞춤 첫 인사로 시작하려고).
+    // 주소의 ?from=astro는 지워서, 새로고침하거나 공유해도 다시 적용되지 않게 한다(이 화면의 상태는 이미 읽어 둠).
+    if (astroOpening.current) {
+      savedId = null;
+      saveActiveSessionId(null);
+      try {
+        window.history.replaceState(window.history.state, "", window.location.pathname);
+      } catch {
+        // 주소를 못 바꿔도 동작에는 지장 없다.
+      }
+    }
     // loadSession은 그 안에서 setState를 곧바로 호출하므로, 이펙트 본문에서 직접 부르지 않고
     // 마이크로태스크로 한 틱 미룬다(react-hooks/set-state-in-effect 회피).
     if (savedId) void Promise.resolve().then(() => loadSession(savedId));
@@ -383,6 +409,7 @@ export default function ChatApp() {
   }
 
   function resetChat() {
+    endAstroOpening();
     setMessages([]);
     setInput("");
     sessionId.current = null;

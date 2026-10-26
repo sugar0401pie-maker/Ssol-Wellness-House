@@ -31,3 +31,10 @@ test("Q1 영역 6개가 모두 있고, 문구는 겹치지 않으며 진단·위
   for (const q of own) assert.ok(!bad.test(q.text), q.text);
   assert.equal(ASTRO_Q1_CHIPS["직업·커리어"], EVERYDAY_QUESTION_GROUPS[0].questions);
 });
+
+test("점성술 버튼으로 들어와 맞춤 첫 인사가 있으면 그 문장을, 없으면 기존 환영 인사", () => {
+  const custom = "지우님, 여기까지 와 줘서 고마워요. 올해를 '고생'이라고 고른 마음이 오래 남았어요.";
+  assert.equal(welcomeGreeting({ fromAstro: true, nickname: "지우", astroGreeting: custom }), custom);
+  assert.match(welcomeGreeting({ fromAstro: true, nickname: "지우", astroGreeting: null }), /쏠 아스트로 하우스에서 오셨군요/);
+  assert.equal(welcomeGreeting({ fromAstro: false, nickname: null }), DEFAULT_GREETING);
+});

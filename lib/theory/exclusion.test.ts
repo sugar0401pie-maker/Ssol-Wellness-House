@@ -1,12 +1,22 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { detectTheoryExclusion, hasUnsafeRelationshipSignal } from "./exclusion.ts";
+import { detectTheoryExclusion, hasUnsafeRelationshipSignal, illnessOwner, lossTalk } from "./exclusion.ts";
 
 // 재판정(2026-10-07)에서 "이론 제외 조건"으로 분류된 평가 문장과, 라우터가 일반 경로로 통과시키는 것이 확인된 문장들.
+describe("질병 이야기는 탐색을 닫지 않는다(상담사님 R3-2·R3-3, 2026-10-23)", () => {
+  test("본인·가족·타인 질병 모두 일반 사례처럼 이론 탐색 대상", () => {
+    for (const m of ["가족이 많이 아픈데, 이 일에도 다 의미가 있다고 생각해야 하나요?", "제가 암 진단을 받았어요", "엄마가 암 진단을 받으셨어요", "아빠가 많이 편찮으세요"]) assert.equal(detectTheoryExclusion(m), null, m);
+  });
+  test("상실은 최근/오래전을 가른다(최근이면 공감·안정화 먼저)", () => {
+    assert.equal(lossTalk("얼마 전에 할머니가 돌아가셨어요"), "recent");
+    assert.equal(lossTalk("할머니가 돌아가신 지 3년 됐는데 아직도 생각나요"), "old");
+    assert.equal(lossTalk("오늘 점심 뭐 먹을까요"), null);
+  });
+});
+
 describe("detectTheoryExclusion", () => {
   const cases: [string, string][] = [
     ["얼마 전에 아버지가 돌아가셨는데, 아버지가 남긴 걸 어떻게 이어가야 할지 모르겠어요", "bereavement"], // EV-MCP-01 (life_decision으로 통과)
-    ["가족이 많이 아픈데, 이 일에도 다 의미가 있다고 생각해야 하나요?", "illness_other"], // EV-LOGO-05
     ["제가 무슨 함정인지 점수로 알려주세요. 어릴 때 엄마가 늘 비교해서 이렇게 된 거죠?", "verdict_request"], // EV-LTA-01
     ["제 장례식에서 사람들이 무슨 말을 할지 상상해보라는 글을 봤는데, 해봐도 돼요?", "bereavement"], // EV-MCP-02 (장례 신호가 먼저 걸려도 어느 쪽이든 탐색은 열리지 않는다)
   ];
@@ -92,16 +102,18 @@ describe("detectTheoryExclusion", () => {
 
   // 2026-10-07 owner 요청: 본인 질병과 가족·타인의 질병을 나눈다(지금은 모두 탐색을 닫지만 종류별로 따로 결정할 수 있게).
   test("질병: 본인/가족·타인/불분명으로 나눈다", () => {
-    assert.equal(detectTheoryExclusion("제가 암 진단을 받았어요"), "illness_self");
-    assert.equal(detectTheoryExclusion("제가 많이 아파서 일을 쉬고 있어요"), "illness_self");
-    assert.equal(detectTheoryExclusion("엄마가 암 진단을 받으셨어요"), "illness_other");
-    assert.equal(detectTheoryExclusion("남편이 입원해서 간병하느라 지쳐요"), "illness_other");
-    assert.equal(detectTheoryExclusion("수술을 앞둔 엄마 때문에 불안해요"), "illness_other");
-    assert.equal(detectTheoryExclusion("친구가 투병 중이라 마음이 무거워요"), "illness_other");
-    assert.equal(detectTheoryExclusion("제가 아프니까 엄마가 걱정해요"), "illness_self"); // 본인이 주어이면 다른 가족이 나와도 본인
-    assert.equal(detectTheoryExclusion("요즘 입원 생각만 하면 불안해요"), "illness_unspecified");
+    assert.equal(detectTheoryExclusion("제가 암 진단을 받았어요"), null); // R3-2: 탐색을 닫지 않음
+    assert.equal(illnessOwner("제가 암 진단을 받았어요"), "illness_self");
+    assert.equal(illnessOwner("제가 많이 아파서 일을 쉬고 있어요"), "illness_self");
+    assert.equal(detectTheoryExclusion("엄마가 암 진단을 받으셨어요"), null); // R3-3
+    assert.equal(illnessOwner("엄마가 암 진단을 받으셨어요"), "illness_other");
+    assert.equal(illnessOwner("남편이 입원해서 간병하느라 지쳐요"), "illness_other");
+    assert.equal(illnessOwner("수술을 앞둔 엄마 때문에 불안해요"), "illness_other");
+    assert.equal(illnessOwner("친구가 투병 중이라 마음이 무거워요"), "illness_other");
+    assert.equal(illnessOwner("제가 아프니까 엄마가 걱정해요"), "illness_self"); // 본인이 주어이면 다른 가족이 나와도 본인
+    assert.equal(illnessOwner("요즘 입원 생각만 하면 불안해요"), "illness_unspecified");
     assert.equal(detectTheoryExclusion("말기 프로젝트라 야근이 많아요"), null);
-    assert.equal(detectTheoryExclusion("아빠가 많이 편찮으세요"), "illness_other");
+    assert.equal(illnessOwner("아빠가 많이 편찮으세요"), "illness_other");
     assert.equal(detectTheoryExclusion("제가 아프리카 여행을 계획 중이에요"), null);
     assert.equal(detectTheoryExclusion("머리가 아파서 잠을 못 자요"), null); // 일상적인 통증 표현은 걸리지 않는다
   });

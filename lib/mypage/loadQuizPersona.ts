@@ -28,6 +28,8 @@ export type QuizPersona = {
   // buildReportInsight() 참고. 동시에 prompt.ts 쪽 지침도 "리포트를 그대로 인용하면 안 된다"에서
   // "인용해도 된다"로 바뀌었다(이 둘은 같은 결정의 두 축이라 항상 같이 움직여야 한다).
   reportInsight: string | null;
+  // 2026-10-26: 이 응시 기록에 완성된 심층 리포트가 있는지(채팅 첫 인사 문구용). includeReport=false여도 가볍게(id만) 확인해 채운다.
+  hasReport?: boolean;
 };
 
 // 2026-09-25 버그 발견: 심리테스트 앱이 v2로 재구축되면서 ssol_reports의 리포트 본문 컬럼이
@@ -160,7 +162,7 @@ export async function loadQuizPersona(
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle()
-      : Promise.resolve({ data: null }),
+      : admin.from("ssol_reports").select("id").eq("result_id", quizResult.id).eq("status", "ready").limit(1).maybeSingle(),
   ]);
   if (!rich) return null;
 
@@ -173,6 +175,7 @@ export async function loadQuizPersona(
     blurb: rich.blurb,
     traits: rich.traits ?? [],
     domainScores: (quizResult.axis_scores as Record<string, number>) ?? null,
-    reportInsight: buildReportInsight(report?.assembled),
+    reportInsight: includeReport ? buildReportInsight((report as { assembled?: unknown } | null)?.assembled) : null,
+    hasReport: !!report,
   };
 }

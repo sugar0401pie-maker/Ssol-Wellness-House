@@ -170,7 +170,7 @@ export default function ChatApp() {
         const qs = o ? `?from=${ASTRO_OPENING_FROM}${o.resultId ? `&result=${o.resultId}` : ""}` : tarotResultId ? `?tarot=${encodeURIComponent(tarotResultId)}` : "";
         const res = await fetch(`/api/chat/persona-status${qs}`, { headers: authHeaders(token) });
         const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
-        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null, tarot: json?.tarot ?? null });
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, typeName: json?.typeName ?? null, hasReport: json?.hasReport === true, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null, tarot: json?.tarot ?? null });
       } catch {
         if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
       }

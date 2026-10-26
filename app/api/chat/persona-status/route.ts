@@ -45,6 +45,8 @@ export async function GET(req: NextRequest) {
   }
   return NextResponse.json({
     hasPersona: !!persona,
+    typeName: persona?.name ?? null, // 첫 인사에 쓰는 디저트 유형 이름(결과 내용·점수는 싣지 않음)
+    hasReport: persona?.hasReport === true,
     fromAstro: !!astro,
     astroQ1: q1,
     astroGreeting,

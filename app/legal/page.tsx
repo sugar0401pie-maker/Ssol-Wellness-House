@@ -67,12 +67,12 @@ export default function LegalPage() {
           <h2 className="text-[18px] font-semibold text-foreground">쏠 웰니스 하우스 이용약관</h2>
           <p className="mt-1 text-[13px] text-slate-400">시행일자: 2026년 09월 22일</p>
 
-          {/* 2026-10-22 이용약관 개정 예고(공고 10/22 → 시행 예정 11/21, 이용자에게 불리할 수 있는 변경이라 제3조 3항에 따라 30일 전 고지).
-              방침 예고 박스와 짝이다. 시행일(2026-11-21)에는 아래 내용을 제10조·제14조·제17조 본문에 합치고 상자는 지운다(CLAUDE.md 2026-10-22 기록).
+          {/* 2026-10-22 이용약관 개정 예고(공고 10/26 → 시행 예정 11/25, 이용자에게 불리할 수 있는 변경이라 제3조 3항에 따라 30일 전 고지).
+              방침 예고 박스와 짝이다. 시행일(2026-11-25)에는 아래 내용을 제10조·제14조·제17조 본문에 합치고 상자는 지운다(CLAUDE.md 2026-10-22 기록).
               ⚠ 법률 검토 전 문구. 3항의 "상담 신청 시 별도 동의"는 상담 신청 화면에 동의 항목을 추가해야 성립한다(아직 없음). */}
           <div className="mt-5 rounded-xl border border-navy bg-navy-soft p-4" id="terms-notice">
             <p className="text-[14px] font-semibold text-navy">이용약관 개정 예고</p>
-            <p className="mt-1 text-[12.5px] text-slate-500">공고일자: 2026년 10월 22일 · 시행 예정일: 2026년 11월 21일</p>
+            <p className="mt-1 text-[12.5px] text-slate-500">공고일자: 2026년 10월 26일 · 시행 예정일: 2026년 11월 25일</p>
             <p className="mt-3 text-[13px] leading-6 text-slate-600">
               AI 대화 서비스(쏘웰라)의 성격과 대화 내용의 이용 방식을 분명히 안내하기 위해 아래와 같이 개정합니다. 아래 내용은 시행
               예정일부터 적용되며, 그 전까지는 이 약관 본문이 적용됩니다.
@@ -359,12 +359,12 @@ export default function LegalPage() {
           <h2 className="text-[18px] font-semibold text-foreground">개인정보처리방침</h2>
           <p className="mt-1 text-[13px] text-slate-400">공고일자: 2026년 09월 22일 · 시행일자: 2026년 09월 22일</p>
 
-          {/* 2026-10-22 개인정보처리방침 개정 예고(공고 10/22 → 시행 예정 11/21, 30일 전 고지). 대표님 결정: 대화 원문은 짧게(24개월), 개인을 알 수 없게 만든
-              통계는 더 길게(3년). 시행일(2026-11-21)에는 이 상자의 내용을 아래 본문(1·2·4·5·7항)에 합치고 상자는 지운다(CLAUDE.md 2026-10-22 기록).
+          {/* 2026-10-22 개인정보처리방침 개정 예고(공고 10/26 → 시행 예정 11/25, 30일 전 고지). 대표님 결정: 대화 원문은 짧게(24개월), 개인을 알 수 없게 만든
+              통계는 더 길게(3년). 시행일(2026-11-25)에는 이 상자의 내용을 아래 본문(1·2·4·5·7항)에 합치고 상자는 지운다(CLAUDE.md 2026-10-22 기록).
               ⚠ 법률 검토 전 문구 — 특히 국외 이전 항목과 보유 기간 표기. */}
           <div className="mt-5 rounded-xl border border-navy bg-navy-soft p-4" id="privacy-notice">
             <p className="text-[14px] font-semibold text-navy">개인정보처리방침 개정 예고</p>
-            <p className="mt-1 text-[12.5px] text-slate-500">공고일자: 2026년 10월 22일 · 시행 예정일: 2026년 11월 21일</p>
+            <p className="mt-1 text-[12.5px] text-slate-500">공고일자: 2026년 10월 26일 · 시행 예정일: 2026년 11월 25일</p>
             <p className="mt-3 text-[13px] leading-6 text-slate-600">
               AI 대화 서비스(쏘웰라)에서 처리하는 정보와 보유 기간을 구체적으로 안내하기 위해 아래와 같이 개정합니다. 아래 내용은
               시행 예정일부터 적용되며, 그 전까지는 이 방침 본문이 적용됩니다.

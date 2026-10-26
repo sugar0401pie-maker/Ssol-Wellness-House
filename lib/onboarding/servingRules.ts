@@ -22,6 +22,8 @@ export type ServingContext = {
   maxExposureStep?: number;
   // 트라우마 T0/T1 대화(lib/safety/traumaStage.ts)에서는 exposure 실천을 전부 뺀다.
   excludeExposure?: boolean;
+  // 2026-10-19 상담사 D6: 폭력·통제 관계 신호가 있으면 파트너와 직접 대화·요청하는 실천(requires_partner)을 뺀다.
+  excludePartnerPractices?: boolean;
 };
 
 export const DEFAULT_MAX_EXPOSURE_STEP = 1;

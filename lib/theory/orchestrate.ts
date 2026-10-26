@@ -23,7 +23,7 @@ import {
   type DialogueState,
 } from "./dialogueState";
 import { composeCommitReply, composeExploreReply, stripQuestions } from "./compose";
-import { detectTheoryExclusion } from "./exclusion";
+import { detectTheoryExclusion, hasUnsafeRelationshipSignal } from "./exclusion";
 import { detectTextIntent } from "./intent";
 import {
   EXTENSION_CHOICES,
@@ -261,7 +261,7 @@ async function planExploreTurn(args: {
         theoryId,
         messages: userMessages,
         onboardingPrefs: prefs,
-        serving: { hasCrisisHistory: await hasCrisisHistory(admin, ids.userId) },
+        serving: { hasCrisisHistory: await hasCrisisHistory(admin, ids.userId), excludePartnerPractices: hasUnsafeRelationshipSignal(message, userMessages.slice(0, -1)) },
         traumaStage,
         alreadyShownText: assistantMessages.join("\n"),
       });

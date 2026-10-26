@@ -35,7 +35,7 @@ export type PersonaHint = {
   reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
-export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead";
+export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead" | "hypothesis_lead" | "card_follows";
 
 const STAGE_GUIDE: Record<TheoryStage, string> = {
   OPEN: "상황과 감정을 사용자의 말로 풀어내도록 돕는 단계",
@@ -62,6 +62,14 @@ function voiceCardLines(card: VoiceCard | null | undefined): string[] {
 function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null | undefined): string {
   if (mode === "offer_follows") {
     return "이번 답변 바로 뒤에 시스템이 '지금 당장 해볼 수 있는 방법을 알려드릴까요, 아니면 고민을 더 깊게 알아볼까요?'라는 선택 안내를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 지금까지 들은 마음을 따뜻하게 반영하고 짧게 정리하는 것으로 마무리하세요. 구체적인 행동 제안은 사용자가 고른 뒤에 하므로 이번에는 하지 마세요. 선택 안내 문구 자체는 쓰지 마세요.";
+  }
+  if (mode === "card_follows") {
+    // 2026-10-20: 이 답변 바로 뒤에 시스템이 "가능한 이유"를 고르는 선택 카드(보기 3개)를 붙인다. AI는 마음을 반영하는 것으로 마무리한다.
+    return "이번 답변 바로 뒤에 시스템이 '지금 마음에 가장 가까운 이유를 고르는 선택 카드'를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 방금 한 말에 담긴 마음을 따뜻하게 한두 문장(150자 이내)으로 반영하는 것으로 마무리하세요. 이유를 짐작해 말하거나 해결책·행동 제안을 먼저 내놓지 마세요. 선택 카드 문구 자체는 쓰지 마세요.";
+  }
+  if (mode === "hypothesis_lead") {
+    // 2026-10-18: 시스템이 이어서 "이런 마음일 수도 있을까요?" 식의 확인 문장(DB의 검수된 원문)을 붙인다. AI는 공감 앞부분만 쓴다.
+    return "방금 한 말에 담긴 마음을 한두 문장(120자 이내)으로 따뜻하게 반영하세요. 질문은 하지 마세요. 이 뒤에 시스템이 확인 문장을 이어서 붙입니다. 해결책이나 행동 제안, 이름 붙이기, 앞으로 이어질 문장을 미리 짐작해 쓰는 것은 하지 마세요.";
   }
   if (mode === "action") {
     return "사용자가 '행동 제안받기'를 직접 선택했습니다. 더 이상 확인 질문을 하지 말고, 지금까지 들은 내용을 '지금 상황은 이런 것 같아요' 식으로 짧게 정리한 뒤, 지금 바로 해볼 수 있는 단기적인 것 1~2개와 꾸준히 이어가면 좋을 중장기적인 것 1개를 총 3가지 안팎으로 구체적으로 제안하세요. 여러 감정이 함께 드러나 있다면 각각에 짝지어 제안하세요. 마지막에는 새 질문 대신 조정이 필요한 부분이 있는지 물어보며 마무리하세요.";
@@ -143,6 +151,18 @@ function reportBody(
   ];
 }
 
+// 점성술 리포트 요약도 디저트 리포트와 같은 형식이라 같은 방식으로 관련 섹션만 고른다.
+function astroBody(insight: string, query: { message: string; recentUserMessages?: string[] } | undefined): string[] {
+  const sections = query ? splitReportInsight(insight) : [];
+  if (!query || sections.length < 3) return ["[참고] 이 사용자의 쏠 점성술 하우스 리포트 요약(섹션 제목이 [ ] 안에 표시됨):", insight];
+  const sel = selectReportSections(sections, query, "subtle");
+  return [
+    `[참고] 이 사용자의 쏠 점성술 하우스 리포트입니다. 총 ${sections.length}개 섹션(${sel.labels.join(" / ")}) 중 지금 이야기와 관련 있어 보이는 섹션만 옮겼습니다(섹션 제목이 [ ] 안에 표시됨):`,
+    sel.selected.map((x) => `[${x.label}] ${x.body}`).join("\n"),
+    "옮기지 않은 섹션의 구체적인 내용은 지금 알 수 없으니 추측하거나 지어내지 마세요.",
+  ];
+}
+
 function formatPractice(p: PracticeLike): string {
   return `- [${p.category}/${p.tier}] ${p.title} — ${p.detail}`;
 }
@@ -160,8 +180,8 @@ export function buildSystemPrompt(params: {
   userMemory?: string | null;
   personaHint?: PersonaHint | null;
   personaMode?: PersonaMode;
-  // 쏠 타로 하우스 최근 결과 요약(lib/tarot/readings.ts의 buildTarotHint). 없으면 블록이 들어가지 않는다.
-  tarotHint?: string | null;
+  // 2026-10-08: 쏠 점성술 하우스 결과 요약(lib/mypage/loadAstroInsight.ts). 없으면 아래 점성술 블록이 들어가지 않는다.
+  astroInsight?: string;
   // 트라우마 단계별 대응(lib/safety/traumaStage.ts). 없으면 아래 블록이 들어가지 않는다.
   traumaStage?: TraumaStage | null;
   // 심층 리포트 중 관련 섹션만 고르기 위한 현재 대화 내용(lib/rag/reportSelect.ts). 없으면 전체를 넣는다.
@@ -171,6 +191,8 @@ export function buildSystemPrompt(params: {
   // 켜졌을 때만 넘어온다). 값이 없으면 아래 모든 동작이 이전과 완전히 같다.
   dialogueMode?: DialogueMode;
   theoryGuide?: TheoryGuide | null;
+  // 2026-10-23: SAFE-018~021 답변 지침(lib/safety/supplemental.ts guidanceBlock). 없으면 아래 블록이 들어가지 않는다.
+  safetyGuidance?: string | null;
 }): string {
   const parts: string[] = [];
 
@@ -185,6 +207,10 @@ export function buildSystemPrompt(params: {
         ...params.matchedRules.map((r) => `- (${r.rule_id} ${r.category}) ${r.rule_text}`),
       ].join("\n"),
     );
+  }
+
+  if (params.safetyGuidance) {
+    parts.push(`이번 메시지에서 특히 지켜야 할 안전 지침(전문위원 검수 반영):\n${params.safetyGuidance}`);
   }
 
   if (params.userMemory) {
@@ -244,14 +270,17 @@ export function buildSystemPrompt(params: {
     }
   }
 
-  if (params.tarotHint) {
-    // 2026-10-07 owner 요청: 타로 결과를 채팅에서도 참고. 타로는 예언이 아니라 고민을 비추는 자기이해 콘텐츠라는
-    // 타로 앱의 원칙(예언·운명 금지, 대신 결정하지 않기, 역방향을 나쁜 뜻으로 말하지 않기)을 채팅에서도 그대로 지킨다.
+  if (params.astroInsight) {
+    // 2026-10-08 owner 결정: 점성술 리포트(유형·2026 회고·바라는 것·5년 흐름·결제 시 본문과 제안)를 채팅 참고 자료로.
+    // 2026-10-10: 태양·달·상승궁 별자리와 고민 영역도 함께 넘어온다(아스트로 16_쏘웰라연결) — 말해도 되지만 새로 점을 보지 않는다.
+    // 점성술은 예측 도구가 아니라 자기 성찰의 상징 언어라서(쏠 점성술 하우스 CLAUDE.md 2장), 예측·진단·결정 권유로 쓰지 않게
+    // 디저트 리포트보다 지침을 하나 더 둔다. 관련 섹션만 고르는 방식은 같다(reportSelect).
     parts.push(
       [
-        `[참고] ${params.tarotHint}`,
-        "이건 미래를 맞히는 점괘가 아니라 고민을 다른 각도로 비춰 본 자기이해 콘텐츠다. 사용자가 타로 이야기를 꺼내거나 지금 이야기와 분명히 이어질 때만 자연스럽게 연결하고, 관련 없으면 언급하지 않는다.",
-        "'카드가 그렇게 하라고 한다', '~하게 될 거예요'처럼 앞날을 단정하거나 카드를 근거로 결정을 대신하지 않는다. 역방향을 나쁘거나 불길한 뜻으로 말하지 않는다. 카드를 진단 근거로 쓰지 않는다.",
+        ...astroBody(params.astroInsight, params.reportQuery),
+        "이 내용은 점성술을 자기 성찰의 상징 언어로 풀어 쓴 참고 자료이지, 미래 예측이나 확정된 사실이 아니다. '~하게 됩니다', '반드시', '운명' 같은 예측·단정으로 말하지 말고, 진단이나 문제의 원인('별이 그래서', '유형 때문에')으로 쓰지 않는다.",
+        "건강 상태·투자나 매매 시점·만남과 이별·이직 같은 결정을 이 내용으로 권하거나 정해 주지 않는다. 결정은 사용자의 몫이고, 이 내용은 스스로를 돌아보는 질문이나 관점으로만 잇는다.",
+        "지금 사용자가 하는 말과 실제로 관련 있을 때만 활용하고, 관련 없으면 무시한다. '점성술 리포트에서 보면'처럼 출처를 밝히며 인용해도 된다. 리포트에 적힌 태양·달·상승궁 별자리는 그대로 말해도 되지만, 그 별자리로 새 해석·예측·날짜를 만들거나 리포트에 없는 행성·연도·사건을 말하지 않는다. 출생 날짜·시간·장소는 알 수 없으니 추측하지 않는다.",
       ].join(" "),
     );
   }
@@ -336,7 +365,7 @@ export function buildSystemPrompt(params: {
   }
 
   parts.push(
-    "이 메시지는 안전 라우터를 거쳐 자살·자해나 신체적 위험이 있다고 판단되지 않았습니다. 자살, 자해, 죽음, '극단적 선택' 같은 단어나 그 가능성을 먼저 꺼내거나 확인하는 질문을 하지 마세요. 사용자가 스스로 그런 말을 먼저 하지 않는 한 그 방향으로 대화를 끌고 가지 마세요. '그냥', '힘들다', '지친다', '그만두고 싶다' 같은 일상적인 표현은 위기 신호가 아니라 있는 그대로, 사용자가 말한 수준에서 받아들이세요.",
+    "이 메시지는 안전 라우터를 거쳐 자살·자해나 신체적 위험이 있다고 판단되지 않았습니다. 자살, 자해, 죽음, '극단적 선택' 같은 단어나 그 가능성을 먼저 꺼내거나 확인하는 질문을 하지 마세요. 사용자가 스스로 그런 말을 먼저 하지 않는 한 그 방향으로 대화를 끌고 가지 마세요. '그냥', '힘들다', '지친다', '그만두고 싶다' 같은 일상적인 표현은 위기 신호가 아니라 있는 그대로, 사용자가 말한 수준에서 받아들이세요. 폭력·학대·통제 여부도 마찬가지입니다: 사용자가 먼저 말하지 않은 폭력이나 안전 위협을 짐작해서 먼저 묻거나 떠보지 마세요(안전 확인 질문은 시스템이 정해진 문구로 따로 합니다).",
   );
 
   // 2026-09-24 결정: 턴 수에 따라 3단계로 나눈다.

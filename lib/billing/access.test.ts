@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { computeAccess } from "./access.ts";
+import { computeAccess, decideTrialStart } from "./access.ts";
 
 describe("computeAccess", () => {
   test("가입 직후(무료체험 7일 이내, 심층보고서 있음)는 허용된다", () => {
@@ -144,5 +144,41 @@ describe("computeAccess", () => {
       assert.equal(result.allowed, true);
       assert.equal(result.trialDays, 7);
     });
+  });
+});
+
+describe("decideTrialStart — 무료체험은 쏘웰라에 처음 직접 들어온 날부터", () => {
+  const now = new Date("2026-10-17T09:00:00Z");
+
+  test("다른 앱에서 계정만 만들고 쏘웰라는 처음이면(체험 시작일 비어 있음) 지금부터 시작하고 기록한다", () => {
+    const r = decideTrialStart({ columnAvailable: true, trialStartedAt: null, createdAt: "2026-10-10T00:00:00Z", now });
+    assert.deepEqual(r, { startedAt: now.toISOString(), stamp: true });
+  });
+
+  test("이미 기록된 체험 시작일은 그대로 쓰고 다시 쓰지 않는다", () => {
+    const r = decideTrialStart({
+      columnAvailable: true,
+      trialStartedAt: "2026-10-12T03:00:00Z",
+      createdAt: "2026-10-01T00:00:00Z",
+      now,
+    });
+    assert.deepEqual(r, { startedAt: "2026-10-12T03:00:00Z", stamp: false });
+  });
+
+  test("DB 칸이 아직 없으면(마이그레이션 전) 예전처럼 가입일을 쓰고 기록하지 않는다", () => {
+    const r = decideTrialStart({ columnAvailable: false, trialStartedAt: null, createdAt: "2026-10-10T00:00:00Z", now });
+    assert.deepEqual(r, { startedAt: "2026-10-10T00:00:00Z", stamp: false });
+  });
+
+  test("칸이 없고 가입일도 못 찾으면 지금으로 취급한다(막지 않는 쪽)", () => {
+    const r = decideTrialStart({ columnAvailable: false, trialStartedAt: null, createdAt: null, now });
+    assert.deepEqual(r, { startedAt: now.toISOString(), stamp: false });
+  });
+
+  test("다른 곳에서 계정이 만들어진 지 오래됐어도 첫 접속 때는 체험이 살아 있다", () => {
+    const first = decideTrialStart({ columnAvailable: true, trialStartedAt: null, createdAt: "2026-09-01T00:00:00Z", now });
+    const access = computeAccess({ trialStartedAt: first.startedAt, entitlements: [], hasReport: false, now });
+    assert.equal(access.allowed, true);
+    assert.equal(access.reason, "trial");
   });
 });

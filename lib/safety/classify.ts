@@ -9,6 +9,9 @@ import { WEAK_TRIGGERS } from "./keywordCheck.ts";
 export class ClassifierUnavailableError extends Error {}
 
 const MODEL = process.env.SAFETY_CLASSIFIER_MODEL || "gpt-5.6-luna";
+// 추론 수준(minimal/low/medium/high). 지정하지 않으면(기본) 모델 기본값을 그대로 쓴다 — 지금 동작과 같다.
+// 낮추면 응답이 빨라지는 대신 판정이 흔들릴 수 있어서, 값을 바꾸기 전에 반드시 `npm run safety:eval`로 판정 품질을 확인한다(CLAUDE.md 안전 원칙).
+const REASONING = process.env.SAFETY_CLASSIFIER_REASONING || "";
 
 export type ClassifierResult = {
   route: RouteId;
@@ -19,6 +22,11 @@ export type ClassifierResult = {
   usage: { inputTokens: number; outputTokens: number };
 };
 
+// 2026-10-16(채팅 속도 개선): 분류기가 판정(route 등)을 쓴 "뒤에" 덧붙이던 "로그 전용 설명 문장"(reasoning, 80~180토큰)을 기본으로 뺀다.
+// 이 문장은 판정 필드보다 나중에 출력되어 판정에 영향을 줄 수 없고, 사용자에게 보이거나 저장되지 않는다. 안전 평가(npm run safety:eval 29문장)에서
+// 설명이 있을 때와 없을 때 모두 29/29 통과로 판정이 같았고, 분류 평균이 약 1.53초 → 1.10초로 빨라졌다. 디버깅하려면 SAFETY_CLASSIFIER_EXPLAIN=1.
+const NO_EXPLAIN = process.env.SAFETY_CLASSIFIER_EXPLAIN !== "1";
+
 const ROUTE_SCHEMA = {
   type: "object" as const,
   properties: {
@@ -26,9 +34,9 @@ const ROUTE_SCHEMA = {
     confidence: { type: "string" as const, enum: ["high", "medium", "low"] },
     possible_crisis: { type: "boolean" as const },
     possible_violence: { type: "boolean" as const },
-    reasoning: { type: "string" as const },
+    ...(NO_EXPLAIN ? {} : { reasoning: { type: "string" as const } }),
   },
-  required: ["route", "confidence", "possible_crisis", "possible_violence", "reasoning"],
+  required: ["route", "confidence", "possible_crisis", "possible_violence", ...(NO_EXPLAIN ? [] : ["reasoning"])],
   additionalProperties: false,
 };
 
@@ -82,6 +90,7 @@ export async function classifyMessage(
         ...recentMessages.slice(-4).map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: message },
       ],
+      ...(REASONING ? { reasoning: { effort: REASONING as "minimal" | "low" | "medium" | "high" } } : {}),
       text: {
         format: {
           type: "json_schema",
@@ -99,14 +108,14 @@ export async function classifyMessage(
       confidence: Confidence;
       possible_crisis: boolean;
       possible_violence: boolean;
-      reasoning: string;
+      reasoning?: string;
     };
     return {
       route: parsed.route,
       confidence: parsed.confidence,
       possibleCrisis: parsed.possible_crisis,
       possibleViolence: parsed.possible_violence,
-      reasoning: parsed.reasoning,
+      reasoning: parsed.reasoning ?? "",
       usage: {
         inputTokens: response.usage?.input_tokens ?? 0,
         outputTokens: response.usage?.output_tokens ?? 0,

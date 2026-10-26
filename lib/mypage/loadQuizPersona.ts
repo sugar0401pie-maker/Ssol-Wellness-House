@@ -97,7 +97,18 @@ async function loadSelectedQuizResult(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
 ): Promise<{ id: string; type_key: string; axis_scores: unknown } | null> {
-  const { data: profile } = await admin.from("profiles").select("primary_quiz_result_id").eq("user_id", userId).maybeSingle();
+  // 2026-10-16(앱 첫 로딩 속도 개선): 대표 유형 지정 여부와 최신 응시 기록은 서로 필요하지 않으므로 동시에 조회한다
+  // (이전에는 순서대로 2번 왕복). 대표 유형이 지정돼 있을 때만 그 기록을 한 번 더 읽는다.
+  const [{ data: profile }, latestRes] = await Promise.all([
+    admin.from("profiles").select("primary_quiz_result_id").eq("user_id", userId).maybeSingle(),
+    admin
+      .from("ssol_quiz_results")
+      .select("id, type_key, axis_scores")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
   const primaryId = profile?.primary_quiz_result_id;
 
   if (primaryId) {
@@ -111,13 +122,7 @@ async function loadSelectedQuizResult(
     // 값이 있는데 못 찾았거나 남의 것이면(드문 경우) 조용히 최신 결과로 대체한다 — 아래로 진행.
   }
 
-  const { data: latest, error: latestError } = await admin
-    .from("ssol_quiz_results")
-    .select("id, type_key, axis_scores")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: latest, error: latestError } = latestRes;
   // 2026-09-25 버그 발견: 심리테스트 앱이 v2로 실제 재구축되면서 ssol_quiz_results의 점수
   // 컬럼명이 domain_scores -> axis_scores로 바뀌었다(v2 스펙의 CAR/LOV/REL/SLF/DIR 축 이름과
   // 통일). 예전 컬럼명으로 select하면 Postgres가 "column does not exist" 에러를 내는데,
@@ -127,10 +132,14 @@ async function loadSelectedQuizResult(
   return latest ?? null;
 }
 
+// options.includeReport=false: 유료 심층 리포트 전문(ssol_reports.assembled, 수천 자)을 읽지 않는다 — 홈 화면은 유형 이름·태그라인만
+// 쓰고 reportInsight는 채팅 개인화용이라 필요 없다(2026-10-16 속도 개선). 기본값 true라 채팅·마이페이지는 이전과 같다.
 export async function loadQuizPersona(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
+  options: { includeReport?: boolean } = {},
 ): Promise<QuizPersona | null> {
+  const includeReport = options.includeReport !== false;
   const quizResult = await loadSelectedQuizResult(admin, userId);
   if (!quizResult?.type_key) return null;
 
@@ -142,14 +151,16 @@ export async function loadQuizPersona(
   // ssol_quiz_results.id를 가리키는 실제 FK다(마이페이지 결과 목록/상세와 같은 방식).
   const [{ data: rich }, { data: report }] = await Promise.all([
     admin.from("persona_profiles").select("name, tagline, blurb, traits").eq("code", dessertCode).maybeSingle(),
-    admin
-      .from("ssol_reports")
-      .select("assembled")
-      .eq("result_id", quizResult.id)
-      .eq("status", "ready")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    includeReport
+      ? admin
+          .from("ssol_reports")
+          .select("assembled")
+          .eq("result_id", quizResult.id)
+          .eq("status", "ready")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   if (!rich) return null;
 

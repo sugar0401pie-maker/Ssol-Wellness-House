@@ -33,3 +33,7 @@ export const REFERRAL_SOURCES = [
 // 관리자가 확인 후 하나로 확정해 다시 연락한다(owner 지정).
 export const MAX_PREFERRED_TIMES = 3;
 export const MIN_PREFERRED_TIMES = 2;
+
+// 네이버 예약으로 바로 가는 주소(2026-10-21 대표님 요청). 아직 네이버 예약과 시스템 연동은 없고, 이 단축 주소로 연결만 한다.
+// 연동되면(예약 페이지 정식 주소) 이 값만 바꾸면 된다. 네이버로 들어온 예약은 우리 신청 목록(counselor_inquiries)에 쌓이지 않는다.
+export const NAVER_BOOKING_URL = "https://naver.me/GgUly011";

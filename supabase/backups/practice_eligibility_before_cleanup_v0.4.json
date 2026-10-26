@@ -1,0 +1,3388 @@
+{
+ "at": "2026-10-20T14:22:01.769Z",
+ "rows": [
+  {
+   "practice_id": "THX-CBT-11",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-REL-BOUNDARY-07",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "THX-REBT-19",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-WORK-CONTEXT-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "REL-HELP-L2-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L3-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "PARENT-CARE-L2-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "rest_home"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L2-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L1-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L2-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L1-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L3-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L3-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "group_sports",
+    "learning"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-HELP-L1-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "culture"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-CARE-L3-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-HELP-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L1-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "REL-HELP-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L3-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "REL-HELP-L1-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-12",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L2-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L2-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "new_experience"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-HELP-L2-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L3-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L2-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L2-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-HELP-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-14",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L1-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L3-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L2-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L1-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L1-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L3-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L2-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L1-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "rest_home"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L3-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L3-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L2-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L1-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L1-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L1-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "culture"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L2-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-TALK-L3-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people",
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-HELP-L1-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-HELP-L2-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-HELP-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L1-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "solo_running"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-26",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "WORK-HELP-L1-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people",
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-LTA-07",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L3-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L3-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "exercise",
+    "other_people",
+    "spending"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "new_experience",
+    "travel_food"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L3-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-HELP-L3-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "COUPLE-TALK-L2-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-TALK-L1-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "THX-LTA-13",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "new_experience"
+   ],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-LTA-15",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "SELF-TALK-L1-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L2-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L2-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L2-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L3-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child",
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L2-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L1-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L2-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L1-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L2-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "PARENT-TALK-L1-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L3-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L3-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L3-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-HELP-L3-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-HELP-L2-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-HELP-L2-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L3-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "THX-IPT-08",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-IPT-23",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "SELF-HELP-L3-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "solo_running"
+   ],
+   "q6_weekend_codes": [
+    "outdoors"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L3-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-HELP-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L1-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L2-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-WBT-23",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-PPT-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-PPT-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-PPT-11",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-PPT-25",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-EFT-22",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-EFT-23",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-LOGO-22",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-DBT-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-DBT-10",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-DBT-17",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-MCP-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "SELF-HELP-L1-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-TALK-L2-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-TALK-L2-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L1-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "solo_running"
+   ],
+   "q6_weekend_codes": [
+    "outdoors"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L1-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L1-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L2-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-BODY-L3-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-TALK-L1-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-ASYNC-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "culture_together",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-BOUNDARY-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-SHARED-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "culture_together",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-NEW-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience",
+    "culture_together"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "THX-PPT-12",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-EFT-11",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-EFT-12",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-ASYNC-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "culture_together",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-WORK-CONTEXT-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-WORK-CONTEXT-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CHECKIN-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-08",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-PLAY-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-BOUNDARY-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-NEW-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience",
+    "culture_together"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-PLAY-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "culture",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-WORK-CONTEXT-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-06",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-TALK-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-09",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-COUPLE-CARE-07",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "favorite_cafe"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "COUPLE-TALK-L2-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "NEW-COUPLE-FUTURE-10",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "picnic",
+    "culture_together",
+    "travel_food"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-ROUTINE-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "creative",
+    "rest_home"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "picnic"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "COUPLE-BODY-L3-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L3-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-BODY-L2-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-RBT-14",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "SELF-BODY-L3-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-HELP-L3-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-CARE-L1-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "favorite_cafe"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L3-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "couple",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-BODY-L1-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-BODY-L1-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-BODY-L1-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-16",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-ST-18",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-ST-21",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-ST-25",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "COUPLE-HELP-L3-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L3-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L3-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L1-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L2-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "PARENT-BODY-L1-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child",
+    "exercise"
+   ],
+   "q5_hobby_codes": [
+    "solo_running"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-LOGO-23",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "PARENT-CARE-L3-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-BODY-L3-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-IPT-25",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child",
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-IPT-26",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-IPT-27",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L1-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple",
+    "mindfulness"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "COUPLE-CARE-L2-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "couple"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-WBT-26",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-PPT-27",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-LOGO-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-ACT-11",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "SELF-BODY-L1-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "설명이 활동을 특정하지 않아 원본 제목 필요"
+  },
+  {
+   "practice_id": "THX-MCP-14",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-MCP-17",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-IPT-24",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-IPT-28",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "THX-PPT-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "SELF-CARE-L3-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "세 가지 기본 축의 구체적 내용이 원본 제목에 있을 가능성"
+  },
+  {
+   "practice_id": "COUPLE-BODY-L1-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "creative"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby"
+   ],
+   "review_note": "원본 제목 가볍게 요리해보기로 수정됨. COUPLE ID지만 상대 참여를 전제하지 않음"
+  },
+  {
+   "practice_id": "PARENT-BODY-L1-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "활동 실체가 설명에 없음"
+  },
+  {
+   "practice_id": "PARENT-BODY-L2-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-LOGO-12",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "social_media",
+    "spending"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-SELF-CREATE-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "creative",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby",
+    "photos_social",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-02",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-PARENT-SUPPORT-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "PARENT-MIND-L3-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "child"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-REBT-14",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-SELF-VALUES-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "reading_cafe",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-WORK-TRANSITION-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "work"
+   ],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "SELF-BODY-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "exercise"
+   ],
+   "q5_hobby_codes": [
+    "solo_running"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-BODY-L1-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people",
+    "social_media"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-BODY-L2-01",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "exercise",
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-BODY-L2-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "exercise"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [
+    "outdoors",
+    "picnic"
+   ],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-HELP-L1-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "culture"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-CARE-L2-03",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-CARE-L2-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-11",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "REL-CARE-L1-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-CARE-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "WORK-BODY-L2-02",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "exercise",
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-WBT-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "REL-BODY-L3-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-ST-27",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "REL-BODY-L2-03",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "REL-BODY-L2-04",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "SELF-BODY-L1-01",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "exercise"
+   ],
+   "q5_hobby_codes": [
+    "solo_running"
+   ],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  },
+  {
+   "practice_id": "THX-DBT-06",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "이론 라이브러리 검수 완료 — 쏠 운영 회의 2026-10-06"
+  },
+  {
+   "practice_id": "NEW-SELF-VALUES-05",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "reading_cafe",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "solo_hobby",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-SELF-REST-10",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "rest_home",
+    "reading_cafe"
+   ],
+   "q6_weekend_codes": [
+    "home_movie",
+    "solo_hobby"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-SHARED-05",
+   "requires_other_person": true,
+   "q9_exclusion_codes": [
+    "other_people"
+   ],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "culture"
+   ],
+   "q6_weekend_codes": [
+    "culture_together",
+    "new_experience"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "NEW-REL-NEW-07",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [],
+   "q5_hobby_codes": [
+    "meet_friends",
+    "learning"
+   ],
+   "q6_weekend_codes": [
+    "new_experience",
+    "culture_together"
+   ],
+   "review_note": "신규 생성 문안. 기존 375개 제목 원본이 없어 의미 중복은 DB 제목 대조 후 최종 검수 필요."
+  },
+  {
+   "practice_id": "WORK-BODY-L3-04",
+   "requires_other_person": false,
+   "q9_exclusion_codes": [
+    "exercise",
+    "work"
+   ],
+   "q5_hobby_codes": [],
+   "q6_weekend_codes": [],
+   "review_note": "원본 제목·현재 DB 스키마 확인 후 최종 승인 필요"
+  }
+ ]
+}

@@ -7,28 +7,11 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
+import InsightsSection from "./InsightsSection";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
+import type { TestGroup } from "@/lib/mypage/testTypes";
 
 type MyPageData = MyInfo & { gender: string | null; hasPassword: boolean };
-
-// 2026-09-27: "지금은 보고서가 1개인데 나중에 여러 개를 열람할 수도 있으니" — 응시 기록을
-// 목록으로 보여주고, 각 항목의 "열기"를 누르면 /report/[resultId]에서 전체 심층보고서를 본다.
-type ReportListItem = {
-  id: string;
-  createdAt: string;
-  dessertCode: string;
-  dessertName: string;
-  hasReport: boolean;
-  isPrimary: boolean;
-};
-
-// 2026-10-07: 쏠 타로 하우스(tarot.ssolwellnesshouse.com, 같은 계정) 결과 — /api/mypage/tarot.
-type TarotReading = {
-  id: string;
-  createdAt: string;
-  cards: { position: string; positionName: string; name: string; character: string; reversed: boolean }[];
-  topic: { domain: string; emotions: string[]; need: string } | null;
-};
 
 // "YYYY-MM-DDTHH:mm:ss+00:00" -> "YYYY.MM.DD" (표시용)
 function formatShortDate(iso: string): string {
@@ -85,11 +68,11 @@ function SectionRow({
 export default function MyPageTab() {
   const router = useRouter();
   const [data, setData] = useState<MyPageData | null>(null);
-  const [reports, setReports] = useState<ReportListItem[] | null>(null);
+  // 2026-10-17: 테스트 종류별 결과 그룹(디저트·점성술·앞으로 추가될 테스트). null이면 아직/불러오지 못함.
+  const [testGroups, setTestGroups] = useState<TestGroup[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tarot, setTarot] = useState<{ readings: TarotReading[]; tarotUrl: string } | null>(null);
-  const [open, setOpen] = useState<"type" | "tarot" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
+  const [open, setOpen] = useState<"type" | "insights" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -110,23 +93,21 @@ export default function MyPageTab() {
         return;
       }
       try {
-        const [infoRes, reportsRes, billingRes] = await Promise.all([
+        // 테스트 결과 목록은 따로 불러온다 — 실패해도 마이페이지의 나머지(내 정보·이용권)는 그대로 뜨게.
+        const testsPromise = fetch("/api/mypage/tests", { headers: authHeaders(token), cache: "no-store" })
+          .then(async (res) => (res.ok ? ((await res.json()) as { groups: TestGroup[] }).groups : null))
+          .catch(() => null);
+        const [infoRes, billingRes] = await Promise.all([
           fetch("/api/mypage", { headers: authHeaders(token), cache: "no-store" }),
-          fetch("/api/mypage/reports", { headers: authHeaders(token), cache: "no-store" }),
           fetch("/api/billing/status", { headers: authHeaders(token), cache: "no-store" }),
         ]);
-        if (!infoRes.ok || !reportsRes.ok || !billingRes.ok) throw new Error();
+        if (!infoRes.ok || !billingRes.ok) throw new Error();
         const json = (await infoRes.json()) as MyPageData;
-        const reportsJson = (await reportsRes.json()) as { reports: ReportListItem[] };
         const billingJson = (await billingRes.json()) as BillingStatus;
-        // 타로 결과는 부가 정보라 실패해도 마이페이지 전체를 막지 않는다.
-        fetch("/api/mypage/tarot", { headers: authHeaders(token), cache: "no-store" })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((t) => !cancelled && t && setTarot(t))
-          .catch(() => {});
+        const groups = await testsPromise;
         if (!cancelled) {
           setData(json);
-          setReports(reportsJson.reports);
+          setTestGroups(groups);
           setBilling(billingJson);
           setError(null);
         }
@@ -165,7 +146,15 @@ export default function MyPageTab() {
         body: JSON.stringify({ resultId }),
       });
       if (!res.ok) throw new Error();
-      setReports((prev) => prev?.map((r) => ({ ...r, isPrimary: r.id === resultId })) ?? prev);
+      // 대표 유형은 디저트 테스트만의 개념이라 그 그룹에서만 표시를 바꾼다.
+      setTestGroups(
+        (prev) =>
+          prev?.map((g) =>
+            g.key === "dessert"
+              ? { ...g, items: g.items?.map((r) => (r.primary ? { ...r, primary: { isPrimary: r.id === resultId } } : r)) ?? null }
+              : g,
+          ) ?? prev,
+      );
     } catch {
       setError("대표 유형 지정에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -183,102 +172,81 @@ export default function MyPageTab() {
 
       {data && (
         <div className="flex-1">
-          <SectionRow title="내 유형 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
-            {reports && reports.length > 0 ? (
-              <div className="divide-y divide-line rounded-xl border border-line">
-                {reports.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between px-3.5 py-3">
-                    <div>
-                      <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
-                      <p className="mt-0.5 text-[14px] font-medium text-foreground">
-                        {r.dessertName} 유형{r.hasReport && <span className="ml-1.5 text-[11px] font-normal text-navy">심층보고서</span>}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {r.isPrimary ? (
-                        <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => selectPrimary(r.id)}
-                          disabled={settingPrimaryId === r.id}
-                          className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
-                        >
-                          대표 유형으로 선택
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/report/${r.id}`)}
-                        className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
-                      >
-                        열기
-                      </button>
-                    </div>
+          <SectionRow title="테스트 결과 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
+            {/* 2026-10-17 owner 요청: 큰 분류 "테스트 결과 열람하기" 아래에 테스트 종류별 소제목 + 결과 목록(디저트 → 점성술 순).
+                어떤 종류가 있는지는 서버의 lib/mypage/testRegistry.ts가 정한다 — 새 테스트는 거기에 등록하면 여기에 자동으로 나온다. */}
+            {testGroups === null && <p>테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요.</p>}
+            {testGroups?.map((g, gi) => (
+              <div key={g.key} className={gi > 0 ? "mt-6" : ""}>
+                <p className="mb-2.5 text-[17px] font-bold text-foreground">{g.title}</p>
+                {g.items && g.items.length > 0 ? (
+                  <div className="divide-y divide-line rounded-xl border border-line">
+                    {g.items.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
+                          <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
+                            {r.title}
+                            {r.badge && <span className="ml-1.5 text-[11px] font-normal text-navy">{r.badge}</span>}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {r.primary &&
+                            (r.primary.isPrimary ? (
+                              <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => selectPrimary(r.id)}
+                                disabled={settingPrimaryId === r.id}
+                                className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
+                              >
+                                대표 유형으로 선택
+                              </button>
+                            ))}
+                          {r.open.external ? (
+                            <a
+                              href={r.open.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                            >
+                              {r.open.label}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => router.push(r.open.href)}
+                              className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                            >
+                              {r.open.label}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div>
-                <p>
-                  아직 웰니스 유형 테스트 결과가 없어요. 심리 테스트를 먼저 진행해주시면, 완료 후 여기서 결과를 확인할 수
-                  있어요.
-                </p>
-                <a
-                  href="https://quiz.ssolwellnesshouse.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
-                >
-                  지금 테스트하러 가기
-                </a>
-              </div>
-            )}
-          </SectionRow>
-
-          <SectionRow title="타로 결과" open={open === "tarot"} onToggle={() => setOpen(open === "tarot" ? null : "tarot")}>
-            {tarot && tarot.readings.length > 0 ? (
-              <div className="divide-y divide-line rounded-xl border border-line">
-                {tarot.readings.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
-                    <div className="min-w-0">
-                      <p className="text-[12px] text-slate-400">{formatShortDate(t.createdAt)}</p>
-                      <ul className="mt-0.5 space-y-0.5">
-                        {t.cards.map((c) => (
-                          <li key={c.position} className="text-[13px] text-foreground">
-                            <span className="text-slate-400">{c.positionName}</span> · {c.name}
-                            {c.reversed && <span className="ml-1 text-[11px] text-navy">역방향</span>}
-                          </li>
-                        ))}
-                      </ul>
-                      {t.topic && <p className="mt-1 text-[12px] text-slate-500">{t.topic.domain} 고민</p>}
-                    </div>
+                ) : (
+                  <div>
+                    <p>{g.items === null ? "이 테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요." : g.emptyMessage}</p>
                     <a
-                      href={`${tarot.tarotUrl}/result/${t.id}`}
+                      href={g.start.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="shrink-0 rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                      className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
                     >
-                      열기
+                      {g.start.label}
                     </a>
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <div>
-                <p>아직 이 계정에 저장된 타로 결과가 없어요. 쏠 타로 하우스에서 카드를 뽑고 “결과 저장하기”를 누르면 여기에 모여요.</p>
-                <a
-                  href={tarot?.tarotUrl ?? "https://tarot.ssolwellnesshouse.com"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
-                >
-                  타로 보러 가기
-                </a>
-              </div>
-            )}
+            ))}
           </SectionRow>
 
+          <SectionRow title="쏘웰라가 파악한 내용" open={open === "insights"} onToggle={() => setOpen(open === "insights" ? null : "insights")}>
+            {/* 2026-10-18(로드맵 10번): 열었을 때만 불러온다(열려 있는 동안만 마운트). */}
+            <InsightsSection />
+          </SectionRow>
           <SectionRow title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
             <dl className="space-y-2">
               <div className="flex justify-between">
@@ -308,6 +276,10 @@ export default function MyPageTab() {
               <div className="flex justify-between">
                 <dt className="text-slate-400">마케팅 정보 활용 동의</dt>
                 <dd>{data.marketingConsent ? "동의함" : "동의 안 함"}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-400">AI 서비스 개선(모델 학습) 활용 동의</dt>
+                <dd className="shrink-0">{data.aiTrainingConsent ? "동의함" : "동의 안 함"}</dd>
               </div>
               {data.gender && (
                 <div className="flex justify-between">
@@ -342,8 +314,8 @@ export default function MyPageTab() {
                   </p>
                 ) : (
                   <p>
-                    채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (가입일로부터 +{billing.trialDays}일,
-                    가입일 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
+                    채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (쏘웰라에 처음 들어온 날로부터 +{billing.trialDays}일,
+                    그날 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
                   </p>
                 )}
                 <p className="mt-1.5 text-slate-500">만료 이후에도 기존 대화내역과 심층 보고서는 볼 수 있어요.</p>

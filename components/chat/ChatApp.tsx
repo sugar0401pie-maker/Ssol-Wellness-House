@@ -4,16 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions } from "@/lib/persona/suggestedQuestions";
+import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions, type SuggestedQuestionGroup } from "@/lib/persona/suggestedQuestions";
+import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting, type WelcomeStatus } from "@/lib/persona/welcome";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
 import { choicesForMessage } from "@/lib/theory/offer";
+import ThinkingBubble from "./ThinkingBubble";
+import CardChoices from "./CardChoices";
+import type { CardPayload, CardPick } from "@/lib/cards/flow";
 import type { Choice, ChoiceId } from "@/lib/theory/types";
 
 // choices: 이 말풍선 아래에 보여줄 선택 칩("행동 제안받기"/"내 고민 더 알아보기" — lib/theory).
 // 대화의 맨 마지막 말풍선이고 아직 답하지 않았을 때만 화면에 나온다.
-type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[] };
+type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[]; card?: CardPayload };
 
 // 저장된 대화를 다시 불러올 때(서버는 role/content만 준다), 마지막 말이 선택 안내/연장 안내이면 칩을 되살린다.
 function withOfferChoices(list: Message[]): Message[] {
@@ -30,9 +34,7 @@ type SessionSummary = {
   safetyFlag: "none" | "elevated" | "crisis";
 };
 
-// 첫 인사말 (초안). 시스템 프롬프트의 Identity/Goal 섹션과 같은 취지로 작성.
-const GREETING =
-  "안녕하세요, 쏠 웰니스 하우스예요. 저는 웰니스 관련 상담에 도움을 드릴 수 있습니다. 요즘 마음에 머무는 이야기가 있다면 편하게 들려주시기 바랍니다.";
+// 첫 인사말은 lib/persona/welcome.ts(기본 인사 + 점성술에서 온 사용자용 환영 인사)에 있다.
 
 // 2026-09-28: 홈/채팅/마이페이지가 "/home", "/chat", "/mypage" 개별 주소로 나뉘면서, 채팅 탭을
 // 벗어났다 돌아오면 이 컴포넌트가 새로 마운트된다(예전엔 세 탭을 전부 마운트해두고 CSS로만
@@ -68,6 +70,9 @@ export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // 선택지 카드의 "다른 이유가 있어요": 다음에 쓰는 글을 그 카드의 직접 쓴 답으로 보낸다(2026-10-20).
+  const [otherFor, setOtherFor] = useState<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [memoryPrompt, setMemoryPrompt] = useState<"idle" | "asking" | "saving">("idle");
   const [showSuggested, setShowSuggested] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -94,7 +99,21 @@ export default function ChatApp() {
   // 2026-09-28 owner 요청(시안 .chipq): 대화 시작 전(메시지가 아직 없을 때)엔 첫 인사말 밑에
   // 눌러볼 만한 질문 몇 개를 칩으로 랜덤 노출한다 — lazy initializer로 마운트 시 한 번만 뽑아서
   // 리렌더될 때마다 바뀌지 않게 한다. 대화가 시작되면(messages.length>0) 더 이상 안 보인다.
-  const [starterChips] = useState(() => pickRandomSuggestedQuestions(3));
+  // 2026-10-22: 성향 질문은 테스트 결과가 있는 사용자에게만. 없으면(점성술 등으로 들어온 분 포함) 일상 고민 시작 문구 — 위 설명과 lib/persona/suggestedQuestions.ts 참고.
+  // 테스트 결과 여부를 알기 전(null)에는 칩을 보이지 않는다(잘못된 칩이 잠깐 보였다 바뀌는 것을 막음).
+  // 점성술(쏠 아스트로 하우스)을 보고 넘어온 사용자는 환영 인사와, 그때 고른 영역에 맞춘 시작 문구를 본다(lib/persona/welcome.ts).
+  const [welcome, setWelcome] = useState<WelcomeStatus | null>(null);
+  const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
+  const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
+  const starter = welcome ? chooseStarterChips(welcome, { persona: personaChips, everyday: everydayChips }) : { chips: [], persona: false };
+  const starterChips = starter.chips;
+  const hasPersona = welcome?.hasPersona === true;
+  // "추천 질문" 목록: 점성술에서 고른 영역이 있으면 그 이야기를 맨 위에(이미 일상 묶음과 같은 것이면 중복하지 않음), 그다음 테스트 결과 여부에 따른 목록.
+  const astroArea = welcome?.astroQ1 ? ASTRO_Q1_CHIPS[welcome.astroQ1] : undefined;
+  const suggestedGroups: SuggestedQuestionGroup[] = [
+    ...(astroArea && !EVERYDAY_QUESTION_GROUPS.some((g) => g.questions === astroArea) ? [{ title: `${welcome?.astroQ1} 이야기`, questions: astroArea }] : []),
+    ...(hasPersona ? SUGGESTED_QUESTION_GROUPS : EVERYDAY_QUESTION_GROUPS),
+  ];
   const endRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
   const sessionId = useRef<string | null>(null);
@@ -125,6 +144,25 @@ export default function ChatApp() {
       }
     }
     void checkAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkPersona() {
+      const token = await getAccessToken();
+      if (!token) return;
+      try {
+        const res = await fetch("/api/chat/persona-status", { headers: authHeaders(token) });
+        const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null });
+      } catch {
+        if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
+      }
+    }
+    void checkPersona();
     return () => {
       cancelled = true;
     };
@@ -167,7 +205,7 @@ export default function ChatApp() {
   }
 
   // 완성된(이미 안전 검사를 통과한) 답변을 타이핑되듯 보여준다.
-  function revealAssistantMessage(fullText: string, onDone?: () => void) {
+  function revealAssistantMessage(fullText: string, onDone?: () => void): number {
     const id = nextId.current++;
     setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
     cancelReveal.current?.();
@@ -180,12 +218,14 @@ export default function ChatApp() {
       undefined,
       onDone,
     );
+    return id;
   }
 
-  async function send(text: string, options?: { isPersonaQuestion?: boolean; choiceId?: ChoiceId }) {
+  async function send(text: string, options?: { isPersonaQuestion?: boolean; choiceId?: ChoiceId; cardPick?: CardPick }) {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
     setInput("");
+    setOtherFor(null);
     appendMessage("user", trimmed);
     setSending(true);
 
@@ -204,6 +244,7 @@ export default function ChatApp() {
           sessionId: sessionId.current,
           isPersonaQuestion: options?.isPersonaQuestion ?? false,
           ...(options?.choiceId ? { choiceId: options.choiceId } : {}),
+          ...(options?.cardPick ? { cardPick: options.cardPick } : {}),
         }),
       });
 
@@ -220,23 +261,26 @@ export default function ChatApp() {
         note?: string;
         paywallBlocked?: boolean;
         sessionLimitReached?: boolean;
-        followUp?: { text: string; choices: Choice[] };
+        followUp?: { text: string; choices: Choice[]; card?: CardPayload };
+        card?: CardPayload; // 보기를 누른 요청에 대한 다음 카드/확인 카드(AI 없이 바로 옴)
       };
       sessionId.current = data.sessionId;
       saveActiveSessionId(data.sessionId);
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
       const followUp = data.followUp;
       const limitReached = data.sessionLimitReached === true;
-      revealAssistantMessage(
+      const replyCard = data.card;
+      const replyId = revealAssistantMessage(
         data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`,
         // 답변이 다 보인 다음에 선택 안내 말풍선과 칩이 이어서 나오고(서버에는 이미 저장돼 있다),
         // 대화 상한에 도달했다면 새 대화 안내 팝업이 뜬다.
-        followUp || limitReached
+        followUp || limitReached || replyCard
           ? () => {
+              if (replyCard) setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, card: replyCard } : m)));
               if (followUp) {
                 setMessages((prev) => [
                   ...prev,
-                  { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices },
+                  { id: nextId.current++, role: "assistant", content: followUp.text, choices: followUp.choices, card: followUp.card },
                 ]);
               }
               if (limitReached) setShowSessionLimit(true);
@@ -249,6 +293,11 @@ export default function ChatApp() {
       appendMessage("assistant", "네트워크 문제로 응답을 받지 못했어요. 다시 시도해주세요.");
     }
     setSending(false);
+  }
+
+  function submitInput() {
+    if (otherFor) void send(input, { cardPick: { cardId: otherFor, other: true } });
+    else void send(input);
   }
 
   async function openHistory() {
@@ -327,9 +376,10 @@ export default function ChatApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function selectSuggestedQuestion(text: string) {
+  function selectSuggestedQuestion(q: { id: string; text: string }) {
     setShowSuggested(false);
-    void send(text, { isPersonaQuestion: true });
+    // 성향 질문 목록에서 고른 것만 성향 질문 방식으로 보낸다(그 외는 일반 대화).
+    void send(q.text, { isPersonaQuestion: SUGGESTED_QUESTION_GROUPS.some((g) => g.questions.some((x) => x.id === q.id)) });
   }
 
   function resetChat() {
@@ -394,7 +444,7 @@ export default function ChatApp() {
       </header>
 
       <main className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
-        <Bubble role="assistant" content={GREETING} />
+        <Bubble role="assistant" content={welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING} />
         {onboarding && onboarding.showPrompt && (
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-2xl bg-navy-soft px-4 py-2.5 text-[15px] leading-6 text-foreground">
@@ -417,7 +467,7 @@ export default function ChatApp() {
               <button
                 key={q.id}
                 type="button"
-                onClick={() => void send(q.text, { isPersonaQuestion: true })}
+                onClick={() => void send(q.text, { isPersonaQuestion: starter.persona })}
                 className="rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] text-foreground active:border-navy active:text-navy"
               >
                 {q.text}
@@ -428,6 +478,14 @@ export default function ChatApp() {
         {messages.map((m, i) => (
           <div key={m.id} className="space-y-2">
             <Bubble role={m.role} content={m.content} />
+            {m.card && i === messages.length - 1 && !sending && (
+              <CardChoices
+                card={m.card}
+                disabled={sending}
+                onPick={(pick, label) => void send(label, { cardPick: pick })}
+                onOther={(cardId) => { setOtherFor(cardId); inputRef.current?.focus(); }}
+              />
+            )}
             {m.choices && i === messages.length - 1 && !sending && (
               <div className="flex flex-wrap gap-1.5 pl-1">
                 {m.choices.map((c) => (
@@ -456,7 +514,7 @@ export default function ChatApp() {
             className="flex items-end gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void send(input);
+              submitInput();
             }}
           >
             <textarea
@@ -466,12 +524,13 @@ export default function ChatApp() {
                 // 한글 입력 중(조합 중)에는 Enter를 전송으로 처리하지 않음
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
-                  void send(input);
+                  submitInput();
                 }
               }}
+              ref={inputRef}
               rows={1}
               maxLength={1000}
-              placeholder="마음에 있는 이야기를 적어주세요"
+              placeholder={otherFor ? "떠오르는 다른 이유를 적어주세요" : "마음에 있는 이야기를 적어주세요"}
               aria-label="메시지 입력"
               disabled={sending}
               // 2026-10-01 owner 요청: placeholder가 좁은 입력창 폭(옆에 "추천 질문"·"보내기"
@@ -647,10 +706,12 @@ export default function ChatApp() {
               </button>
             </div>
             <p className="px-4 pt-3 text-[12px] leading-5 text-slate-500">
-              웰니스 유형(성향) 테스트 결과를 바탕으로 답해요. 아직 테스트를 하지 않으셨다면 먼저 안내해드려요.
+              {hasPersona
+                ? "웰니스 유형(성향) 테스트 결과를 바탕으로 답해요."
+                : "요즘 마음에 걸리는 이야기를 골라 보내 보세요. 편하게 이어서 말씀해 주시면 돼요."}
             </p>
             <div className="flex-1 overflow-y-auto px-4 pb-4">
-              {SUGGESTED_QUESTION_GROUPS.map((group) => (
+              {suggestedGroups.map((group) => (
                 <div key={group.title} className="mt-4">
                   <p className="text-[12px] font-medium text-slate-400">{group.title}</p>
                   <div className="mt-1.5 divide-y divide-line rounded-xl border border-line">
@@ -658,7 +719,7 @@ export default function ChatApp() {
                       <button
                         key={q.id}
                         type="button"
-                        onClick={() => selectSuggestedQuestion(q.text)}
+                        onClick={() => selectSuggestedQuestion(q)}
                         className="block w-full px-3.5 py-3 text-left text-[14px] leading-5 text-foreground active:bg-background"
                       >
                         {q.text}
@@ -684,27 +745,6 @@ export default function ChatApp() {
           onClose={() => setShowOnboarding(false)}
         />
       )}
-    </div>
-  );
-}
-
-// "생각하는 중…" 대신 점 3개가 순서대로 튀어오르는 타이핑 인디케이터 (2026-09-22 결정:
-// 글자가 가만히 있지 않고 움직이게 해달라는 요청 반영).
-function ThinkingBubble() {
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[85%] rounded-2xl bg-navy-soft px-4 py-2.5 text-[15px] leading-6 text-foreground">
-        <span>생각하는 중</span>
-        <span className="ssol-thinking-dot" style={{ animationDelay: "0ms" }}>
-          .
-        </span>
-        <span className="ssol-thinking-dot" style={{ animationDelay: "150ms" }}>
-          .
-        </span>
-        <span className="ssol-thinking-dot" style={{ animationDelay: "300ms" }}>
-          .
-        </span>
-      </div>
     </div>
   );
 }

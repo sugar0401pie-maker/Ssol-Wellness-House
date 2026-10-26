@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { pickRandomVariant } from "@/lib/characters/variants";
+import { randomSeed, variantFor } from "@/lib/characters/variants";
+import { bootstrap } from "@/lib/app/bootstrapClient";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -39,12 +40,25 @@ export default function HomeTab() {
   const [error, setError] = useState<string | null>(null);
   // 2026-10-01: 탭이 마운트될 때 한 번만 뽑는다 — 화면을 다시 불러올 때마다(새로고침, 재방문)
   // 바뀌지만, 같은 화면을 보는 동안에는 바뀌지 않는다("로딩할 때마다 랜덤").
-  const [variant] = useState(pickRandomVariant);
+  const [variantSeed] = useState(randomSeed);
 
   // 2026-09-26: 테스트를 새로 마치고 돌아오면 캐릭터도 바로 바뀌도록 창이 다시 보일 때 재조회한다.
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      // 2026-10-16(앱 첫 로딩 속도 개선): 앱을 열 때 미리 출발시켜 둔 홈 데이터가 있으면(온보딩을 이미 마친 사용자만) 그 결과를 쓴다.
+      // 한 번만 쓰이고(가져가면 비워짐), 없거나 실패하면 아래처럼 평소대로 직접 요청한다. 창이 다시 보일 때의 재조회는 항상 직접 요청한다.
+      const pre = bootstrap.takeDaily<DailyResponse>();
+      if (pre) {
+        const json = await pre;
+        if (json) {
+          if (!cancelled) {
+            setData(json);
+            setError(null);
+          }
+          return;
+        }
+      }
       const token = await getAccessToken();
       if (!token) {
         if (!cancelled) setError("로그인 정보를 확인하지 못했어요. 새로고침해주세요.");
@@ -101,7 +115,7 @@ export default function HomeTab() {
               <Image
                 src={
                   data.character.hasResult
-                    ? `/characters/${data.character.code}/${variant}.png`
+                    ? `/characters/${data.character.code}/${variantFor(data.character.code, variantSeed)}.png`
                     : `/characters/${data.character.code}.png`
                 }
                 alt={data.character.name ?? "웰니스 캐릭터"}
@@ -136,6 +150,31 @@ export default function HomeTab() {
                 테스트하면 내 캐릭터를 만날 수 있어요.
               </p>
             )}
+          </div>
+        )}
+
+        {/* 2026-10-15 owner 요청: 홈 데이터(캐릭터·오늘의 제안)를 불러오는 동안 빈 칸 대신 안내를 보여준다. */}
+        {!data && !error && (
+          <div role="status" aria-live="polite" className="mt-10 flex flex-col items-center text-center">
+            <p className="text-[14px] leading-6 text-slate-600">
+              <span className="ssol-pulse-text">오늘의 캐릭터와 제안을 불러오고 있어요</span>
+            </p>
+            <p className="mt-1 text-[12px] leading-5 text-slate-400">
+              <span className="ssol-pulse-text" style={{ animationDelay: "200ms" }}>
+                잠시만 기다려 주세요.
+              </span>
+            </p>
+            <p className="mt-3 text-[20px] leading-none text-navy" aria-hidden="true">
+              <span className="ssol-thinking-dot" style={{ animationDelay: "0ms" }}>
+                ·
+              </span>
+              <span className="ssol-thinking-dot" style={{ animationDelay: "150ms" }}>
+                ·
+              </span>
+              <span className="ssol-thinking-dot" style={{ animationDelay: "300ms" }}>
+                ·
+              </span>
+            </p>
           </div>
         )}
 

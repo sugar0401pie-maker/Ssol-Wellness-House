@@ -1,5 +1,6 @@
 import type { SafetyRule } from "./rules.ts";
 import { routeOrder, type RouteId } from "./types.ts";
+import { supplementalHits } from "./supplemental.ts";
 
 // 어떤 safety_rules 규칙이 어떤 route의 "즉시 판정" 후보인지.
 // route 1(crisis)·2(violence)만 즉시 고정 응답으로 이어진다. 3·4(진단/기능저하)는
@@ -46,6 +47,8 @@ export function findKeywordHits(message: string, rules: SafetyRule[]): KeywordHi
       }
     }
   }
+  // 2026-10-23: 전문위원 검수 v3의 V1·V2(폭력)·SAFE-020 확신·SAFE-021 과다복용은 DB 키워드 표가 아니라 코드의 패턴으로 즉시 판정한다(AI 없이 기존 위기·폭력 고정 응답).
+  for (const h of supplementalHits(message)) hits.push({ ruleId: h.ruleId, route: h.route, trigger: h.trigger, weak: false });
   return hits;
 }
 

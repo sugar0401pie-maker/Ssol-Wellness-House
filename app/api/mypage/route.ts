@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
+import { consentFromRow } from "@/lib/profile/aiTraining";
 
 // 마이페이지 전용: "내 정보"를 준다. "내 유형"(응시 기록 목록·심층보고서)은 2026-09-27부터
 // 여러 응시 기록을 다룰 수 있도록 /api/mypage/reports(목록)와 /api/mypage/reports/[resultId]
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  const [{ data: authUser }, { data: profile }, { data: ssolProfile }] = await Promise.all([
+  const [{ data: authUser }, { data: profile }, { data: ssolProfile }, trainingRes] = await Promise.all([
     admin.auth.admin.getUserById(userId),
     admin
       .from("profiles")
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest) {
       .eq("user_id", userId)
       .maybeSingle(),
     admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
+    // 2026-10-18: 학습 활용 동의는 별도 조회 — 이 칸이 아직 없어도(마이그레이션 전) 위의 내 정보 조회는 그대로 성공해야 한다.
+    admin.from("profiles").select("ai_training_consent").eq("user_id", userId).maybeSingle(),
   ]);
 
   return NextResponse.json({
@@ -38,6 +41,8 @@ export async function GET(req: NextRequest) {
     phone: profile?.phone ?? null,
     address: profile?.address ?? null,
     marketingConsent: profile?.marketing_consent ?? false,
+    // 기본은 동의(true) — 마이페이지에서 해제한 사람만 false. 칸이 없거나 읽기 실패면 기본값으로 보여 준다.
+    aiTrainingConsent: consentFromRow(trainingRes.error ? null : trainingRes.data),
     email: authUser?.user?.email ?? null,
     gender: ssolProfile?.gender ?? null,
     // 2026-09-28: 카카오/네이버로 가입한 사용자는 비밀번호 자체가 없어서 "내 정보 수정" 전

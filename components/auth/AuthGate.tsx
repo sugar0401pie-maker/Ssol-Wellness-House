@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import LoginScreen from "./LoginScreen";
+import AppLoading from "@/components/app/AppLoading";
 
 // 2026-09-22: 로그인 없이 쓸 수 있던 익명 로그인 방식을 대체한다. 로그인해야만 앱이 보이고,
 // 한 번 로그인하면(이메일/카카오/네이버) Supabase가 세션을 브라우저에 저장해 다음 방문에
@@ -34,13 +35,10 @@ export default function AuthGate({
         return;
       }
       const { data } = await supabase.auth.getSession();
-      if (data.session && !isRealSession(data.session)) {
-        // 남아있는 익명 세션은 정리하고 로그인 화면을 보여준다.
-        await supabase.auth.signOut();
-        setStatus("loggedOut");
-        return;
-      }
-      setStatus(data.session ? "loggedIn" : "loggedOut");
+      // 익명 세션은 로그인으로 치지 않고 로그인 화면을 보여 주되, 로그아웃시키지는 않는다(2026-10-10 owner 결정):
+      // 쿠키를 함께 쓰는 쏠 아스트로 하우스의 '로그인 없이 테스트하기'(익명 임시 계정)가 쏘웰라에 들르기만 해도
+      // 끊기지 않게. 여기서 로그인하면 Supabase가 익명 세션을 실제 세션으로 바꾼다. 서버도 익명 토큰을 거부한다(lib/supabase/auth.ts).
+      setStatus(isRealSession(data.session) ? "loggedIn" : "loggedOut");
     }
     void check();
 
@@ -51,7 +49,8 @@ export default function AuthGate({
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  if (status === "checking") return null;
+  // 2026-10-15: 세션 확인 중에도 빈 화면 대신 안내 화면(AppLoading).
+  if (status === "checking") return <AppLoading fullScreen />;
   if (status === "loggedIn") return <>{children}</>;
   return <LoginScreen initialMode={initialMode} onLoggedIn={() => setStatus("loggedIn")} />;
 }

@@ -50,3 +50,62 @@ body {
   display: inline-block;
   animation: ssol-thinking-bounce 1.1s infinite ease-in-out both;
 }
+
+/* 안내·대기 문구가 가만히 있지 않고 또렷하게 깜빡이며 살짝 움직이는 효과(2026-10-15 owner 요청, 2026-10-16 "뭔가 실행 중이라는 걸
+   보여주도록" 더 눈에 띄게 조정): 첫 화면 안내(AppLoading, HomeTab)와 채팅의 "생각하는 중" 문구에 쓴다.
+   1.2초 주기(초당 1번 안팎)라 너무 빠르게 번쩍이지 않으면서 분명히 깜빡인다. */
+@keyframes ssol-text-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.2;
+    transform: translateY(-3px);
+  }
+}
+.ssol-pulse-text {
+  display: inline-block;
+  animation: ssol-text-pulse 1.2s infinite ease-in-out both;
+}
+
+/* 문구가 바뀔 때 새 문구가 부드럽게 나타난다(채팅 "생각하는 중" 돌려쓰기). */
+@keyframes ssol-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ssol-word-in {
+  display: inline-block;
+  animation: ssol-word-in 0.45s ease-out both;
+}
+
+/* 기기에서 "동작 줄이기"를 켠 경우: 위아래 움직임은 빼되, 뭔가 진행 중이라는 것이 보이도록 깜빡임(투명도 변화)은 남긴다.
+   (이전에는 움직임을 전부 껐더니 "가만히 있어서 실행 중인지 모르겠다"가 될 수 있었다 — 투명도만 천천히 바뀌는 효과는 접근성 기준상 허용되는 범위다.) */
+@keyframes ssol-text-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ssol-pulse-text {
+    animation: ssol-text-fade 1.6s infinite ease-in-out both;
+  }
+  .ssol-thinking-dot {
+    animation-name: ssol-text-fade;
+    animation-duration: 1.4s;
+  }
+  .ssol-word-in {
+    animation: none;
+  }
+}

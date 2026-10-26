@@ -73,27 +73,42 @@ function personaBonus(chunk: RetrievedChunk, personaLabel: string | null): numbe
  *  - 디저트 유형(personaLabel)이 있으면 persona_tags가 겹치는 chunk를 살짝 더 끌어올림
  *    (상담 관점 참고용. 검색을 걸러내는 하드 필터로는 절대 쓰지 않는다 — SAFE-005)
  */
+// 검색용 임베딩(사용자 메시지 원문만 입력으로 쓴다 — route·유형과 무관해서 안전 분류와 동시에 시작할 수 있다).
+export async function embedQuery(message: string): Promise<number[]> {
+  // 2026-10-18: SDK 기본 대기 시간은 10분(재시도 포함 더 길어짐)이라 연결이 한 번 멈추면 채팅이 수 분간 붙잡혔다(안전 평가 중 17분 지연 관측).
+  // 사용자 경로의 다른 AI 호출처럼 짧게 제한한다. 실패하면 아래 호출부가 한 번 더 시도하고, 그래도 안 되면 오류로 끝난다.
+  const openai = new OpenAI({ timeout: 10000, maxRetries: 1 });
+  const embedding = await openai.embeddings.create({
+    model: EMBEDDING_MODEL,
+    input: message,
+    encoding_format: "float",
+  });
+  return embedding.data[0].embedding;
+}
+
 export async function retrieveKnowledgeChunks(
   message: string,
   recentMessages: { role: "user" | "assistant"; content: string }[],
   scope: "general" | "clinical",
   safetyRules: SafetyRule[],
   personaLabel: string | null = null,
+  // 2026-10-16(채팅 속도 개선): 채팅 API가 안전 분류와 동시에 미리 시작해 둔 임베딩. 없거나 실패하면 여기서 직접 만든다.
+  prefetchedEmbedding?: Promise<number[]>,
 ): Promise<RetrievedChunk[]> {
   const admin = createAdminClient();
-  const openai = new OpenAI();
 
   const finalCount = scope === "clinical" ? 3 : 5;
   const candidatePoolSize = finalCount * 2; // rerank가 의미 있으려면 필요한 것보다 조금 더 뽑아둔다
 
-  const embedding = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: message,
-    encoding_format: "float",
-  });
+  let queryEmbedding: number[];
+  try {
+    queryEmbedding = prefetchedEmbedding ? await prefetchedEmbedding : await embedQuery(message);
+  } catch {
+    queryEmbedding = await embedQuery(message); // 미리 시작한 것이 실패했으면 한 번 더 직접 시도(실패하면 오류가 그대로 올라간다)
+  }
 
   const { data, error } = await admin.rpc("match_knowledge_chunks", {
-    query_embedding: embedding.data[0].embedding,
+    query_embedding: queryEmbedding,
     match_count: candidatePoolSize,
     min_similarity: 0.15, // 매우 낮은 문턱. 여기서 많이 거르지 않고, 무관한 질문은 프롬프트 지시로 처리
     scope,

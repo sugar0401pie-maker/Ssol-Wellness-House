@@ -1,9 +1,11 @@
 import "server-only";
+import { applyRootBoost, type RootBoostFn } from "@/lib/interp/rootBoostApply";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { domainRankScore, pickDailyPool } from "@/lib/rag/domainRank";
 import { passesHardFilter, scoreSoftPreference, type OnboardingPrefs, type PracticeEligibility } from "@/lib/onboarding/practiceFilter";
 import { passesServingRules, type ServingContext } from "@/lib/onboarding/servingRules";
 import { STABILIZATION_PRACTICE_IDS, type TraumaStage } from "@/lib/safety/traumaStage";
+import { parseTheoryWeight, weightTheoryPractices } from "./dailyWeight";
 
 // wellness_practices(owner가 만든 실천방법 DB, 375개: domain x category x tier)에서 지금
 // 대화 상황에 맞을 만한 몇 개를 골라 답변 재료로 준다. 진단이나 처방이 아니라 "지금 해볼 수
@@ -123,6 +125,11 @@ function filterByEligibility<T extends { id: string }>(
   });
 }
 
+// 폭력·통제 관계 신호가 있을 때(D6) 파트너가 필요한 실천("상대에게 내 마음 전하기" 등)을 뺀다. 필터 뒤 후보가 0개여도 되돌리지 않는다(더 조심스러운 쪽).
+function dropPartnerPractices<T extends { id: string }>(items: T[], eligibilityMap: Map<string, PracticeEligibility>, on: boolean | undefined): T[] {
+  return on ? items.filter((i) => !eligibilityMap.get(i.id)?.requiresPartner) : items;
+}
+
 function bigrams(text: string): Set<string> {
   const clean = text.replace(/\s+/g, "");
   const set = new Set<string>();
@@ -169,10 +176,13 @@ export async function searchWellnessPractices(
   onboardingPrefs: OnboardingPrefs,
   serving: ServingContext,
   traumaStage: TraumaStage | null = null,
+  rootBoost: RootBoostFn | null = null, // 2026-10-18: 해석된 뿌리로 순서 조정(순위 가산 + 맞지 않는 실천 제외). 없으면 이전과 같다.
 ): Promise<PracticeResult[]> {
   // 이론 기반 실천 노출 제한(after_explore·exposure·위기 이력) — 트라우마 대화(T0/T1)에서는 exposure를 전부 뺀다.
   const ctx: ServingContext = traumaStage ? { ...serving, excludeExposure: true } : serving;
-  let rows = (await loadPractices()).filter((p) => passesServingRules(p, ctx));
+  // 2026-10-16: 실천 목록과 적격성 표를 동시에 읽는다(캐시가 비어 있을 때 두 번 연달아 기다리던 것).
+  const [allRows, eligibilityMap] = await Promise.all([loadPractices(), loadEligibilityMap()]);
+  let rows = allRows.filter((p) => passesServingRules(p, ctx));
   if (!rows.length) return [];
 
   // 트라우마 T1(지금 압도): 탐색·일반 제안을 멈추고 안정화 실천 1~2개만 후보로 준다(문서 4-6-1). 아직 데이터에 없으면 아래 일반 검색으로.
@@ -180,19 +190,23 @@ export async function searchWellnessPractices(
   if (traumaStage === "T1" && stabilization.length) return stabilization.slice(0, 2).map(toResult);
 
   {
-    const eligibilityMap = await loadEligibilityMap();
     const filtered = filterByEligibility(rows, eligibilityMap, onboardingPrefs);
     if (filtered.length) rows = filtered; // 다 걸러져 후보가 0개면(드묾) 안전하게 필터 전 목록으로 되돌아간다
   }
+  rows = dropPartnerPractices(rows, eligibilityMap, ctx.excludePartnerPractices);
+  if (!rows.length) return [];
 
   const contextText = [...recentMessages.slice(-4).map((m) => m.content), message].join(" ");
   const qBigrams = bigrams(contextText);
   const domain = guessDomain(contextText);
 
-  const scored = rows.map((p) => ({
-    ...p,
-    score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + domainRankScore(p, domain),
-  }));
+  const scored = applyRootBoost(
+    rows.map((p) => ({
+      ...p,
+      score: overlapScore(qBigrams, bigrams(`${p.title} ${p.detail} ${p.category}`)) + domainRankScore(p, domain),
+    })),
+    rootBoost,
+  );
 
   // 2026-09-22 결정: "단기(가볍게 시작)와 중장기(꾸준히 이어가기·장기 습관)를 섞어서 ~3개
   // 제안"하려면 후보 자체에 tier 다양성이 있어야 한다. 순수 점수 정렬만 하면 "가볍게 시작"
@@ -241,6 +255,14 @@ function simpleHash(text: string): number {
 // 한 사용자(hasConsentedData)는 그 안에서 Q4~Q7 선호 점수가 가장 높은 후보 중 하나를 날짜로
 // 결정론적으로 고르고, 그렇지 않으면 기존 category/domain 매칭(둘 다 하드 필터를 통과한
 // 후보 안에서만) → 전체 하드 필터 통과 후보 순으로 넓혀간다.
+// 홈 API가 다른 조회와 동시에 실천 목록·적격성 표를 미리 읽어 두게 한다(2026-10-16). 캐시(5분)가 이미 있으면 즉시 끝난다.
+export async function preloadPractices(): Promise<void> {
+  await Promise.all([loadPractices(), loadEligibilityMap()]);
+}
+
+// 홈 추천에서 이론 기반 실천이 뽑힐 가중치(기본 2배, 환경변수 HOME_THEORY_PRACTICE_WEIGHT로 1~5 조절). dailyWeight.ts 참고.
+const THEORY_WEIGHT = parseTheoryWeight(process.env.HOME_THEORY_PRACTICE_WEIGHT);
+
 export async function getDailyPractice(
   userId: string,
   dateKey: string,
@@ -249,12 +271,12 @@ export async function getDailyPractice(
   hasConsentedData: boolean,
   serving: ServingContext,
 ): Promise<PracticeResult | null> {
-  const rows = await loadPractices();
+  // 2026-10-16: 실천 목록과 적격성 표를 동시에 읽는다(캐시가 비어 있는 첫 요청에서 두 번 연달아 기다리던 것).
+  const [rows, eligibilityMap] = await Promise.all([loadPractices(), loadEligibilityMap()]);
   // 이론 기반 실천 노출 제한: 홈에서도 after_explore는 안 나가고, exposure는 위기 이력 계정에 안 나간다(1단계만).
   const base = rows.filter((p) => p.tier === "가볍게 시작" && passesServingRules(p, serving));
   if (!base.length) return null;
 
-  const eligibilityMap = await loadEligibilityMap();
   const hardFiltered = filterByEligibility(base, eligibilityMap, onboardingPrefs);
   // 극단적 예외(하드 필터로 전부 걸러짐, 사실상 안 일어남)에만 안전하게 전체 목록으로 돌아간다.
   const pool0 = hardFiltered.length ? hardFiltered : base;
@@ -267,14 +289,14 @@ export async function getDailyPractice(
     const topScore = Math.max(...scored.map((p) => p.score));
     // 가장 선호 점수가 높은 후보들끼리만 날짜로 고른다(항상 1등만 나오면 매일 똑같아 보이므로,
     // 동점자 사이에서는 날짜에 따라 자연스럽게 바뀐다).
-    const topPool = scored.filter((p) => p.score === topScore);
+    const topPool = weightTheoryPractices(scored.filter((p) => p.score === topScore), THEORY_WEIGHT);
     const idx = simpleHash(`${dateKey}:${userId}`) % topPool.length;
     return toResult(topPool[idx]);
   }
 
   // 2026-10-06: 1순위 영역 → 2순위 영역(secondary_domains) → 전체 순으로 넓힌다(lib/rag/domainRank.ts).
   // 1순위 후보가 있는 영역은 예전과 똑같이 동작하고, 1순위 후보가 0개인 "삶의 방향"만 2순위 항목을 쓴다.
-  const pool = pickDailyPool(pool0, preference ?? {});
+  const pool = weightTheoryPractices(pickDailyPool(pool0, preference ?? {}), THEORY_WEIGHT);
 
   const idx = simpleHash(`${dateKey}:${userId}`) % pool.length;
   return toResult(pool[idx]);
@@ -296,9 +318,10 @@ export async function pickCommitPractices(params: {
   alreadyShownText?: string; // 이 대화에서 이미 나간 답변 글(같은 실천을 또 권하지 않으려고 제목이 들어 있는지 본다)
 }): Promise<CommitPractice[]> {
   const admin = createAdminClient();
-  const [{ data: links }, rowsAll] = await Promise.all([
+  const [{ data: links }, rowsAll, eligibilityMap] = await Promise.all([
     admin.from("theory_practice_links").select("practice_id, compatibility").eq("theory_id", params.theoryId),
     loadPractices(),
+    loadEligibilityMap(),
   ]);
   const fit = new Set<string>(), conflict = new Set<string>();
   for (const l of (links ?? []) as { practice_id: string; compatibility: string }[]) (l.compatibility === "conflict" ? conflict : l.compatibility === "fit" ? fit : new Set<string>()).add(l.practice_id);
@@ -306,8 +329,7 @@ export async function pickCommitPractices(params: {
   const ctx: ServingContext = { ...params.serving, allowAfterExplore: true, excludeExposure: params.traumaStage != null || params.serving.excludeExposure };
   const shown = params.alreadyShownText ?? "";
   let rows = rowsAll.filter((p) => !conflict.has(p.id) && passesServingRules(p, ctx) && !(shown && shown.includes(p.title)));
-  const eligibilityMap = await loadEligibilityMap();
-  rows = filterByEligibility(rows, eligibilityMap, params.onboardingPrefs);
+  rows = dropPartnerPractices(filterByEligibility(rows, eligibilityMap, params.onboardingPrefs), eligibilityMap, ctx.excludePartnerPractices);
   const q = bigrams(params.messages.slice(-3).join(" "));
   const candidates = rows
     .filter((p) => fit.has(p.id) || p.sourceTheoryId === params.theoryId)

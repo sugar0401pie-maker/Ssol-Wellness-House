@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
+import { getUserIdFromAuthHeader, getUserIdFast } from "@/lib/supabase/auth";
+import { createTimer } from "@/lib/perf/serverTiming";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { isOtherTextValid, OTHER_CODE } from "@/lib/onboarding/schema";
@@ -36,11 +37,14 @@ export async function GET(req: NextRequest) {
   if (!checkAccessCode(req.headers.get("x-access-code"))) {
     return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
   }
-  const userId = await getUserIdFromAuthHeader(req.headers.get("authorization"));
+  // 2026-10-16: 읽기 전용 GET이라 토큰을 공개키로 직접 검증하는 빠른 확인을 쓴다(getUserIdFast 설명 참고).
+  const timer = createTimer();
+  const userId = await getUserIdFast(req.headers.get("authorization"));
+  timer.mark("auth");
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const admin = createAdminClient();
-  const [{ data: profile }, { data: ssolProfile }, { data: quizResult }, { data: onboarding }] = await Promise.all([
+  const [{ data: profile }, { data: ssolProfile }, { data: quizResult }, { data: onboarding }] = await timer.time("db", Promise.all([
     admin.from("profiles").select("display_name, nickname").eq("user_id", userId).maybeSingle(),
     admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
     admin
@@ -51,7 +55,7 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .maybeSingle(),
     admin.from("user_onboarding").select("*").eq("user_id", userId).maybeSingle(),
-  ]);
+  ]));
 
   const nickname = profile?.nickname ?? profile?.display_name ?? ssolProfile?.name ?? quizResult?.user_name ?? null;
   const gender = ssolProfile?.gender ?? quizResult?.gender ?? null;
@@ -78,7 +82,7 @@ export async function GET(req: NextRequest) {
           other_answers: onboarding.other_answers ?? {},
         }
       : {},
-  });
+  }, { headers: { "Server-Timing": timer.header() } });
 }
 
 // 문항 하나 답(또는 건너뛰기=null)을 즉시 저장한다. 스펙 4.2: "기타"는 공백 제외 10자 이상이어야

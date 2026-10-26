@@ -1,3 +1,4 @@
+import type { Timer } from "@/lib/perf/serverTiming";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SafetyRule } from "@/lib/safety/rules";
@@ -5,6 +6,8 @@ import type { RouteId } from "@/lib/safety/types";
 import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
 import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
 import { searchWellnessPractices } from "@/lib/rag/practicesSearch";
+import { loadRootBoost } from "@/lib/interp/rootBoost";
+import { hasUnsafeRelationshipSignal } from "@/lib/theory/exclusion";
 import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
 import { buildSystemPrompt, type DialogueMode, type PersonaHint } from "@/lib/rag/prompt.ts";
 import type { TheoryGuide } from "@/lib/theory/types";
@@ -12,8 +15,7 @@ import { generateReply } from "@/lib/ai/chatModel";
 import { checkOutput } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
-import { loadTarotReadings } from "@/lib/tarot/loadTarotReadings";
-import { buildTarotHint } from "@/lib/tarot/readings";
+import { loadAstroInsight } from "@/lib/mypage/loadAstroInsight";
 import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
 import { detectTraumaStage } from "@/lib/safety/traumaStage";
@@ -58,40 +60,35 @@ function summarizeThemeScores(scores: unknown): string | undefined {
 //
 // 세션당 1회만 조회하고 그 결과를 chat_sessions.persona_snapshot에 캐시해 재사용한다
 // (2026-09-22 결정). 새 대화를 시작해야 최신 정보로 다시 조회된다.
-type PersonaSnapshot = { label: string | null; hint: PersonaHint | null; tarot?: string | null };
-
 async function loadPersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   sessionId: string,
 ): Promise<PersonaSnapshot> {
   const { data: session } = await admin.from("chat_sessions").select("persona_snapshot").eq("session_id", sessionId).maybeSingle();
-  const cached = session?.persona_snapshot as PersonaSnapshot | null | undefined;
-  if (cached && "tarot" in cached) return cached;
+  if (session?.persona_snapshot) {
+    // 2026-10-08 이전에 캐시된 스냅샷엔 astro가 없다 — 새 대화부터 점성술 요약이 들어간다.
+    return session.persona_snapshot as PersonaSnapshot;
+  }
 
-  // 2026-10-07: 타로 요약(tarot)이 생기기 전에 저장된 스냅샷은 유형 정보는 그대로 쓰고 타로만 채워 넣는다.
-  const snapshot: PersonaSnapshot = cached
-    ? { ...cached, tarot: await computeTarotHint(admin, userId) }
-    : { ...(await computePersonaHint(admin, userId)), tarot: await computeTarotHint(admin, userId) };
+  const snapshot = await computePersonaHint(admin, userId);
   await admin.from("chat_sessions").update({ persona_snapshot: snapshot }).eq("session_id", sessionId);
   return snapshot;
 }
 
-// 2026-10-07 owner 요청: 쏠 타로 하우스(별도 앱) 결과를 채팅에서도 참고. 최근 30일 안의 가장 최근 결과 한 건,
-// 카드·위치·방향·고민 분류 이름만(고민 원문은 넘기지 않음 — 정책 미정). 유형 정보와 같이 세션당 1회만 조회한다.
-async function computeTarotHint(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string | null> {
-  return buildTarotHint(await loadTarotReadings(admin, userId, 1));
-}
+// 2026-10-08: 쏠 점성술 하우스 결과 요약(astro)도 같은 스냅샷에 담는다(디저트 테스트를 안 했어도 따로 쓰일 수 있음).
+type PersonaSnapshot = { label: string | null; hint: PersonaHint | null; astro?: string | null };
 
 async function computePersonaHint(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
-): Promise<{ label: string | null; hint: PersonaHint | null }> {
+): Promise<PersonaSnapshot> {
+  const astro = await loadAstroInsight(admin, userId);
   // 2026-09-24: 마이페이지와 같은 방식(ssol_quiz_results 직접 조회)으로 통일 — 예전엔
   // wellness_profiles를 봤지만 실제 퀴즈 결과와 연결되지 않아 실사용자 기준으로 항상
   // 비어 있었다(위 파일 상단 import의 loadQuizPersona 주석 참고).
   const persona = await loadQuizPersona(admin, userId);
-  if (!persona) return { label: null, hint: null };
+  if (!persona) return { label: null, hint: null, astro };
 
   return {
     label: persona.name,
@@ -104,6 +101,7 @@ async function computePersonaHint(
       scoresSummary: summarizeThemeScores(persona.domainScores),
       reportInsight: persona.reportInsight ?? undefined,
     },
+    astro,
   };
 }
 
@@ -123,9 +121,15 @@ export async function generateAnswer(params: {
   userId: string;
   sessionId: string;
   isPersonaQuestion?: boolean;
+  // 채팅 API가 안전 분류와 동시에 미리 시작해 둔 검색용 임베딩(없으면 검색 단계에서 직접 만든다).
+  queryEmbedding?: Promise<number[]>;
+  // 단계별 시간 측정용(없으면 아무 일도 안 한다). 내부 lap은 generate_total 안의 세부 단계다.
+  timer?: Timer;
   // 2026-10-05: 이론 질문 선택 흐름(lib/theory)에서만 넘어온다. 없으면 이전과 완전히 같게 동작한다.
   dialogueMode?: DialogueMode;
   theoryGuide?: TheoryGuide | null;
+  // 2026-10-23: SAFE-018~021 답변 지침(lib/safety/supplemental.ts). 없으면 이전과 같다.
+  safetyGuidance?: string | null;
 }): Promise<{
   reply: string;
   retrievedChunkIds: string[];
@@ -141,61 +145,58 @@ export async function generateAnswer(params: {
     .filter((r) => params.matchedRuleIds.includes(r.rule_id))
     .map((r) => ({ rule_id: r.rule_id, category: r.category, rule_text: r.rule_text }));
 
-  let knowledgeChunks: Awaited<ReturnType<typeof retrieveKnowledgeChunks>> = [];
-  let serviceResults: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
-  let frameworkHint: Awaited<ReturnType<typeof findFrameworkHint>> = null;
-
-  const { label: personaLabel, hint: personaHint, tarot: tarotSummary } = await loadPersonaHint(admin, params.userId, params.sessionId);
+  const { label: personaLabel, hint: personaHint, astro: astroInsight } = await loadPersonaHint(admin, params.userId, params.sessionId);
+  params.timer?.lap("g_persona");
 
   if (params.isPersonaQuestion && !personaHint) {
     return { reply: NEEDS_TEST_REPLY, retrievedChunkIds: [], frameworkId: null, usage: [], regenerated: false, usedFallback: false };
   }
 
-  if (params.route === "service_info") {
-    serviceResults = await searchServiceKnowledge(params.message);
-  } else {
-    const scope = params.route === "clinical_diagnosis" || params.route === "clinical_distress" ? "clinical" : "general";
-    knowledgeChunks = await retrieveKnowledgeChunks(
-      params.message,
-      params.recentMessages,
-      scope,
-      params.safetyRules,
-      personaLabel,
-    );
-    if (params.route === "life_decision" && knowledgeChunks.length) {
-      frameworkHint = await findFrameworkHint(knowledgeChunks.map((c) => c.article_id));
-    }
-  }
-
-  // 실천방법 DB(owner 제공, 375개)에서 상황에 맞는 후보를 가져온다. "무엇을 해볼지" 제안이
-  // 실제로 의미 있는 route(wellness/life_decision/clinical_distress)에서만, 그리고 성향 질문
-  // 모드(캐릭터 해석)에서는 성격이 다른 대화라 쓰지 않는다.
-  // 선택 안내 직전 턴(offer_follows)과 탐색 턴(explore)에서는 행동 제안을 하지 않으므로 실천법 후보도
-  // 가져오지 않는다(불필요한 조회 방지 + 프롬프트에 서로 반대되는 지시가 섞이지 않게).
+  // 2026-10-16(채팅 속도 개선): 서로 필요하지 않은 조회(참고자료 검색·실천방법 후보·기억·세션 정보)를 순서대로 기다리지 않고
+  // 동시에 시작한다. 결과·판단 기준은 이전과 같고 기다리는 순서만 바뀌었다.
   const wantsPractices =
     !params.isPersonaQuestion &&
     (!params.dialogueMode || params.dialogueMode === "action") &&
     (params.route === "wellness" || params.route === "life_decision" || params.route === "clinical_distress");
-
-  // 사용자가 "이 대화를 기억하기"를 선택한 이전 세션이 있을 때만 존재한다. 참고용일 뿐,
-  // 검색이나 안전 판단에는 쓰지 않는다.
-  // 2026-09-25: 관계/육아/업무 하드 필터는 온보딩 여부와 무관하게 채팅 실천방법 제안에도
-  // 항상 적용한다(파트너 없는데 "연인과 함께" 제안이 나가지 않도록) — practicesSearch.ts.
-  const onboardingPrefs = wantsPractices ? await loadOnboardingPrefs(admin, params.userId) : null;
   // 트라우마 말이 나왔을 때의 단계별 대응(lib/safety/traumaStage.ts, 2026-10-06): 라우터는 건드리지 않고, 일반 경로로 통과한
   // 대화에서 답변만 더 조심스럽게 만든다. 성향 질문 모드(캐릭터 해석)에는 적용하지 않는다.
   const traumaStage = params.isPersonaQuestion
     ? null
     : detectTraumaStage(params.message, params.recentMessages.filter((m) => m.role === "user").map((m) => m.content));
-  // 이론 기반 실천 노출 제한(위기 이력 계정에는 exposure 제외) — 실천 후보를 쓰는 경로에서만 조회한다.
-  const serving = { hasCrisisHistory: wantsPractices ? await hasCrisisHistory(admin, params.userId) : true };
-  const [{ data: memoryRow }, { data: sessionMeta }, practiceResults] = await Promise.all([
-    admin.from("user_memory").select("summary").eq("user_id", params.userId).maybeSingle(),
-    admin.from("chat_sessions").select("clinical_boundary_stated_at").eq("session_id", params.sessionId).maybeSingle(),
-    wantsPractices && onboardingPrefs
-      ? searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, serving, traumaStage)
-      : Promise.resolve([]),
-  ]);
+
+  // (1) 참고자료/서비스 검색
+  const knowledgeP = (async () => {
+    let chunks: Awaited<ReturnType<typeof retrieveKnowledgeChunks>> = [];
+    let services: Awaited<ReturnType<typeof searchServiceKnowledge>> = [];
+    let framework: Awaited<ReturnType<typeof findFrameworkHint>> = null;
+    if (params.route === "service_info") {
+      services = await searchServiceKnowledge(params.message);
+    } else {
+      const scope = params.route === "clinical_diagnosis" || params.route === "clinical_distress" ? "clinical" : "general";
+      chunks = await retrieveKnowledgeChunks(params.message, params.recentMessages, scope, params.safetyRules, personaLabel, params.queryEmbedding);
+      if (params.route === "life_decision" && chunks.length) {
+        framework = await findFrameworkHint(chunks.map((c) => c.article_id));
+      }
+    }
+    return { chunks, services, framework };
+  })();
+  // (2) 실천방법 후보 — 온보딩 설정과 위기 이력을 동시에 읽은 뒤 검색한다.
+  //     2026-09-25: 관계/육아/업무 하드 필터는 온보딩 여부와 무관하게 채팅 실천방법 제안에도 항상 적용한다(practicesSearch.ts).
+  //     이론 기반 실천 노출 제한(위기 이력 계정에는 exposure 제외) — 실천 후보를 쓰는 경로에서만 조회한다.
+  const practicesP = (async () => {
+    if (!wantsPractices) return [];
+    const [onboardingPrefs, hasCrisis, rootBoost] = await Promise.all([loadOnboardingPrefs(admin, params.userId), hasCrisisHistory(admin, params.userId), loadRootBoost(admin, params.userId)]);
+    return searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, { hasCrisisHistory: hasCrisis, excludePartnerPractices: hasUnsafeRelationshipSignal(params.message, params.recentMessages.filter((m) => m.role === "user").map((m) => m.content)) }, traumaStage, rootBoost);
+  })();
+  // (3) 사용자가 "이 대화를 기억하기"를 선택한 이전 세션의 요약(참고용일 뿐, 검색·안전 판단에는 쓰지 않는다)과 세션 정보
+  const [{ chunks: knowledgeChunks, services: serviceResults, framework: frameworkHint }, { data: memoryRow }, { data: sessionMeta }, practiceResults] =
+    await Promise.all([
+      knowledgeP,
+      admin.from("user_memory").select("summary").eq("user_id", params.userId).maybeSingle(),
+      admin.from("chat_sessions").select("clinical_boundary_stated_at").eq("session_id", params.sessionId).maybeSingle(),
+      practicesP,
+    ]);
+  params.timer?.lap("g_retrieve_and_context");
 
   const usedClinicalChunk = knowledgeChunks.some((c) => c.clinical_sensitive);
   // 이번 세션에서 전문가 상담 안내를 이미 한 번 전달했는지 (2026-09-22 결정: 매 턴 반복 방지).
@@ -212,8 +213,7 @@ export async function generateAnswer(params: {
     frameworkHint,
     userMemory: memoryRow?.summary,
     personaHint,
-    // 쏠 타로 결과: 고민을 함께 다루는 route에서만(서비스 문의·진단/약물 질문에는 넣지 않음).
-    tarotHint: params.route === "wellness" || params.route === "life_decision" || params.route === "clinical_distress" ? tarotSummary : null,
+    astroInsight: astroInsight ?? undefined,
     // 심층 리포트는 전체가 아니라 지금 이야기와 관련 있어 보이는 섹션만 넣는다(prompt.ts/reportSelect.ts).
     reportQuery: {
       message: params.message,
@@ -221,6 +221,7 @@ export async function generateAnswer(params: {
     },
     dialogueMode: params.dialogueMode,
     theoryGuide: params.theoryGuide,
+    safetyGuidance: params.safetyGuidance,
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
     traumaStage,
     // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에
@@ -234,8 +235,10 @@ export async function generateAnswer(params: {
   let regenerated = false;
   let usedFallback = false;
 
+  params.timer?.lap("g_prompt");
   try {
     const first = await generateReply(system, conversation);
+    params.timer?.lap("g_llm1");
     usage.push({ inputTokens: first.usage.inputTokens, outputTokens: first.usage.outputTokens });
     const check1 = checkOutput(first.text, { usedClinicalChunk, clinicalBoundaryAlreadyStated });
 
@@ -245,6 +248,7 @@ export async function generateAnswer(params: {
       regenerated = true;
       const retrySystem = `${system}\n\n[내부 검수 실패 — 다시 작성] 방금 만든 답변이 아래 규칙을 어겼습니다. 같은 실수를 반복하지 말고 다시 작성하세요:\n${check1.violations.map((v) => `- ${v}`).join("\n")}`;
       const second = await generateReply(retrySystem, conversation);
+      params.timer?.lap("g_llm2_retry");
       usage.push({ inputTokens: second.usage.inputTokens, outputTokens: second.usage.outputTokens });
       const check2 = checkOutput(second.text, { usedClinicalChunk, clinicalBoundaryAlreadyStated });
       reply = check2.ok ? second.text : SAFE_FALLBACK_REPLY;

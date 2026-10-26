@@ -230,6 +230,7 @@ export async function generateAnswer(params: {
     dialogueMode: params.dialogueMode,
     theoryGuide: params.theoryGuide,
     safetyGuidance: params.safetyGuidance,
+    humanSessionAlreadyOffered: params.recentMessages.some((m) => m.role === "assistant" && m.content.includes("개인 웰니스 세션")),
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
     traumaStage,
     // 이미 몇 번 답했는지(직전 assistant 메시지 수). 계속 되묻기만 하지 않고 어느 시점에

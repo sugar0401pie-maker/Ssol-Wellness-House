@@ -500,3 +500,47 @@ describe("buildSystemPrompt — 쏠 타로 하우스 요약(tarotInsight, 2026-1
     assert.match(p, /지어내지 않는다/);
   });
 });
+
+// 역할 층위(2026-10-26, docs/제품_역할_층위.md): 쏘웰라는 층위 1~4 + 해결책, 층위 5는 원할 때만 휴먼 웰니스 세션, 층위 6은 전문 기관.
+describe("역할 층위 지침", () => {
+  const base = { sections: SECTIONS, matchedRules: [], usedClinicalChunk: false };
+  test("일반 대화 첫 답변: 한 칸 아래 후보를 고르게 묻는 질문 하나", () => {
+    const p = buildSystemPrompt({ ...base, route: "wellness", turnCount: 0 });
+    assert.match(p, /한 번에 한 층씩 아래로/);
+    assert.match(p, /물음표가 하나인 한 문장/);
+  });
+  test("두 번째 답변: 층위 4를 가설로(단정·진단 금지) / 세 번째부터: 해결책을 층위 4에 맞춤", () => {
+    assert.match(buildSystemPrompt({ ...base, route: "wellness", turnCount: 1 }), /가설로 한두 가지만 짚어/);
+    assert.match(buildSystemPrompt({ ...base, route: "life_decision", turnCount: 2 }), /층위 4\)에 맞춘 것/);
+  });
+  test("층위 5·6 경계: 개인 웰니스 세션은 원할 때 한 번만, 병리적 원인·약·치료는 전문 기관", () => {
+    const p = buildSystemPrompt({ ...base, route: "wellness", turnCount: 0 });
+    assert.match(p, /개인 웰니스 세션에서 상담사와 함께/);
+    assert.match(p, /정신건강의학과·심리상담 같은 전문 기관/);
+  });
+  test("원인은 쏘웰라가 설명·추측하지 않는다(층위 5)", () => {
+    assert.match(buildSystemPrompt({ ...base, route: "wellness", turnCount: 0 }), /설명하거나 추측하지 마세요/);
+  });
+  test("이미 세션을 안내했으면 되풀이하지 않는다", () => {
+    assert.match(buildSystemPrompt({ ...base, route: "wellness", turnCount: 3, humanSessionAlreadyOffered: true }), /되풀이하지 마세요/);
+  });
+  test("임상·위기 경로, 안전 지침이 있는 턴, 선택 흐름에서는 붙지 않는다", () => {
+    assert.doesNotMatch(buildSystemPrompt({ ...base, route: "clinical_distress", turnCount: 0 }), /한 번에 한 층씩/);
+    assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: 0, safetyGuidance: "- 사별" }), /한 번에 한 층씩/);
+    assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: 0, dialogueMode: "action" }), /한 번에 한 층씩/);
+  });
+  test("'~할 수 없어요' 거절 표현이 없다", () => {
+    for (const n of [0, 1, 2]) assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: n }).split("\n\n").filter((x) => /층/.test(x)).join(" "), /(할|드릴)\s*수\s*없어요/);
+  });
+});
+
+describe("층위 5 신호", () => {
+  const base = { sections: SECTIONS, matchedRules: [], usedClinicalChunk: false, route: "wellness" as const };
+  test("왜 생겼는지·어떻게 관리할지를 직접 물으면 세션 제안 문장을 반드시 넣게 한다(한 번만)", () => {
+    for (const m of ["제가 왜 이런 완벽주의가 생겼는지 알고 싶어요", "이걸 어떻게 관리하면 좋을지 더 깊이 알고 싶어요", "극복하고 싶어요"]) {
+      assert.match(buildSystemPrompt({ ...base, turnCount: 2, reportQuery: { message: m } }), /한 문장 반드시 포함하세요/, m);
+    }
+    assert.doesNotMatch(buildSystemPrompt({ ...base, turnCount: 2, reportQuery: { message: "요즘 팀장이랑 자꾸 부딪혀요" } }), /한 문장 반드시 포함하세요/);
+    assert.doesNotMatch(buildSystemPrompt({ ...base, turnCount: 2, humanSessionAlreadyOffered: true, reportQuery: { message: "어떻게 관리하면 좋을까요" } }), /한 문장 반드시 포함하세요/);
+  });
+});

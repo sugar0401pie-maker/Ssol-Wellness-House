@@ -4,6 +4,7 @@ import type { RouteId } from "../safety/types.ts";
 import type { TheoryGuide, TheoryStage, VoiceCard } from "../theory/types.ts";
 import { selectReportSections, splitReportInsight } from "./reportSelect.ts";
 import type { TraumaStage } from "../safety/traumaStage.ts";
+import { GENERAL_LAYER_ROUTES, isLayer5Signal, layerHandoffBlock, layerPacingBlock } from "./layers.ts";
 
 type SectionLike = { section_name: string; prompt_text: string; priority: string };
 type RuleLike = { rule_id: string; category: string; rule_text: string };
@@ -195,6 +196,8 @@ export function buildSystemPrompt(params: {
   theoryGuide?: TheoryGuide | null;
   // 2026-10-23: SAFE-018~021 답변 지침(lib/safety/supplemental.ts guidanceBlock). 없으면 아래 블록이 들어가지 않는다.
   safetyGuidance?: string | null;
+  // 2026-10-26: 개인 웰니스 세션 안내를 이 대화에서 이미 했는지(층위 5 경계 지침에서 되풀이 방지). lib/rag/layers.ts
+  humanSessionAlreadyOffered?: boolean;
 }): string {
   const parts: string[] = [];
 
@@ -404,6 +407,13 @@ export function buildSystemPrompt(params: {
     parts.push(
       "사용자의 말에서 '배제감', '부당함', '무력감'처럼 여러 감정이나 어려움이 동시에 드러난다면, 그중 하나만 골라 확인 질문을 이어가지 마세요. 대부분의 고민은 여러 감정이 섞여 있는 게 자연스러우니, 그렇게 확인하려 들 필요 없이 드러난 감정·어려움 각각에 대해 지금 해볼 수 있는 실질적인 것을 하나씩 짝지어 한 번의 답변에서 한꺼번에 제시하세요. (예: 배제감에는 이렇게, 부당하다고 느껴질 땐 이렇게, 무력감이 들 땐 이렇게 — 식으로 각각에 대한 대응을 모아서)",
     );
+  }
+
+  // 2026-10-26(대표님 확정 역할 층위, docs/제품_역할_층위.md): 일반 대화 경로의 일반 답변은 "한 번에 한 층씩 아래로 → 층위 4(성향·바라는 것) 가설 → 그에 맞춘 해결책"으로 진행하고,
+  // 층위 5(왜 생겼는지·관리·극복)는 원할 때만 개인 웰니스 세션으로, 층위 6(병리적 원인·약·치료)은 전문 기관으로 안내한다. 선택 흐름·안전 지침(사별·섭식 등)이 있는 턴·캐릭터 해석 질문에서는 붙이지 않는다.
+  if (!dialoguePacing && GENERAL_LAYER_ROUTES.includes(params.route) && !params.safetyGuidance && params.personaMode !== "characterization") {
+    parts.push(layerPacingBlock(params.turnCount ?? 0));
+    parts.push(layerHandoffBlock({ humanSessionAlreadyOffered: params.humanSessionAlreadyOffered, layer5Now: !!params.reportQuery?.message && isLayer5Signal(params.reportQuery.message) }));
   }
 
   if (params.dialogueMode) {

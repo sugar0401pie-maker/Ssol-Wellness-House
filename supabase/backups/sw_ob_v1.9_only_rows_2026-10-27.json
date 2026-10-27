@@ -1,0 +1,536 @@
+{
+ "sw_ob_choice_practice_candidates": [
+  {
+   "option_id": "CO-MST-2-SELF-REPLAY",
+   "practice_id": "SELF-MIND-L2-03",
+   "title": "나에게 한 말을 친한 친구에게 하듯 부드럽게 바꿔 적기",
+   "root_id": "ROOT-47",
+   "relation": "support",
+   "review_status": "자료에서 확인 불가",
+   "auto_expose": false
+  },
+  {
+   "option_id": "CO-MST-2-PAST-WORDS",
+   "practice_id": "SELF-MIND-L2-03",
+   "title": "나에게 한 말을 친한 친구에게 하듯 부드럽게 바꿔 적기",
+   "root_id": "ROOT-47",
+   "relation": "support",
+   "review_status": "자료에서 확인 불가",
+   "auto_expose": false
+  },
+  {
+   "option_id": "CO-MST-2-BIG-HARM",
+   "practice_id": "RP-024",
+   "title": "내 몫과 상대 몫을 두 칸으로 나누기",
+   "root_id": "ROOT-49",
+   "relation": "after_confirm",
+   "review_status": "초안(사람 승인 필요)",
+   "auto_expose": false
+  },
+  {
+   "option_id": "CO-MST-2-BIG-HARM",
+   "practice_id": "RP-025",
+   "title": "미안해서 접으려던 시도 작게 해보기",
+   "root_id": "ROOT-49",
+   "relation": "after_confirm",
+   "review_status": "초안(사람 승인 필요)",
+   "auto_expose": false
+  }
+ ],
+ "sw_ob_claim_roots": [
+  {
+   "claim_id": "C-CO-MST-2-BIG-HARM",
+   "root_id": "ROOT-49",
+   "link": "conditional",
+   "polarity": "present",
+   "cond": "실제 피해 — 미안함은 자연스러움 · 오래 떠안으면 확인 카드 ②에서 1.0"
+  },
+  {
+   "claim_id": "C-CO-MST-2-PAST-WORDS",
+   "root_id": "ROOT-47",
+   "link": "support",
+   "polarity": "present",
+   "cond": "들은 말이 지금 내 목소리가 됐으면"
+  },
+  {
+   "claim_id": "C-CO-MST-2-PAST-WORDS",
+   "root_id": "ROOT-50",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  },
+  {
+   "claim_id": "C-CO-MST-2-SELF-REPLAY",
+   "root_id": "ROOT-32",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  },
+  {
+   "claim_id": "C-CO-MST-2-SELF-REPLAY",
+   "root_id": "ROOT-47",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  },
+  {
+   "claim_id": "C-CO-RPL-3-MEAN-PULLBACK",
+   "root_id": "ROOT-58",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  },
+  {
+   "claim_id": "C-CO-DRN-2-FIT-LISTEN",
+   "root_id": "ROOT-16",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  },
+  {
+   "claim_id": "C-CO-DRN-2-LA-SELF",
+   "root_id": "ROOT-74",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  },
+  {
+   "claim_id": "C-CO-DRN-2-PE-FIGHT",
+   "root_id": "ROOT-53",
+   "link": "support",
+   "polarity": "present",
+   "cond": null
+  }
+ ],
+ "sw_ob_claims": [
+  {
+   "claim_id": "C-CO-REF-1-SPOT",
+   "label": "그 자리에서 바로 답하느라 얼떨결에요",
+   "kind": "상태",
+   "scenes": "refuse",
+   "examples_json": [
+    "그 자리에서 바로 답하느라 얼떨결에요"
+   ],
+   "lean_json": [
+    "물어보자마자 저도 모르게 ‘응’ 했어요"
+   ],
+   "counter_json": [
+    "생각할 시간이 있어도 똑같아요"
+   ],
+   "core_thoughts_json": [],
+   "show_if": null,
+   "generic": false,
+   "points": null,
+   "signal_ids": null
+  },
+  {
+   "claim_id": "C-CO-REF-2-HOW-TIMING",
+   "label": "말할까 말까 하다 타이밍을 놓쳐요",
+   "kind": "상태",
+   "scenes": "refuse",
+   "examples_json": [
+    "말할까 말까 하다 타이밍을 놓쳐요"
+   ],
+   "lean_json": [
+    "망설이다 보면 이미 하기로 돼 있어요"
+   ],
+   "counter_json": [],
+   "core_thoughts_json": [],
+   "show_if": null,
+   "generic": false,
+   "points": null,
+   "signal_ids": null
+  },
+  {
+   "claim_id": "C-CO-REF-2-RESP-FAST",
+   "label": "설명하느니 내가 하는 게 빠르고 편해서요",
+   "kind": "선호",
+   "scenes": "refuse",
+   "examples_json": [
+    "설명하느니 내가 하는 게 빠르고 편해서요"
+   ],
+   "lean_json": [
+    "알려 주는 시간에 제가 하면 끝나요"
+   ],
+   "counter_json": [
+    "맡기는 게 편해요"
+   ],
+   "core_thoughts_json": [],
+   "show_if": null,
+   "generic": false,
+   "points": null,
+   "signal_ids": null
+  },
+  {
+   "claim_id": "C-CO-RPL-3-MEAN-PULLBACK",
+   "label": "상처받기 전에 내가 먼저 연락을 줄이게 돼요",
+   "kind": "마음",
+   "scenes": "reply_late",
+   "examples_json": [
+    "상처받기 전에 내가 먼저 연락을 줄이게 돼요"
+   ],
+   "lean_json": [
+    "거절당할까 봐 먼저 끊고 싶어요"
+   ],
+   "counter_json": [
+    "오히려 더 확인하게 돼요(→ 41 쪽)"
+   ],
+   "core_thoughts_json": [
+    "상처받기 전에 먼저 물러나 나를 지키려는 마음이 있는 것 같아요"
+   ],
+   "show_if": null,
+   "generic": false,
+   "points": null,
+   "signal_ids": null
+  },
+  {
+   "claim_id": "C-CO-WFT-1-PEOPLE",
+   "label": "일보다 같이 일하는 사람이 힘들어서요",
+   "kind": "여는 보기",
+   "scenes": "work_fit",
+   "examples_json": [
+    "일보다 같이 일하는 사람이 힘들어서요"
+   ],
+   "lean_json": [
+    "일은 괜찮은데 사람이 힘들어요"
+   ],
+   "counter_json": [
+    "사람들은 좋아요"
+   ],
+   "core_thoughts_json": [],
+   "show_if": null,
+   "generic": false,
+   "points": null,
+   "signal_ids": null
+  },
+  {
+   "claim_id": "C-CO-DRN-2-PE-FIGHT",
+   "label": "만나면 늘 비슷한 걸로 부딪혀요",
+   "kind": "마음",
+   "scenes": "drained",
+   "examples_json": [
+    "만나면 늘 비슷한 걸로 부딪혀요"
+   ],
+   "lean_json": [
+    "늘 같은 걸로 싸워요"
+   ],
+   "counter_json": [
+    "부딪혀도 금방 풀려요"
+   ],
+   "core_thoughts_json": [
+    "같은 고리가 되풀이돼서, 만나기 전부터 기운이 쓰이는 것 같아요"
+   ],
+   "show_if": null,
+   "generic": false,
+   "points": null,
+   "signal_ids": null
+  }
+ ],
+ "sw_ob_escalate_signals": [
+  {
+   "signal_id": "E-3",
+   "name": "범위가 넓어짐",
+   "example": "주말 이야기 → 일·관계·삶 전반"
+  },
+  {
+   "signal_id": "E-5",
+   "name": "실천을 계속 못 함",
+   "example": "제안마다 “그것도 못 하겠어요” 반복"
+  }
+ ],
+ "sw_ob_root_practice_avoid": [
+  {
+   "root_id": "ROOT-44",
+   "practice_id": "THX-REBT-24",
+   "reason": "얇은 뿌리 보강 검수: 이 뿌리에 맞지 않음"
+  },
+  {
+   "root_id": "ROOT-84",
+   "practice_id": "THX-REBT-24",
+   "reason": "얇은 뿌리 보강 검수: 이 뿌리에 맞지 않음 · 세분화 검수(중복 — 얇은 뿌리 보강 검수와 같은 쌍)"
+  },
+  {
+   "root_id": "ROOT-83",
+   "practice_id": "THX-REBT-24",
+   "reason": "세분화 검수: 이 하위 뿌리에는 맞지 않음"
+  }
+ ],
+ "sw_ob_signal_unrooted": [
+  {
+   "signal_id": "RBT-S10",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S11",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S12",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S20",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S21",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S22",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S23",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S24",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S28",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S30",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S32",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S33",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S35",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "ACT-S07",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "ST-S14",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "ST-S17",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "ST-S27",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "ST-S32",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "LTA-S01",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "LTA-S02",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "LTA-S03",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "LTA-S15",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CFT-S04",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CFT-S08",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CFT-S09",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CFT-S10",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CFT-S28",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "WBT-S02",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "PPT-S02",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "PPT-S11",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "PPT-S15",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "PPT-S17",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "PPT-S22",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "DBT-S11",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "DBT-S15",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "DBT-S17",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "EFT-S17",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "MCP-S08",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "MCP-S09",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "MCP-S12",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "MCP-S16",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "MCP-S28",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "MCP-S33",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S04",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S12",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S21",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S28",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S30",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S31",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "CBT-S33",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S03",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S06",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S07",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S09",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S13",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S14",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S15",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S17",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S24",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "REBT-S33",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S01",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S02",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S03",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S04",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S06",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S08",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S09",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S15",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  },
+  {
+   "signal_id": "RBT-S16",
+   "reason": "method_concept — 기법·개념 문장이라 원인 뿌리 없음(검토 대기)"
+  }
+ ]
+}

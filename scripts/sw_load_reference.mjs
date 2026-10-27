@@ -127,7 +127,14 @@ for (const name of order) {
   const canUpsert = t.pk.length > 0 && t.pk.every((k) => rows[0] && k in rows[0]);
   if (count === rows.length && !FORCE) { skipped++; continue; }
   if (!canUpsert && count === rows.length) { skipped++; console.log(`  = ${name}: 기본키가 없는 표라 덮어쓸 수 없지만 행 수가 같아 건너뜀(내용 비교는 sw_compare_reference.mjs로)`); continue; }
-  if (!canUpsert && count > 0) { console.error(`✗ ${name}: 기본키로 덮어쓸 수 없는 표인데 이미 ${count}행이 있어 중단(수동 확인 필요)`); process.exit(1); }
+  if (!canUpsert && count > 0) {
+    // 기본키가 없는 참조표(예: sw_ob_node_fixes)는 덮어쓸 수 없다. --force일 때만 표 전체를 비우고 새 CSV로 바꾼다(다른 표가 이 표를 가리키지 않는 참조 기록표일 때만 안전 — 가리키는 표가 있으면 삭제 단계에서 DB가 막는다).
+    if (!FORCE) { console.error(`✗ ${name}: 기본키로 덮어쓸 수 없는 표인데 이미 ${count}행이 있어 중단(--force로 표 전체를 새로 바꿀 수 있음)`); process.exit(1); }
+    const first = t.cols[0].name;
+    const { error: de } = await admin.from(name).delete().not(first, "is", null);
+    if (de) { console.error(`✗ ${name} 비우기 실패: ${de.code} ${de.message}`); process.exit(1); }
+    console.log(`  ↻ ${name}: 기본키가 없어 기존 ${count}행을 비우고 새로 넣음`);
+  }
   const oneBatch = t.fks.some((f) => f.ref === name) ? rows.length : BATCH; // 자기 연결이 있는 표는 한 요청에 전부
   for (let i = 0; i < rows.length; i += oneBatch) {
     const part = rows.slice(i, i + oneBatch);
@@ -154,6 +161,7 @@ if (PRUNE || PRUNE_REPORT) {
   let total = 0;
   for (const name of [...order].reverse()) { // 자식 표부터 지운다(연결이 걸려 있어도 막히지 않게)
     const t = tables[name]; if (!t.pk.length || !data[name]) continue;
+    if (!t.pk.every((c) => c in (data[name][0] ?? {}))) continue; // 기본키가 CSV에 없는 표(자동 번호 칸)는 행을 짝지을 수 없어 정리하지 않는다
     const key = (o) => t.pk.map((c) => JSON.stringify(o[c] ?? null)).join("|");
     const keep = new Set(data[name].map(key));
     const stale = [];

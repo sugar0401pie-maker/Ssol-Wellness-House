@@ -47,7 +47,10 @@ try {
     }
     t(`참조표 ${obTables.length}개 행 수가 CSV와 정확히 같음`, bad.length === 0, bad.slice(0, 5).join(", "));
   }
-  const roots = await count("sw_ob_roots"); t("뿌리 106개", roots.c === 106, `실제 ${roots.c}`);
+  // 뿌리 수는 CSV(--dir)가 있으면 CSV 행 수와 같은지로, 없으면 v4.0 기준 109개(v1.9는 106개)로 확인한다.
+  const roots = await count("sw_ob_roots");
+  const rootsExpected = DIR ? parseCsv(fs.readFileSync(path.join(DIR, "sw_ob_roots.csv"), "utf8")).filter((r) => !(r.length === 1 && r[0] === null)).length - 1 : 109;
+  t(`뿌리 ${rootsExpected}개`, roots.c === rootsExpected, `실제 ${roots.c}`);
 
   // 2) 접근 제한: anon · 로그인 사용자는 sw_ 표를 읽지 못하고 함수를 부르지 못해야 함
   const anon = createClient(URL, ANON, { auth: { persistSession: false } });
@@ -98,7 +101,8 @@ try {
   const p49 = await state(U1.id, "ROOT-49"); t("동시 30건 → 합계 30(어긋남 없음)", par.every((x) => !x.error) && near(p49.score, 30), `${p49?.score}`);
 
   // 4) 삭제·보관
-  const dry = await rpc("sw_purge_inactive", { p_months: 12, p_dry_run: true });
+  // v4.0: sw_purge_inactive(p_hide_months, p_delete_months, p_dry_run) — 12개월 미이용 숨김 · 24개월 미이용 실제 삭제. 드라이런은 아무것도 바꾸지 않는다.
+  const dry = await rpc("sw_purge_inactive", { p_hide_months: 12, p_delete_months: 24, p_dry_run: true });
   t("미이용 삭제 드라이런: 아무것도 안 지움", !dry.error && dry.data?.dry_run === true, dry.error?.message ?? JSON.stringify(dry.data).slice(0, 80));
   const hl = await admin.from("sw_hypothesis_log").insert({ user_id: U1.id, candidates: [{ root_id: "ROOT-48", score: 2 }], chosen_root: "ROOT-48", chosen_by: "ai" });
   t("가설 판정 기록 1건 저장", !hl.error, hl.error?.message);

@@ -32,6 +32,23 @@ const DEATH_TALK = [
 const PAST_ATTEMPT_NOW = /(예전|전에|과거|몇\s*년\s*전|작년|어릴\s*때).{0,20}(시도(해|했|한)|죽으려\s*(고\s*)?(했|해)|자해(를)?\s*(했|한)|자살(을)?\s*(시도|하려)).{0,40}(요즘|지금|최근|이번에).{0,20}(그때\s*(같|처럼|랑\s*비슷)|그때와\s*비슷|또\s*그럴)|(요즘|지금|최근).{0,16}그때\s*(같|처럼)(은\s*)?(기분|느낌|마음)?.{0,30}(시도|죽으려|자해|자살)/;
 export const hasDeathTalk = (text: string) => DEATH_TALK.some((r) => r.test(text)) || PAST_ATTEMPT_NOW.test(text);
 
+// ───── CSO 결정 13(2026-10-27, 검수표 S2-a·c): "다 그만두고 싶어요"·"뭘 해도 안 바뀔 거예요"류는 **처음엔 이유를 먼저 묻고**, **같은 대화에서 반복되면 스크리닝 질문을 한 번** 한다.
+// 지금은 AI 분류기가 이런 말을 곧바로 위기 고정 안내로 보내는 일이 있어서(2026-10-26 판정 결과 표) 아래 조건을 **모두** 만족할 때만 일반 대화로 낮춘다:
+//  ① 키워드에는 안 걸리고 분류기만 위기로 봤고(source=classifier) ② 절망·포기 표현이며 ③ 자살·자해 의사가 분명한 말(자살·자해·죽고 싶다·사라지고 싶다·살 이유 등)이 없음. 어긋나면 기존 위기 고정 응답.
+// "회사 그만두고 싶어요"처럼 대상이 분명한 일상 표현은 여기에 걸리지 않는다("다·전부·모든 걸" + 그만두고 싶다, 또는 "뭘 해도 안…/해 봤자 소용없" 꼴만).
+const DESPAIR_TALK = [
+  /(다|전부|모든\s*걸?|모든\s*게|아무것도)\s*(그만\s*(두|둘|뒀|하)|포기하)(고\s*싶|고\s*싶었|고\s*싶은|었으면|고만\s*싶)/,
+  /(뭘|뭐를|무엇을)\s*해도\s*(안\s*(바뀔|변할|될|돼)|소용\s*없|달라지지\s*않)/,
+  /해\s*봤자\s*(소용\s*없|안\s*(돼|될|바뀔))|어차피\s*(안\s*(될|돼|바뀔)|소용\s*없)|저는\s*원래\s*안\s*돼|아무것도\s*안\s*바뀔/,
+];
+export const hasDespairTalk = (text: string) => DESPAIR_TALK.some((r) => r.test(text));
+const CLEAR_SELF_HARM_ANY = /(자살|자해|죽고\s*싶|죽을\s*것\s*같|죽어\s*버|죽을래|죽으려|끝내고\s*싶|사라지고\s*싶|없어지고\s*싶|살\s*이유|살기\s*싫|극단|목숨을\s*끊|삶을\s*끊|생을\s*마감|유서)/;
+export function canSoftenDespair(d: { route: string; source: string; classifierUnavailable: boolean }, message: string): boolean {
+  return d.route === "crisis" && d.source === "classifier" && !d.classifierUnavailable && hasDespairTalk(message) && !CLEAR_SELF_HARM_ANY.test(message);
+}
+// 이 대화에서 이전에도 절망·포기 표현이 있었는지(이번 메시지 제외).
+export const despairBefore = (recentUserMessages: string[]) => recentUserMessages.some(hasDespairTalk);
+
 // ⚠ 안전 판정을 한 단계 "질문 먼저"로 바꾸는 유일한 곳(상담사님 R2·대표님 2026-10-23: 죽음 이미지 활동 요청은 곧바로 위기 문구가 아니라 먼저 직접 묻는다).
 // 실제 확인(2026-10-23): 지금은 AI 분류기가 이런 "활동 요청" 문장을 곧바로 위기(crisis)로 보낸다. 아래 조건을 **모두** 만족할 때만 질문으로 바꾼다:
 //  ① 키워드 규칙에는 걸리지 않고 분류기만 위기로 봤고(source=classifier — 키워드 걸림이 있으면 keyword+classifier라 제외) ② 죽음 이미지 + "활동을 해보겠다/써보겠다" 요청 표현이며
@@ -111,6 +128,8 @@ export function decideScreening(i: ScreenInput): ScreenAction {
   if (i.pending?.stage === "asked") return { type: "answer", kind: i.pending.kind, result: classifyScreenAnswer(i.message) };
   const asked = (k: ScreenKind) => i.markers.some((m) => m.kind === k); // 같은 질문은 한 대화에서 한 번만
   if (hasDeathTalk(i.message) && !asked("suicide")) return { type: "ask", kind: "suicide" };
+  // CSO 결정 13: 절망·포기 표현이 같은 대화에서 반복되면(이번 + 이전 1번 이상) 직접 질문 한 번. 처음 한 번은 AI가 이유를 먼저 묻는다(situations.ts).
+  if (hasDespairTalk(i.message) && despairBefore(i.recentUserMessages) && !asked("suicide")) return { type: "ask", kind: "suicide" };
   if (countAbuseCueMessages(i.message, i.recentUserMessages) >= ABUSE_CUE_THRESHOLD && hasAbuseCue(i.message) && !asked("violence")) return { type: "ask", kind: "violence" };
   return { type: "none" };
 }

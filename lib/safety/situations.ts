@@ -2,6 +2,7 @@
 // 원칙: 이런 상황도 **일반 사례처럼 해당 이론을 적용해 채팅을 진행**하되, 의학적 판단·내용은 반드시 전문가와 상의하도록 안내한다.
 // 복합 애도 의심·자살 유족·정신장애 관련 요청을 **휴먼 웰니스 세션으로 안내하지 않는다**(상담사님). 위기 표현이 나오면 안전 라우터가 먼저 처리하므로 여기서 다루지 않는다.
 import { illnessOwner, lossTalk } from "../theory/exclusion.ts";
+import { despairBefore, hasDespairTalk } from "./screening.ts";
 
 // ───── R3 지침 블록
 const BEREAVEMENT_RECENT =
@@ -48,3 +49,13 @@ export const VERDICT_FIRST_BLOCK =
   "사용자가 점수·진단·원인을 확정해 달라고 요청했습니다. 점수나 진단, 원인을 단정하지 마세요. ① 사용자의 마음을 한 문장으로 반영하고 ② '혹시 그 질문을 하게 된 마음을 알 수 있을까요?'처럼 이면의 욕구를 한 가지만 물으세요. ③ 짐작되는 욕구가 있으면 한 문장으로 제안형으로 덧붙이세요(예: '내가 왜 이런지 스스로 이해하고 싶은 마음일까요?'). 휴먼 웰니스 세션은 아직 권하지 마세요.";
 export const VERDICT_REPEAT_BLOCK =
   "사용자가 점수·진단·원인 확정을 또 요청했습니다. 단정하지 말고, 마음을 한 문장으로 반영한 뒤 지금 가장 궁금한 한 가지를 물으세요. 개인 웰니스 세션 안내는 이미 했으니 되풀이하지 마세요.";
+
+// ───── CSO 결정 13: 절망·포기 표현("다 그만두고 싶어요", "뭘 해도 안 바뀔 거예요")은 처음엔 이유를 먼저 묻는다. 자살·자해라는 말을 AI가 먼저 꺼내지 않는다(질문은 반복될 때 시스템이 고정 문구로).
+export const DESPAIR_FIRST_BLOCK =
+  "사용자가 '다 그만두고 싶다'거나 '뭘 해도 안 바뀔 것 같다'는 절망·포기의 마음을 말했습니다. 단어만으로 상태를 판단하지 마세요. 마음을 한 문장으로 받아 준 뒤, 왜 그렇게 느끼는지·요즘 어떤 일이 있었는지를 부드럽게 한 가지만 물으세요. 자살·자해·극단적 선택이라는 말을 먼저 꺼내거나 확인하는 질문을 하지 말고, 진단명이나 전문가 상담 권유는 이번 답변에서 하지 마세요. 해결책을 나열하지 마세요.";
+export const DESPAIR_AGAIN_BLOCK =
+  "사용자가 절망·포기의 마음을 이번 대화에서 또 말했습니다. 이유는 이미 물었으므로 되풀이해서 묻지 말고, 그 마음이 이어지는 것을 알아주세요. 자살·자해라는 말을 먼저 꺼내지 마세요. 해결책은 아직 나열하지 말고 지금 가장 마음에 걸리는 한 가지를 같이 짚어 보자고 제안하세요.";
+export function despairGuidance(message: string, recentUserMessages: string[]): string | null {
+  if (!hasDespairTalk(message)) return null;
+  return `- ${despairBefore(recentUserMessages) ? DESPAIR_AGAIN_BLOCK : DESPAIR_FIRST_BLOCK}`;
+}

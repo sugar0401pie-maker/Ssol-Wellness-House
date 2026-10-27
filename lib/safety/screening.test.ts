@@ -2,7 +2,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
-  canSoftenCrisis, classifyScreenAnswer, countAbuseCueMessages, decideScreening, hasAbuseCue, hasDeathTalk, isWatchMarker, makeScreenMarker, outcomeFor, parseScreenMarker,
+  canSoftenCrisis, canSoftenDespair, classifyScreenAnswer, countAbuseCueMessages, decideScreening, despairBefore, hasAbuseCue, hasDeathTalk, hasDespairTalk, isWatchMarker, makeScreenMarker, outcomeFor, parseScreenMarker,
   type ScreenInput, type ScreenMarker,
 } from "./screening.ts";
 import { SCREEN_OK, SCREEN_QUESTION, SCREEN_RISK, SCREEN_STOP_REPEAT, SCREEN_UNCLEAR } from "./screeningTexts.ts";
@@ -133,5 +133,28 @@ describe("위기 → 질문 먼저(엄격한 조건)", () => {
     assert.equal(canSoftenCrisis({ ...cls, source: "keyword" }, t), false);
     assert.equal(canSoftenCrisis({ ...cls, classifierUnavailable: true }, t), false);
     assert.equal(canSoftenCrisis({ ...cls, route: "violence" }, t), false);
+  });
+});
+
+describe("CSO 결정 13 — 절망·포기 표현: 처음엔 이유 먼저, 반복되면 직접 질문", () => {
+  test("절망·포기 표현을 알아보고, 대상이 분명한 일상 표현은 제외", () => {
+    for (const t of ["다 그만두고 싶어요", "요즘 뭘 해도 안 바뀔 거예요", "해 봤자 소용없어요", "어차피 안 될 거예요", "모든 걸 그만두고 싶어요"]) assert.equal(hasDespairTalk(t), true, t);
+    for (const t of ["회사 그만두고 싶어요", "운동을 그만두고 싶어요", "오늘 일이 너무 많아요", "다 먹고 싶어요", "이직하고 싶어요"]) assert.equal(hasDespairTalk(t), false, t);
+  });
+  test("분류기만 위기로 본 절망 표현만 일반 대화로 낮춘다 — 자해 의사·키워드 판정이 있으면 그대로", () => {
+    const cls = { route: "crisis", source: "classifier", classifierUnavailable: false };
+    assert.equal(canSoftenDespair(cls, "다 그만두고 싶어요"), true);
+    assert.equal(canSoftenDespair(cls, "뭘 해도 안 바뀔 거예요"), true);
+    assert.equal(canSoftenDespair(cls, "다 그만두고 싶어요 사라지고 싶어요"), false);
+    assert.equal(canSoftenDespair(cls, "다 그만두고 싶어요 죽고 싶어요"), false);
+    assert.equal(canSoftenDespair({ ...cls, source: "keyword+classifier" }, "다 그만두고 싶어요"), false);
+    assert.equal(canSoftenDespair({ ...cls, route: "violence" }, "다 그만두고 싶어요"), false);
+    assert.equal(canSoftenDespair({ ...cls, classifierUnavailable: true }, "다 그만두고 싶어요"), false);
+  });
+  test("같은 대화에서 반복되면 자살·자해 생각을 묻는 스크리닝 질문 한 번, 처음 한 번은 질문하지 않는다", () => {
+    assert.deepEqual(decideScreening({ ...base, message: "다 그만두고 싶어요" }), { type: "none" });
+    assert.deepEqual(decideScreening({ ...base, message: "정말 다 그만두고 싶어요", recentUserMessages: ["요즘 뭘 해도 안 바뀔 거예요"] }), { type: "ask", kind: "suicide" });
+    assert.deepEqual(decideScreening({ ...base, message: "또 다 그만두고 싶어요", recentUserMessages: ["다 그만두고 싶어요"], markers: [M("suicide", "ok")] }), { type: "none" }); // 한 번만
+    assert.equal(despairBefore(["오늘 날씨 좋아요"]), false);
   });
 });

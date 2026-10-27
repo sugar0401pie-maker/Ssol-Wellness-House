@@ -7,8 +7,8 @@ import { determineRoute } from "@/lib/safety/route";
 import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
 import { runScreening, screeningOn } from "@/lib/safety/screeningFlow";
 import { VERDICT_SECOND_REPLY } from "@/lib/safety/screeningTexts";
-import { VERDICT_FIRST_BLOCK, VERDICT_REPEAT_BLOCK, situationGuidance, verdictAction } from "@/lib/safety/situations";
-import { canSoftenCrisis } from "@/lib/safety/screening";
+import { VERDICT_FIRST_BLOCK, VERDICT_REPEAT_BLOCK, despairGuidance, situationGuidance, verdictAction } from "@/lib/safety/situations";
+import { canSoftenCrisis, canSoftenDespair } from "@/lib/safety/screening";
 import { isLayer5Signal } from "@/lib/rag/layers";
 import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTopics, guidanceBlock, perceptionRepeated } from "@/lib/safety/supplemental";
 import { embedQuery } from "@/lib/rag/retrieve";
@@ -137,6 +137,9 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   let decision = await determineRoute(message, recentMessages);
   // 음주운전을 분류기가 폭력·위기로 잘못 본 경우만 일반 대화로 되돌린다(supplemental.ts — 엄격한 조건, 상담사님: 자해가 아니라 안전 안내 대상).
   if (canSoftenDrunkDriving(decision, message)) decision = { ...decision, route: "wellness" };
+  // CSO 결정 13: "다 그만두고 싶어요"류는 분류기만 위기로 본 경우에 한해 일반 대화로 낮춰 처음엔 이유를 묻고, 반복되면 아래 스크리닝이 직접 질문을 한다(screening.ts — 엄격한 조건).
+  const softenedDespair = canSoftenDespair(decision, message);
+  if (softenedDespair) decision = { ...decision, route: "wellness" }; // 분류기가 위기로 봤던 말이라 세션 안전 표시는 elevated로 남긴다(운영 검토 대상)
   timer.lap("classify");
   // 라우팅 메타데이터(route/confidence/source)는 민감정보가 아니라 응답에 그대로 포함한다.
   // 안전 평가 스크립트(scripts/safety-eval.mjs)가 이 값으로 실제 판정 품질을 확인한다.
@@ -151,7 +154,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 2026-10-23(SAFE-018~021): 일반 대화로 답하되 주의할 주제(섭식·현실감·술·약 등). 섭식·현실감은 운영 검토를 위해 세션 안전 표시를 올린다(대화 열람 근거 = 약관 예고 4항).
   const guidanceTopics = detectGuidanceTopics(message);
   const recentUserTexts = recentMessages.filter((m) => m.role === "user").map((m) => m.content);
-  const newFlag = guidanceTopics.some((t) => WATCH_TOPICS.includes(t)) && safetyFlagFor(decision.route) === "none" ? "elevated" : safetyFlagFor(decision.route);
+  const newFlag = (guidanceTopics.some((t) => WATCH_TOPICS.includes(t)) || softenedDespair) && safetyFlagFor(decision.route) === "none" ? "elevated" : safetyFlagFor(decision.route);
   // 메시지 저장과 세션 상태 조회는 서로 필요하지 않아 동시에 한다(2026-10-16).
   // 2026-10-18: 발화 해석이 이 메시지를 가리킬 수 있게 id를 먼저 정해 저장한다(사건 id에 쓰인다).
   const userMessageId = crypto.randomUUID();
@@ -373,6 +376,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       [
         guidanceBlock(guidanceTopics, { perceptionRepeated: perceptionRepeated(message, recentUserTexts) }),
         situationGuidance(message, recentUserTexts, recentAssistantTexts),
+        despairGuidance(message, recentUserTexts),
         s5 === "first" ? `- ${VERDICT_FIRST_BLOCK}` : s5 === "repeat" ? `- ${VERDICT_REPEAT_BLOCK}` : null,
       ].filter(Boolean).join("\n") || null,
   });

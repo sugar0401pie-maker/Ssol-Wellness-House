@@ -47,9 +47,13 @@ const memo = new Map<string, string>(); // 같은 인스턴스에서 같은 결�
 export async function syncTestEvidence(admin: Admin, userId: string): Promise<void> {
   if (process.env.SW_TEST_CUES === "0") return;
   const row = await loadQuizRow(admin, userId);
-  const test = buildTestInput(row);
+  // CSO TRR-22(엔진 v0.8): 심리테스트의 '연애' 단서는 온보딩에서 연인이 있다고 답한 사람에게는 쓰지 않는다 — 온보딩 답을 test.context로 넘긴다.
+  // 개인화 동의를 하고 온보딩을 끝낸 사용자의 답만 쓴다(온보딩 단서와 같은 기준).
+  const { data: ob } = await admin.from("user_onboarding").select("status, personalization_consent, relationship_status").eq("user_id", userId).maybeSingle();
+  const context: Record<string, string> = ob?.status === "completed" && ob.personalization_consent === true && ob.relationship_status ? { relationship_status: String(ob.relationship_status) } : {};
+  const test = buildTestInput(row, context);
   if (!test) return;
-  const key = `${test.test_id}|${test.at ?? ""}`;
+  const key = `${test.test_id}|${test.at ?? ""}|${context.relationship_status ?? ""}`;
   if (memo.get(userId) === key) return;
   const t = await loadTables(admin);
   RS.setData({ testTable: { bands: t.bands, pairs: t.pairs, domains: t.domains, cues: t.cues } });

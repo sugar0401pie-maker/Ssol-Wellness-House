@@ -39,3 +39,10 @@ test("영역·짝 표 변환은 우리 상수와 같은 모양이 나온다", ()
   assert.deepEqual(dom.DIR, TEST_DOMAINS.DIR);
   assert.deepEqual(buildPairs([{ root_a: "ROOT-77", root_b: "ROOT-81" }]), [TEST_PAIRS[0]]);
 });
+
+test("TRR-22: 온보딩 답(context)은 있을 때만 시험 입력에 붙는다", () => {
+  const row = { id: "r1", factor_scores: { A: 1 }, sub_scores: {}, type_key: "LOV-primary", created_at: "2026-10-27T00:00:00Z" };
+  assert.deepEqual(buildTestInput(row, { relationship_status: "has_partner" })?.context, { relationship_status: "has_partner" });
+  assert.equal(buildTestInput(row)?.context, undefined);
+  assert.equal(buildTestInput(row, {})?.context, undefined);
+});

@@ -4,6 +4,7 @@ import * as RS from "./vendor/rootState.mjs";
 import { interpListed } from "./listed";
 import { loadData } from "./hypothesis";
 import type { RootBoostFn } from "./rootBoostApply";
+import { cautionHoldRoots } from "./deepeningFlow";
 
 // 사용자의 해석 상태(확인·가능성 높은 뿌리)로 채팅 실천 제안 순서를 조정한다(2026-10-18, 로드맵 6번).
 // 뿌리↔실천 표(sw_ob_root_practices)와 "맞지 않는 실천"(sw_ob_root_practice_avoid)은 10분 캐시. 끄기: SW_ROOT_BOOST=0.
@@ -40,11 +41,14 @@ export async function loadRootBoost(admin: Admin, userId: string): Promise<RootB
     const { data, error } = await admin.rpc("sw_read_ledger", { p_user: userId });
     if (error) return null;
     const states = RS.hydrate(userId, data ?? [], []);
-    if (!Object.values(states).some((s) => s.status === "confirmed" || s.status === "likely")) return null; // 가산할 근거가 없으면 표를 읽지도 않는다
+    const hold = await cautionHoldRoots(admin, userId); // 깊어짐(③)으로 주의 표시가 켜진 뿌리 — 그 뿌리 관련 "불편 머무르기" 실천은 뺀다(나아짐 신호가 나오면 풀림)
+    if (!hold.size && !Object.values(states).some((s) => s.status === "confirmed" || s.status === "likely")) return null; // 가산할 근거가 없으면 표를 읽지도 않는다
     const t = await tables(admin);
     const ctx = { enabled: true, avoid: t.avoid, sensitiveRoots: t.sensitive };
-    return (practiceId) => {
-      const r = RS.rootBoost({ id: practiceId, roots: t.roots.get(practiceId) ?? [] }, states, ctx);
+    return (practiceId, exposureStep) => {
+      const roots = t.roots.get(practiceId) ?? [];
+      if (exposureStep && roots.some((r) => hold.has(r))) return { boost: 0, exclude: true };
+      const r = RS.rootBoost({ id: practiceId, roots }, states, ctx);
       return { boost: r.boost, exclude: r.exclude };
     };
   } catch (e) {

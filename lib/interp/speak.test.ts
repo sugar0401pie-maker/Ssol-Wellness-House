@@ -8,9 +8,9 @@ import {
 const S = (root_id: string, score: number, status = "candidate", sources: string[] = ["chat"]): StateLite => ({ root_id, score, status, sources });
 const G: DiscGroup = { group_id: "DG-01", roots: ["ROOT-77", "ROOT-81"], ask: "상대 표정이 더 걸려요, 분위기가 더 걸려요?", options: [{ root: "ROOT-77", answer_hint: "상대가 서운해할 얼굴" }, { root: "ROOT-81", answer_hint: "분위기가 싸해질까 봐" }] };
 
-test("가설을 말하는 구간은 쏘웰라의 2~4번째 답변(owner: 4턴까지)", () => {
-  assert.equal(HYPOTHESIS_MAX_TURN, 4);
-  assert.deepEqual([1, 2, 3, 4, 5, 8].map(inSpeakWindow), [false, true, true, true, false, false]);
+test("가설을 말하는 구간은 쏘웰라의 2~3번째 답변(4번째부터는 해결책 차례 — 대표님 2026-10-26)", () => {
+  assert.equal(HYPOTHESIS_MAX_TURN, 3);
+  assert.deepEqual([1, 2, 3, 4, 5, 8].map(inSpeakWindow), [false, true, true, false, false, false]);
 });
 
 test("후보: 점수 기준(1.0) 이상, 확인·거절된 뿌리와 이미 말한 뿌리는 제외, 높은 점수 순", () => {

@@ -3,13 +3,13 @@
 // 가산 폭은 엔진 규칙대로 0~2 (확인된 뿌리 +2, 가능성 높은 뿌리 +1, 거절된 뿌리 0)이고, 주제 겹침 점수(문장 조각 개수)와 같은 눈금에서 가중치를 곱해 더한다.
 export const ROOT_BOOST_WEIGHT = 2;
 
-export type RootBoostFn = (practiceId: string) => { boost: number; exclude: boolean };
+export type RootBoostFn = (practiceId: string, exposureStep?: number | null) => { boost: number; exclude: boolean };
 
-export function applyRootBoost<T extends { id: string; score: number }>(rows: T[], fn: RootBoostFn | null | undefined, weight = ROOT_BOOST_WEIGHT): T[] {
+export function applyRootBoost<T extends { id: string; score: number; exposureStep?: number | null }>(rows: T[], fn: RootBoostFn | null | undefined, weight = ROOT_BOOST_WEIGHT): T[] {
   if (!fn) return rows;
   const out: T[] = [];
   for (const r of rows) {
-    const b = fn(r.id);
+    const b = fn(r.id, r.exposureStep ?? null);
     if (b.exclude) continue;
     out.push(b.boost ? { ...r, score: r.score + b.boost * weight } : r);
   }

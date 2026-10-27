@@ -57,22 +57,24 @@ try {
   const states2 = RS.hydrate(uid, (await admin.rpc("sw_read_ledger", { p_user: uid })).data ?? [], []);
   ok(states2[A]?.status === "confirmed", `장부 상태 ${A}=confirmed`);
 
+  // 2026-10-26: 해결책은 4번째 답변부터라 가설 말하기 구간은 2~3번째 답변까지다(speak.ts) — 4번째 답변에는 가설이 없다.
   const t4 = await chat("요즘 팀 회의 때 제 의견을 말하기가 어렵게 느껴져요", sid);
   const a4 = await assistants(sid);
   console.log("   4번째 route:", t4.route);
-  ok(/^sw-root:/.test(a4[3]?.reflection_signal_id ?? "") && a4[3].reflection_signal_id.includes(B), `4번째 답변: 다른 뿌리(${B}) 가설, 이미 확인된 ${A}는 건너뜀 (${a4[3]?.reflection_signal_id})`);
+  ok(a4[3]?.reflection_signal_id == null, "4번째 답변: 가설 없음(해결책 차례)");
 
-  await chat("아니에요, 그건 아닌 것 같아요", sid);
+  // 거절 경로는 새 대화에서: 이미 확인된 A는 건너뛰고 다음 뿌리 B를 말한다 → "아니에요" → 거절 기록
+  const s2 = await chat("요즘 회사 일이 너무 버거워서 많이 지쳐요", null); const sid2 = s2.sessionId;
+  await chat("팀장님 말 한마디에 하루 종일 신경이 쓰여요", sid2);
+  const b2 = await assistants(sid2);
+  ok(/^sw-root:/.test(b2[1]?.reflection_signal_id ?? "") && b2[1].reflection_signal_id.includes(B), `새 대화 2번째 답변: 이미 확인된 ${A}는 건너뛰고 ${B} 가설 (${b2[1]?.reflection_signal_id})`);
+  await chat("아니에요, 그건 아닌 것 같아요", sid2);
   await sleep(9000);
-  const a5 = await assistants(sid);
-  ok(a5[3].reflection_response === "disagree", `"아니에요" 기록됨 (${a5[3].reflection_response})`);
+  const b3 = await assistants(sid2);
+  ok(b3[1].reflection_response === "disagree", `"아니에요" 기록됨 (${b3[1].reflection_response})`);
   const states3 = RS.hydrate(uid, (await admin.rpc("sw_read_ledger", { p_user: uid })).data ?? [], []);
   ok(states3[B]?.status === "rejected", `장부 상태 ${B}=rejected`);
-  ok(a5[4]?.reflection_signal_id == null, "5번째 답변: 가설 없음(답 받는 턴)");
-
-  await chat("오늘 하루는 좀 쉬어볼까 해요", sid);
-  const a6 = await assistants(sid);
-  ok(a6[5]?.reflection_signal_id == null, "6번째 답변: 4턴 이후 가설 없음");
+  ok(b3[2]?.reflection_signal_id == null, "3번째 답변: 가설 없음(답 받는 턴)");
 
   // ── 가르기 질문: 비슷한 두 뿌리가 있으면 질문 하나로 먼저 가른다 ──
   const { data: groups } = await admin.from("sw_ob_root_discriminators").select("group_id,roots,ask,options_json").limit(50);

@@ -18,6 +18,7 @@ import { cardsOnFor } from "@/lib/cards/offer";
 import { noteScene } from "@/lib/cards/session";
 import { detectTheoryExclusion } from "@/lib/theory/exclusion";
 import { SPEC_VERSION } from "./version";
+import { recordDeepeningTurn } from "./deepeningFlow";
 
 // 답변을 보낸 뒤 뒤에서 도는 발화 해석(2026-10-18). 결과는 다음 턴부터 반영된다(지연 0).
 // 흐름: 켜짐·대상 확인 → 분류(임베딩 후보 + 모델) → 장부에서 상태 다시 읽기 → 같은 의미 한 번만 반영 → sw_apply_ops(원자적·멱등) → 판정 기록.
@@ -84,6 +85,13 @@ async function work(p: InterpParams, at: (stage: string) => void): Promise<void>
     if (sink.length) {
       const { error } = await admin.rpc("sw_apply_ops", { p_user: p.userId, p_ops: sink });
       if (error) throw new Error(`sw_apply_ops ${error.code}`);
+    }
+
+    // 깊어짐(③): 이 말이 가리킨 1순위 뿌리의 "다룬 턴"을 세고 깊어짐 신호를 판별한다(판별은 규칙, AI 없음). 실패해도 채팅에는 영향이 없다.
+    const topRoot = [...cls.events].filter((e) => e.op === "apply").sort((a, b) => b.confidence - a.confidence)[0]?.root_id;
+    if (topRoot) {
+      at("deepening");
+      await recordDeepeningTurn(admin, { userId: p.userId, sessionId: p.sessionId, messageId: p.messageId, rootId: topRoot, text: p.text }).catch((e) => console.error("깊어짐 기록 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
     }
 
     at("log");

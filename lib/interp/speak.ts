@@ -3,7 +3,7 @@
 // 점수가 비슷한 두 후보는 가르기 질문 하나로 먼저 가른다. 말하는 횟수는 "쏘웰라의 2~4번째 답변"까지다(owner: 4턴까지).
 
 export const HYPOTHESIS_FIRST_TURN = 2; // 첫 답변 때는 아직 해석이 없다(해석은 답변 뒤에 돈다)
-export const HYPOTHESIS_MAX_TURN = 4; // owner 결정(2026-10-18): 가설을 말하는 건 한 대화에서 4턴까지
+export const HYPOTHESIS_MAX_TURN = 3; // owner 결정(2026-10-18)은 4턴까지였으나, 2026-10-26 "해결책은 4번째 답변부터" 결정으로 4번째 답변은 해결책 차례라 가설은 2~3번째 답변까지(lib/rag/layers.ts SOLVE_FROM_TURN)
 export const SPEAK_MIN_SCORE = 1.0; // 확신 높은 근거 1개(1.0점) 이상
 export const DISC_GAP = 1.0; // 1·2위 점수 차가 이 안이면 가르기 질문을 먼저
 

@@ -7,6 +7,8 @@ import { determineRoute } from "@/lib/safety/route";
 import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
 import { runScreening, screeningOn } from "@/lib/safety/screeningFlow";
 import { VERDICT_SECOND_REPLY } from "@/lib/safety/screeningTexts";
+import { deepeningAskBlock } from "@/lib/safety/deepening";
+import { deepeningInfoGuidance } from "@/lib/interp/deepeningFlow";
 import { VERDICT_FIRST_BLOCK, VERDICT_REPEAT_BLOCK, despairGuidance, situationGuidance, verdictAction } from "@/lib/safety/situations";
 import { canSoftenCrisis, canSoftenDespair } from "@/lib/safety/screening";
 import { isLayer5Signal } from "@/lib/rag/layers";
@@ -356,6 +358,8 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     theoryActive: dialogue.generationExtras.dialogueMode !== undefined || cardPlan !== null,
   });
   timer.lap("hypothesis_plan");
+  // 깊어짐(③): 넘김(주의 표시)이 난 뿌리가 있으면 도움받을 곳 안내를 이번 답변에서 한 번만 준다. 위기·폭력·정해진 안내 경로는 이 앞에서 끝났다. 끄기: SW_DEEPENING_ENABLED=0.
+  const deepInfo = await deepeningInfoGuidance(admin, userId).catch(() => null);
   const result = await generateAnswer({
     route: decision.route,
     matchedRuleIds: decision.matchedRuleIds,
@@ -377,10 +381,12 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
         guidanceBlock(guidanceTopics, { perceptionRepeated: perceptionRepeated(message, recentUserTexts) }),
         situationGuidance(message, recentUserTexts, recentAssistantTexts),
         despairGuidance(message, recentUserTexts),
+        deepInfo?.block ?? deepeningAskBlock(message),
         s5 === "first" ? `- ${VERDICT_FIRST_BLOCK}` : s5 === "repeat" ? `- ${VERDICT_REPEAT_BLOCK}` : null,
       ].filter(Boolean).join("\n") || null,
   });
   timer.lap("generate_total");
+  if (deepInfo && !result.usedFallback) await deepInfo.markGiven().catch(() => undefined); // 안내를 한 번 했다고 남긴다(실패한 답변이면 다음에 다시)
 
   // 탐색 턴이면 AI가 쓴 앞부분에 DB의 검수된 질문/실천을 붙여 최종 답변을 만든다(그 외에는 그대로).
   const finalReply = hypothesis ? await hypothesis.compose(result.reply, result.usedFallback) : await dialogue.compose(result.reply, result.usedFallback);

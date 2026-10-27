@@ -4,6 +4,8 @@
 //   node scripts/sw_load_reference.mjs --dir <CSV 폴더>            # 검사만
 //   node scripts/sw_load_reference.mjs --dir <CSV 폴더> --apply    # 적재(이미 같은 행 수인 표는 건너뜀)
 //   node scripts/sw_load_reference.mjs --dir <CSV 폴더> --apply --force   # 새 버전으로 갱신(전부 기본키로 덮어씀)
+//   ... --apply --prune-report   # (v4.0) 새 CSV에 없어진 행(예전 버전에만 있던 행)이 DB에 몇 개 남아 있는지 표별로 보여 준다(지우지 않음)
+//   ... --apply --prune          # 그 남은 행을 지운다(자식 표부터). 업서트만으로는 CSO가 뺀 행이 DB에 그대로 남기 때문 — 없는 뿌리 연결·판별 문장 등이 계속 쓰이는 것을 막는다
 // 원본 데이터(엑셀·CSV)는 저장소 밖에 둔다(CLAUDE.md: 지식 원본은 저장소 밖). 이 스크립트는 값을 출력하지 않는다.
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +18,7 @@ const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : nu
 const DIR = opt("--dir");
 const APPLY = flag("--apply");
 const SQL = path.resolve(opt("--sql") ?? "supabase/sw_interp/apply_v1.9.sql");
+const PRUNE = flag("--prune"), PRUNE_REPORT = flag("--prune-report");
 const FORCE = flag("--force"); // 새 버전 데이터로 갱신할 때: 행 수가 같아도 건너뛰지 않고 기본키로 전부 덮어쓴다(2026-10-20 — 같은 행 수라도 내용이 바뀐 표가 있어서)
 if (!DIR) { console.error("사용법: --dir <CSV 폴더> [--apply]"); process.exit(2); }
 
@@ -145,3 +148,31 @@ for (const n of new Set(deferred.map((d) => d.table))) {
   console.log(`  ✓ ${n} 순환 칸(${cols}) ${todo.length}행 채움`);
 }
 console.log(`적재 완료: 올린 표 ${loaded}개 · 이미 같은 행 수라 건너뛴 표 ${skipped}개`);
+
+// 3단계(v4.0): 새 CSV에 없는 행 정리. 업서트는 새 행을 더하고 바뀐 행을 고칠 뿐이라, CSO가 뺀 행은 DB에 남는다.
+if (PRUNE || PRUNE_REPORT) {
+  let total = 0;
+  for (const name of [...order].reverse()) { // 자식 표부터 지운다(연결이 걸려 있어도 막히지 않게)
+    const t = tables[name]; if (!t.pk.length || !data[name]) continue;
+    const key = (o) => t.pk.map((c) => JSON.stringify(o[c] ?? null)).join("|");
+    const keep = new Set(data[name].map(key));
+    const stale = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: part, error } = await admin.from(name).select(t.pk.join(",")).range(from, from + 999);
+      if (error) { console.error(`✗ ${name}: 정리 대상 조회 실패 ${error.code}`); process.exit(1); }
+      for (const o of part ?? []) if (!keep.has(key(o))) stale.push(o);
+      if ((part?.length ?? 0) < 1000) break;
+    }
+    if (!stale.length) continue;
+    total += stale.length;
+    if (PRUNE_REPORT && !PRUNE) { console.log(`  · ${name}: 새 CSV에 없는 행 ${stale.length}개`); continue; }
+    for (let i = 0; i < stale.length; i += 100) {
+      const part = stale.slice(i, i + 100);
+      const q = t.pk.length === 1 ? admin.from(name).delete().in(t.pk[0], part.map((o) => o[t.pk[0]])) : null;
+      if (q) { const { error } = await q; if (error) { console.error(`✗ ${name} 정리 실패: ${error.code} ${error.message}`); process.exit(1); } }
+      else for (const o of part) { const { error } = await admin.from(name).delete().match(Object.fromEntries(t.pk.map((c) => [c, o[c]]))); if (error) { console.error(`✗ ${name} 정리 실패: ${error.code} ${error.message}`); process.exit(1); } }
+    }
+    console.log(`  ✂ ${name}: ${stale.length}개 지움`);
+  }
+  console.log(PRUNE ? `정리 완료: 총 ${total}개 행 삭제` : `정리 대상(지우지 않음): 총 ${total}개 행 — 지우려면 --prune`);
+}

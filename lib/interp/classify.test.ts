@@ -85,9 +85,12 @@ test("임베딩 점수가 후보 순서를 정한다(검색 교체 확인)", asy
 
 test("🔸 claim은 본인이 그 주제를 먼저 말했을 때만 후보에 들어간다", async () => {
   const sensitive = claims.find((c) => c.show_if)!.claim_id;
-  let without = "", withTopic = "";
-  await classifyUtterance("퇴사 이직 걱정 일자리", ctx, { embed: fake, index, callModel: async ({ user }) => { without = user; return "{}"; } });
-  await classifyUtterance("퇴사 이직 걱정 일자리", { ...ctx, mentioned: ["job_change"] } as never, { embed: fake, index, callModel: async ({ user }) => { withTopic = user; return "{}"; } });
+  let without = "", withTopic = "", saidNow = "";
+  // 엔진 v1.8(분류기 v0.9): 이번 말에서 본인이 꺼낸 주제는 따로 알려 주지 않아도 읽는다(saidTopics). 그래서 주제 말이 없는 문장이 "아니요" 쪽 확인 문장이다.
+  await classifyUtterance("요즘 마음이 좀 무거워요", ctx, { embed: fake, index, callModel: async ({ user }) => { without = user; return "{}"; } });
+  await classifyUtterance("요즘 마음이 좀 무거워요", { ...ctx, mentioned: ["job_change"] } as never, { embed: fake, index, callModel: async ({ user }) => { withTopic = user; return "{}"; } });
+  await classifyUtterance("퇴사 이직 걱정 일자리", ctx, { embed: fake, index, callModel: async ({ user }) => { saidNow = user; return "{}"; } });
+  assert.ok(saidNow.split("B. 세부 의미 후보")[1].includes(sensitive)); // 이번 말에서 직접 꺼낸 주제는 넘겨 주지 않아도 후보에 오른다(v0.9)
   assert.ok(!without.split("B. 세부 의미 후보")[1].includes(sensitive));
   assert.ok(withTopic.split("B. 세부 의미 후보")[1].includes(sensitive));
 });

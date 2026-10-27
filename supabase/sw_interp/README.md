@@ -1,5 +1,29 @@
 # 쏘웰라 해석 DB — 적용·검증·되돌리기
 
+> **2026-10-27: v4.0으로 올립니다(CSO 개발 전달 묶음 v1.2 · 엔진 ESM v1.8). 아래 "v1.9 → v4.0 업그레이드"를 먼저 읽으세요.**
+
+## v1.9 → v4.0 업그레이드 (CSO 개발 전달 묶음 v1.2)
+
+| 파일 | 역할 |
+| --- | --- |
+| `apply_v4.0.sql` | **이것 하나만 실행.** CSO 10(참조표) → 20(사용자 상태) → 30(휴먼 세션) → 40(보관·삭제·집계) → 우리 50(가설 기록, 마지막) 순서로 이어 붙임. **v1.9가 올라간 DB 위에 그대로 실행**해도 새로 만든 v4.0과 표·칸·제약·함수가 같아지고(차이 0건), 두 번 실행해도 안전함을 임시 데이터베이스(PGlite)에서 확인함. v1.9 때와 달리 별도 업그레이드 파일이 필요 없다(CSO v4.0 파일들이 `add column if not exists`·제약 교체를 스스로 한다). |
+| `11_…external_fk` (묶음 안) | 운영 표로 가는 연결(FK, NOT VALID). **지금은 실행하지 않는다.** 신규 이론 6개·신규 실천이 운영 표에 들어간 뒤 따로 실행하고 `validate constraint`. |
+
+변경 요약: 새 표 3(`sw_ob_hyp_chat_links`·`sw_ob_practice_child_pairs`·`sw_ob_signal_review`) + `sw_stats_root_weekly`, 새 칸 약 10개(`hidden_at`×4·`merge_into`·`root_hold`·`root_link`×2·`audience`·`resolution`), 장부 `validity`에 `'hidden'` 추가, 함수 `sw_hide_user_records`·`sw_stats_refresh` 추가, **`sw_purge_inactive`는 인자가 `(int, boolean)` → `(int, int, boolean)`로 바뀜**(예전 모양은 파일 안에서 지우고 새로 만듦).
+
+순서
+1. (대표님) Supabase SQL Editor에서 `apply_v4.0.sql` 실행 → Success 확인.
+2. (개발) CSV 비교 `node --env-file=.env.local scripts/sw_compare_reference.mjs <CSV 폴더> supabase/sw_interp/apply_v4.0.sql` — 읽기 전용.
+3. (개발) 적재 `node --env-file=.env.local scripts/sw_load_reference.mjs --dir <CSV 폴더> --sql supabase/sw_interp/apply_v4.0.sql --apply --force`
+4. (개발) 새 CSV에서 빠진 예전 행 확인 `… --apply --prune-report` → 확인 뒤 `… --apply --prune`. (업서트만으로는 CSO가 뺀 행이 DB에 남는다 — 예: 판별 문장 안 연결 69·뿌리 연결 9·claim 6.)
+5. (개발) 검증 `node --env-file=.env.local scripts/sw_verify_live.mjs --dir <CSV 폴더>` + 앱 e2e.
+
+주의
+- **우리 50번은 반드시 마지막**: CSO 40번의 `sw_purge_user`는 우리 `sw_hypothesis_log`를 지우지 않아서, 우리 50번이 같은 함수를 덮어써 이 표 삭제를 더한다(v4.0의 CSO 함수와 한 줄만 다름을 확인함).
+- 기록 삭제 요청 = "숨김(`sw_hide_user_records`)"은 우리 `sw_hypothesis_log`를 숨기지 않는다(칸이 없음) — 방침 결정(숨김 보관 vs 즉시 파기)이 나면 함께 정한다.
+- 이전 버전으로 되돌리기: 이번 변경은 칸·표·함수 추가가 대부분이라 앱 코드를 이전 커밋으로 되돌려도 v1.9 코드와 호환된다(새 칸은 무시됨). 참조 데이터(CSV)를 덮어쓴 것은 적재 전에 `sw_compare_reference.mjs` 결과로 바뀐 행 수를 남겨 둔다.
+
+
 > **2026-10-20: v1.9로 올립니다(아래 "v1.6 → v1.9 업그레이드" 먼저 읽기).** v1.6 설명은 처음 적용한 기록으로 남깁니다.
 
 ## v1.6 → v1.9 업그레이드 (CSO 패키지 v1.9)

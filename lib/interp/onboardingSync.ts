@@ -3,6 +3,8 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import * as RS from "./vendor/rootState.mjs";
 import * as OB from "./vendor/onboardingScoring.mjs";
 import * as LD from "./vendor/dbLoader.mjs";
+import * as K from "./vendor/claimClassifier.mjs";
+import { chatFacts, chatSignature, claimsFromStates } from "./onboardingChat";
 import { mapOnboardingAnswers, onboardingEligible } from "./onboardingInput";
 import { buildTestInput, forInstrument } from "./testInput";
 
@@ -15,7 +17,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 const TABLES = [
   "sw_ob_test_bands", "sw_ob_test_domains", "sw_ob_test_root_pairs", "sw_ob_test_root_cues", "sw_ob_astro_cues", "sw_ob_hypotheses",
-  "sw_ob_option_groups", "sw_ob_combos", "sw_ob_option_axes", "sw_ob_dessert_types", "sw_ob_node_polarity",
+  "sw_ob_option_groups", "sw_ob_combos", "sw_ob_option_axes", "sw_ob_dessert_types", "sw_ob_node_polarity", "sw_ob_hyp_chat_links",
 ] as const;
 
 let cache: { at: number; onboarding: unknown } | null = null;
@@ -49,14 +51,24 @@ export async function syncOnboardingEvidence(admin: Admin, userId: string): Prom
     admin.from("ssol_quiz_results").select("id, type_key, factor_scores, sub_scores, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const eligible = onboardingEligible(ob);
-  const key = JSON.stringify([eligible, ob?.updated_at, ob?.personalization_consent, profile?.birth_date, quiz?.id]);
-  if (memo.get(userId) === key) return;
+  const baseKey = JSON.stringify([eligible, ob?.updated_at, ob?.personalization_consent, profile?.birth_date, quiz?.id]);
+  if (!eligible && memo.get(userId) === baseKey) return; // 대상이 아니고 달라진 게 없으면 장부도 읽지 않는다
 
   const { data: ledger, error } = await admin.rpc("sw_read_ledger", { p_user: userId });
   if (error) throw new Error(`sw_read_ledger ${error.code}`);
   const states = RS.hydrate(userId, ledger ?? [], []);
   const hasOld = Object.values(states).some((s: { ledger?: { source: string; validity: string }[] }) => (s.ledger ?? []).some((e) => e.source === "onboarding" && e.validity === "active"));
-  if (!eligible && !hasOld) { memo.set(userId, key); return; } // 할 일이 없으면 엔진 데이터도 읽지 않는다
+  if (!eligible && !hasOld) { memo.set(userId, baseKey); return; } // 할 일이 없으면 엔진 데이터도 읽지 않는다
+
+  // CSO OB-16(엔진 v1.8): 대화에서 확인된 사실(장부의 대화 근거 claim + 사용자가 꺼낸 주제)이 온보딩 가설의 "대화 조각" 연결과 맞으면 수렴 신호로 센다.
+  // 대화 사실이 달라질 때만 다시 계산하도록 서명을 key에 넣는다. 최근 사용자 말은 주제를 읽는 데만 쓰고 저장하지 않는다. 끄기: SW_ONBOARDING_CHAT=0.
+  let chat: ReturnType<typeof chatFacts> | null = null;
+  if (eligible && process.env.SW_ONBOARDING_CHAT !== "0") {
+    const { data: recent } = await admin.from("chat_messages").select("content").eq("user_id", userId).eq("role", "user").order("created_at", { ascending: false }).limit(30);
+    chat = chatFacts(claimsFromStates(states as never), (recent ?? []).map((m) => String(m.content ?? "")), K.saidTopics as (t: string) => string[]);
+  }
+  const key = `${baseKey}|${chatSignature(chat)}`;
+  if (memo.get(userId) === key) return;
 
   let cues: unknown[] = [];
   if (eligible) {
@@ -70,7 +82,7 @@ export async function syncOnboardingEvidence(admin: Admin, userId: string): Prom
     const test = buildTestInput(quiz);
     if (test) signals.push(...OB.testToSignals({ instrument: test.instrument, typeCode: test.main_domain && test.coping ? `${test.main_domain}-${test.coping}` : undefined, factorScores: test.factorScores, copingSub: test.copingSub }, test.at ?? at));
     signals.push(...OB.profileSignals({ birthDate: profile?.birth_date ?? undefined, now, source: "onboarding" } as never)); // 엔진 JS의 추론 타입이 좁아 형태만 맞춰 넘긴다
-    cues = OB.onboardingRootCues(answers, prof, OB.currentState(signals as never, now) as never);
+    cues = OB.onboardingRootCues(answers, prof, OB.currentState(signals as never, now) as never, chat as never);
   }
   const sink: unknown[] = [];
   RS.applyOnboardingSet(states, userId, cues, sink);

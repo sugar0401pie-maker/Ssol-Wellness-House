@@ -5,6 +5,9 @@ import { interpListed } from "./listed";
 import { loadData } from "./hypothesis";
 import type { RootBoostFn } from "./rootBoostApply";
 import { cautionHoldRoots } from "./deepeningFlow";
+import { loadPracticeFlags } from "./practiceFlags";
+import { growthReport } from "./growth";
+import { latestMotivePosition } from "./growthPure";
 
 // 사용자의 해석 상태(확인·가능성 높은 뿌리)로 채팅 실천 제안 순서를 조정한다(2026-10-18, 로드맵 6번).
 // 뿌리↔실천 표(sw_ob_root_practices)와 "맞지 않는 실천"(sw_ob_root_practice_avoid)은 10분 캐시. 끄기: SW_ROOT_BOOST=0.
@@ -42,13 +45,18 @@ export async function loadRootBoost(admin: Admin, userId: string): Promise<RootB
     if (error) return null;
     const states = RS.hydrate(userId, data ?? [], []);
     const hold = await cautionHoldRoots(admin, userId); // 깊어짐(③)으로 주의 표시가 켜진 뿌리 — 그 뿌리 관련 "불편 머무르기" 실천은 뺀다(나아짐 신호가 나오면 풀림)
-    if (!hold.size && !Object.values(states).some((s) => s.status === "confirmed" || s.status === "likely")) return null; // 가산할 근거가 없으면 표를 읽지도 않는다
-    const t = await tables(admin);
-    const ctx = { enabled: true, avoid: t.avoid, sensitiveRoots: t.sensitive };
-    return (practiceId, exposureStep) => {
+    // 성장 방향·동기 위치(CSO 제1장): 나를 넘어섬 신호가 있으면 지친 상태에서도 그 방향 실천을 빼지 않고(DIR-06), 최근 동기 위치에 맞는 실천에 +0.5(MV-03).
+    const growth = await growthReport(admin, userId);
+    const motivePosition = latestMotivePosition(growth.signals);
+    if (!hold.size && !motivePosition && !Object.values(states).some((s) => s.status === "confirmed" || s.status === "likely")) return null; // 가산할 근거가 없으면 표를 읽지도 않는다
+    const [t, flags] = await Promise.all([tables(admin), loadPracticeFlags(admin)]);
+    const ctx = { enabled: true, avoid: t.avoid, sensitiveRoots: t.sensitive, beyondSignal: growth.beyond, motivePosition };
+    return (practiceId, exposureStep, tier) => {
       const roots = t.roots.get(practiceId) ?? [];
       if (exposureStep && roots.some((r) => hold.has(r))) return { boost: 0, exclude: true };
-      const r = RS.rootBoost({ id: practiceId, roots }, states, ctx);
+      const f = flags[practiceId] ?? {};
+      // step·exposure_step·beyond_self는 엔진의 속도·부담 거르기(③-10 몸 단계 · RC-19 지친 상태)가 본다. 표시가 없으면 걸리지 않는다.
+      const r = RS.rootBoost({ id: practiceId, roots, step: tier ?? undefined, exposure_step: exposureStep ?? undefined, beyond_self: f.beyond_self, motive_fit: f.motive_fit }, states, ctx);
       return { boost: r.boost, exclude: r.exclude };
     };
   } catch (e) {

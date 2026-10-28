@@ -7,6 +7,7 @@ import { retrieveKnowledgeChunks, findFrameworkHint } from "@/lib/rag/retrieve";
 import { searchServiceKnowledge } from "@/lib/rag/serviceSearch";
 import { searchWellnessPractices } from "@/lib/rag/practicesSearch";
 import { loadRootBoost } from "@/lib/interp/rootBoost";
+import { hasBodyStage } from "@/lib/safety/body";
 import { hasUnsafeRelationshipSignal } from "@/lib/theory/exclusion";
 import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
 import { buildSystemPrompt, type DialogueMode, type PersonaHint } from "@/lib/rag/prompt.ts";
@@ -193,7 +194,7 @@ export async function generateAnswer(params: {
   const practicesP = (async () => {
     if (!wantsPractices) return [];
     const [onboardingPrefs, hasCrisis, rootBoost] = await Promise.all([loadOnboardingPrefs(admin, params.userId), hasCrisisHistory(admin, params.userId), loadRootBoost(admin, params.userId)]);
-    return searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, { hasCrisisHistory: hasCrisis, excludePartnerPractices: hasUnsafeRelationshipSignal(params.message, params.recentMessages.filter((m) => m.role === "user").map((m) => m.content)) }, traumaStage, rootBoost);
+    return searchWellnessPractices(params.message, params.recentMessages, onboardingPrefs.prefs, { hasCrisisHistory: hasCrisis, excludePartnerPractices: hasUnsafeRelationshipSignal(params.message, params.recentMessages.filter((m) => m.role === "user").map((m) => m.content)) }, traumaStage, rootBoost, { bodyStage: hasBodyStage([...params.recentMessages.filter((m) => m.role === "user").map((m) => m.content), params.message]) }); // 몸 단계(CSO ③-10, lib/safety/body.ts): 잠·건강이 계속 흔들린다고 본인이 말했으면 가볍게 시작만
   })();
   // (3) 사용자가 "이 대화를 기억하기"를 선택한 이전 세션의 요약(참고용일 뿐, 검색·안전 판단에는 쓰지 않는다)과 세션 정보
   const [{ chunks: knowledgeChunks, services: serviceResults, framework: frameworkHint }, { data: memoryRow }, { data: sessionMeta }, practiceResults] =

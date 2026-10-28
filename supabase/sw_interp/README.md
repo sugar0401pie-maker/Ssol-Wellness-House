@@ -1,5 +1,22 @@
 # 쏘웰라 해석 DB — 적용·검증·되돌리기
 
+> **2026-10-28: v4.5로 올립니다(CSO 개발 전달 묶음 v1.5 · 엔진 ESM v2.3). 아래 "v4.0 → v4.5 업그레이드"를 먼저 읽으세요.**
+
+## v4.0 → v4.5 업그레이드 (CSO 개발 전달 묶음 v1.5)
+
+| 파일 | 역할 |
+| --- | --- |
+| `apply_v4.5.sql` | **이것 하나만 실행.** CSO 10 → 20 → 30 → 40 → 우리 50(마지막) 순서. **v4.0이 올라간 DB 위에 그대로 실행**해도 새로 만든 v4.5와 차이 0건이고, 두 번 실행해도 안전하며, 빈 DB에 이것만 실행해도 같다는 것을 임시 데이터베이스(PGlite)에서 확인함. 11번(운영 표 연결 FK)은 v4.0과 내용이 같아 다시 실행하지 않는다. |
+
+변경 요약: 새 표 4(`sw_ob_direction_axes`·`sw_ob_motive_positions`·`sw_ob_practice_flags`·`sw_ob_scene_domains`), 새 칸 `sw_ob_choice_options.gate`·`safety_hint` · `sw_ob_choice_scenes.confirm_place` · `sw_ob_root_texts.counter_1_root`·`counter_2_root` · `sw_ob_claims.direction`·`motive` · `sw_user_root_state.use_direction`·`use_direction_at`.
+
+순서
+1. (대표님) Supabase SQL Editor에서 `apply_v4.5.sql` 실행 → Success 확인.
+2. (개발) 적재 `node --env-file=.env.local scripts/sw_load_reference.mjs --dir <v4.5 CSV 폴더> --sql supabase/sw_interp/apply_v4.5.sql --apply --force`
+3. (개발) 새 CSV에서 빠진 예전 행 확인 `… --apply --prune-report` (삭제는 대표님 확인 뒤에만).
+4. (개발) 검증 `node --env-file=.env.local scripts/sw_verify_live.mjs --dir <v4.5 CSV 폴더>` + 앱 e2e.
+5. 코드 배포는 1~4가 끝난 뒤. (코드는 새 칸이 없는 DB에서도 죽지 않게 만들었지만, 새 기능은 SQL·CSV가 올라가야 켜진다.)
+
 > **2026-10-27: v4.0으로 올립니다(CSO 개발 전달 묶음 v1.2 · 엔진 ESM v1.8). 아래 "v1.9 → v4.0 업그레이드"를 먼저 읽으세요.**
 
 ## v1.9 → v4.0 업그레이드 (CSO 개발 전달 묶음 v1.2)

@@ -8,7 +8,7 @@ export const INSIGHT_MIN_SCORE_ANSWERS = 2.0; // 대화 근거 없이 테스트�
 export const INSIGHT_MAX_ITEMS = 6;
 
 export type InsightStatus = "confirmed" | "guess";
-export type Insight = { rootId: string; status: InsightStatus; text: string; strength: string; from: "chat" | "answers" }; // from: 대화에서 비친 적이 있으면 chat, 테스트·온보딩에서 고른 답만이면 answers
+export type Insight = { rootId: string; status: InsightStatus; text: string; strength: string; from: "chat" | "answers"; directionLine?: string }; // directionLine: 그 마음을 "알아차리고 쓰는 쪽"으로 가고 있을 때·아직 끌려갈 때의 한 줄(CSO DIR-05, 내부 값 이름은 사용자에게 보이지 않음) // from: 대화에서 비친 적이 있으면 chat, 테스트·온보딩에서 고른 답만이면 answers
 
 const RANK: Record<string, number> = { confirmed: 2, likely: 1, candidate: 0 };
 

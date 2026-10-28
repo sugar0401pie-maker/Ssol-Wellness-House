@@ -114,7 +114,7 @@ export function buildRootTexts(texts: TextRow[], roots: { root_id: string; name:
   const name = new Map(roots.map((r) => [r.root_id, r.name]));
   const keep = (xs: (string | null | undefined)[]) => xs.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
   return Object.fromEntries(
-    texts.map((t) => [t.root_id, { root_id: t.root_id, name: name.get(t.root_id) ?? t.root_id, reflect: keep([t.reflect_1, t.reflect_2, t.reflect_3]), check_q: keep([t.check_q_1, t.check_q_2]), counter: keep([t.counter_1, t.counter_2]), strength: t.strength ?? "", report: t.report ?? "", sensitive: t.sensitive === true || t.sensitive === "true" || t.sensitive === "t" }]),
+    texts.map((t) => [t.root_id, { root_id: t.root_id, name: name.get(t.root_id) ?? t.root_id, reflect: keep([t.reflect_1, t.reflect_2, t.reflect_3]), check_q: keep([t.check_q_1, t.check_q_2]), counter: keep([t.counter_1, t.counter_2]).map((x) => x.replace(/\s*\(ROOT-\d+\)\s*$/, "")) /* v4.5 전 DB는 끝에 내부 id가 붙어 있었다 — 사용자에게 보이면 안 됨 */, strength: t.strength ?? "", report: t.report ?? "", sensitive: t.sensitive === true || t.sensitive === "true" || t.sensitive === "t" }]),
   );
 }
 export function buildDiscGroups(rows: { group_id: string; roots: string; ask: string; options_json: unknown }[]): DiscGroup[] {

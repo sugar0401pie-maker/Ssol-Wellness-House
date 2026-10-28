@@ -19,6 +19,7 @@ import { noteScene } from "@/lib/cards/session";
 import { detectTheoryExclusion } from "@/lib/theory/exclusion";
 import { SPEC_VERSION } from "./version";
 import { recordDeepeningTurn } from "./deepeningFlow";
+import { recordGrowth } from "./growth";
 
 // 답변을 보낸 뒤 뒤에서 도는 발화 해석(2026-10-18). 결과는 다음 턴부터 반영된다(지연 0).
 // 흐름: 켜짐·대상 확인 → 분류(임베딩 후보 + 모델) → 장부에서 상태 다시 읽기 → 같은 의미 한 번만 반영 → sw_apply_ops(원자적·멱등) → 판정 기록.
@@ -68,6 +69,12 @@ async function work(p: InterpParams, at: (stage: string) => void): Promise<void>
     // 2026-10-20(로드맵 3·4번): 분류기가 선택지 카드 장면을 처음 꺼낸 말로 읽었다면 "열 준비" 세션을 만든다(보여 주는 것은 이어지는 다음 말에서).
     if (cls.scene_key && CARD_ROUTES.has(p.route) && !detectTheoryExclusion(p.text) && (await cardsOnFor(admin, p.userId))) {
       await noteScene(admin, p.userId, p.sessionId, cls.scene_key).catch((e) => console.error("카드 장면 기록 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+    }
+    // 성장 방향·동기 위치(CSO 제1장): 방향 claim은 뿌리 사건을 만들지 않으므로 "사건이 없으면 끝" 앞에서 기록한다. 실패해도 채팅에는 영향이 없다. 끄기: SW_GROWTH=0
+    if (cls.claims?.length) {
+      at("growth");
+      const rootIds = [...new Set(cls.events.filter((e) => e.op === "apply").map((e) => e.root_id))];
+      await recordGrowth(admin, { userId: p.userId, sessionId: p.sessionId, messageId: p.messageId, text: p.text, lastBot: p.lastBot ?? null, claimIds: cls.claims.map((c) => c.claim_id), sceneKey: cls.scene_key ?? null, rootIds }).catch((e) => console.error("성장 방향 기록 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
     }
     if (!cls.events.length) return;
 

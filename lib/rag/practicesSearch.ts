@@ -1,5 +1,8 @@
 import "server-only";
 import { applyRootBoost, type RootBoostFn } from "@/lib/interp/rootBoostApply";
+import * as RS from "@/lib/interp/vendor/rootState.mjs";
+import * as M from "@/lib/interp/vendor/motive.mjs";
+import { loadPracticeFlags } from "@/lib/interp/practiceFlags";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { domainRankScore, pickDailyPool } from "@/lib/rag/domainRank";
 import { passesHardFilter, scoreSoftPreference, type OnboardingPrefs, type PracticeEligibility } from "@/lib/onboarding/practiceFilter";
@@ -177,6 +180,7 @@ export async function searchWellnessPractices(
   serving: ServingContext,
   traumaStage: TraumaStage | null = null,
   rootBoost: RootBoostFn | null = null, // 2026-10-18: 해석된 뿌리로 순서 조정(순위 가산 + 맞지 않는 실천 제외). 없으면 이전과 같다.
+  opts: { bodyStage?: boolean } = {}, // 2026-10-28(CSO ③-10): 몸 단계(잠·건강이 계속 흔들린다고 본인이 말함)면 '가볍게 시작'만 남기고 불편 머무르기 실천을 뺀다 — 해석 대상 여부와 상관없이 모두에게.
 ): Promise<PracticeResult[]> {
   // 이론 기반 실천 노출 제한(after_explore·exposure·위기 이력) — 트라우마 대화(T0/T1)에서는 exposure를 전부 뺀다.
   const ctx: ServingContext = traumaStage ? { ...serving, excludeExposure: true } : serving;
@@ -195,6 +199,10 @@ export async function searchWellnessPractices(
   }
   rows = dropPartnerPractices(rows, eligibilityMap, ctx.excludePartnerPractices);
   if (!rows.length) return [];
+  if (opts.bodyStage) {
+    const light = rows.filter((p) => !RS.pacingFilter({ step: p.tier, exposure_step: p.exposureStep ?? undefined }, {}, { safetyBody: true }).exclude);
+    if (light.length) rows = light; // 다 걸러지면 거르기 전 목록으로(후보가 0개가 되지 않게)
+  }
 
   const contextText = [...recentMessages.slice(-4).map((m) => m.content), message].join(" ");
   const qBigrams = bigrams(contextText);
@@ -213,9 +221,16 @@ export async function searchWellnessPractices(
   // 항목(도메인당 25개)이 상위권을 독식해서 중장기 항목이 후보에 아예 안 들어올 수 있다 —
   // 그래서 tier별로 나눠 뽑는다: 단기 2개 + 중장기(꾸준히 이어가기/장기 습관) 각 1개.
   const byTier = (tier: string) => scored.filter((p) => p.tier === tier).sort((a, b) => b.score - a.score);
+  // RC-21: 몸 단계면 즐거움·회복 갈래(pleasure) 실천을 점수 차 1 이내에서 앞으로(갈래 표시가 없으면 순서 그대로).
+  const lightFirst = byTier("가볍게 시작");
+  if (opts.bodyStage && lightFirst.length > 1) {
+    const flags = await loadPracticeFlags(createAdminClient());
+    const balanced = M.pathBalance(lightFirst.map((p) => ({ id: p.id, score: p.score, path: flags[p.id]?.path })), [], { bodyHold: true }) as { id: string }[];
+    lightFirst.sort((a, b) => balanced.findIndex((x) => x.id === a.id) - balanced.findIndex((x) => x.id === b.id));
+  }
 
   const picked = [
-    ...byTier("가볍게 시작").slice(0, 2),
+    ...lightFirst.slice(0, 2),
     ...byTier("꾸준히 이어가기").slice(0, 1),
     ...byTier("장기 습관·정체성으로").slice(0, 1),
   ];
@@ -339,5 +354,7 @@ export async function pickCommitPractices(params: {
   const longer = candidates.find((c) => c.p.tier !== "가볍게 시작" && c !== short);
   const picked = [short, longer].filter((c): c is NonNullable<typeof c> => !!c);
   for (const c of candidates) { if (picked.length >= 2) break; if (!picked.includes(c)) picked.push(c); }
-  return picked.slice(0, 2).map(({ p }) => ({ id: p.id, title: p.title, detail: p.detail, reason: p.suggestReason }));
+  // 불편에 다가가는 실천 21개의 제안 이유는 "불안을 줄이려고"가 아니라 "원하는 것을 향한 용기 연습"으로 말한다(CSO RC-20). 표시가 없으면 원래 이유.
+  const flags = await loadPracticeFlags(admin);
+  return picked.slice(0, 2).map(({ p }) => ({ id: p.id, title: p.title, detail: p.detail, reason: flags[p.id]?.courage_why ?? p.suggestReason }));
 }

@@ -2,6 +2,8 @@ import "server-only";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import * as RS from "@/lib/interp/vendor/rootState.mjs";
 import * as C from "./vendor/choiceCards.mjs";
+import * as K from "@/lib/interp/vendor/claimClassifier.mjs";
+import { recordCardMotive } from "@/lib/interp/growth";
 import { buildCardData, type CardData } from "./data";
 import { CARD_MARK, cardPayload, confirmPayload, offerExpired, toEnginePick, type CardPayload, type CardPick, type PresentLike } from "./flow";
 
@@ -69,6 +71,16 @@ async function loadStates(admin: Admin, userId: string) {
   return RS.hydrate(userId, data ?? [], []) as Record<string, ReturnType<typeof RS.newRootState>>;
 }
 
+// 🔸 보기(돈·가족·건강 등)는 "본인이 먼저 그 주제를 말했을 때만" 보여 준다(CSO 10-27). 이 대화의 최근 사용자 말에서 분류기와 같은 규칙(saidTopics)으로 주제를 읽는다.
+// 말 원문은 읽는 데만 쓰고 저장하지 않는다. 읽기에 실패하면 빈 목록 = 🔸 보기가 모두 숨는 더 조심스러운 쪽이다.
+export async function mentionedTopics(admin: Admin, userId: string, chatId: string): Promise<string[]> {
+  const { data, error } = await admin.from("chat_messages").select("content").eq("user_id", userId).eq("session_id", chatId).eq("role", "user").order("created_at", { ascending: false }).limit(10);
+  if (error) return [];
+  const topics = new Set<string>();
+  for (const m of data ?? []) for (const k of (K.saidTopics as (t: string) => string[])(String(m.content ?? ""))) topics.add(k);
+  return [...topics];
+}
+
 // ① 장면 감지(해석 작업에서 호출): 이 대화에 아직 카드 세션이 없으면 "열 준비" 행을 만든다. 보여 주는 것은 다음 말에서.
 export async function noteScene(admin: Admin, userId: string, chatId: string, sceneKey: string): Promise<boolean> {
   const data = await loadCardData(admin);
@@ -109,7 +121,8 @@ export async function presentFirstCard(admin: Admin, userId: string, chatId: str
   if (!offer) return null;
   const data = await loadCardData(admin);
   const states = await loadStates(admin, userId);
-  const r = C.presentCard(offer.sess, offer.sess.started_card_id, states, { mentioned: [], hypCues: [] }, data);
+  const mentioned = await mentionedTopics(admin, userId, chatId);
+  const r = C.presentCard(offer.sess, offer.sess.started_card_id, states, { mentioned, hypCues: [] }, data);
   if (r.type !== "card") return null;
   await save(admin, userId, offer.rowId, offer.sess);
   return cardPayload(r as unknown as PresentLike);
@@ -128,6 +141,7 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
   const states = await loadStates(admin, p.userId);
   const shown = (sess.shown ?? {}) as Record<string, string[]>;
   const nowIso = new Date().toISOString();
+  const mentioned = await mentionedTopics(admin, p.userId, p.chatId);
   let r: Record<string, unknown>;
 
   if (p.pick.confirm) {
@@ -135,20 +149,31 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
     r = C.confirmChoice(sess, states, p.pick.confirm, nowIso, data);
   } else {
     if (!p.pick.cardId || p.pick.cardId !== sess.card_id) { await endRow(admin, p.userId, row.id, "stale_pick"); return { kind: "continue" }; }
-    r = C.recordChoice(sess, states, p.userId, toEnginePick(p.pick, p.text), { mentioned: [], hypCues: [] }, data);
+    r = C.recordChoice(sess, states, p.userId, toEnginePick(p.pick, p.text), { mentioned, hypCues: [] }, data);
   }
 
   let payload: CardPayload | null = null;
   if (r.type === "card") {
     // 모름 한 번(retry)이면 같은 카드에서 이미 보여 준 보기를 빼고 다시 보여 준다.
     const denied = r.retry ? (shown[String(r.card_id)] ?? []).filter((id) => id.startsWith("GO-") || id.startsWith("CO-")) : [];
-    const pr = C.presentCard(sess, String(r.card_id), states, { mentioned: [], hypCues: [], deniedOptions: denied }, data);
+    const pr = C.presentCard(sess, String(r.card_id), states, { mentioned, hypCues: [], deniedOptions: denied }, data);
     if (pr.type === "card") payload = cardPayload(pr as unknown as PresentLike);
   } else if (r.type === "confirm") {
-    sess.shown = { ...(sess.shown ?? {}), CONFIRM: data.confirm.options.map((o) => o.id) };
-    payload = confirmPayload(String(r.text), data.confirm.options);
+    // 확인 카드 보기는 엔진이 돌려준 options를 그대로 쓴다(CF-1 "맞아요, {장면} 특히 그래요"에 장면 자리 말이 들어 있음 — CSO v1.5 확인 요청 ②).
+    const confirmOpts = (Array.isArray(r.options) ? r.options : C.confirmOptions(sess, data)) as { id: string; text: string }[];
+    sess.shown = { ...(sess.shown ?? {}), CONFIRM: confirmOpts.map((o) => o.id) };
+    payload = confirmPayload(String(r.text), confirmOpts);
   }
   await flushEvents(admin, p.userId, sess);
   await save(admin, p.userId, row.id, sess);
+  // 고른 보기의 동기 위치("해야 해서" ↔ "하고 싶어서")를 기록한다(CSO MV-01). 뿌리 점수와 별개이고, 실패해도 카드 흐름에는 영향이 없다.
+  if (p.pick.optionId) {
+    const opt = data.options[p.pick.optionId];
+    const scene = data.scenes.find((s) => s.first_card === sess.started_card_id);
+    await recordCardMotive(admin, { userId: p.userId, chatId: p.chatId, cardId: p.pick.cardId ?? "", optionId: p.pick.optionId, claimId: opt?.claim_id || null, sceneKey: scene?.key ?? null }).catch(() => undefined);
+  }
+  // CSO v1.5 확인 요청 ①: 이 보기는 위기·폭력 신호가 섞일 수 있어(safety_hint) 카드 흐름으로 이어 가지 않고 평소 대화로 넘긴다.
+  // 점수는 이미 기록했고, 이 말은 라우터가 먼저 검사했다. 평소 대화에서는 처음엔 이유를 묻고 반복되면 스크리닝 질문을 하는 안전 단계가 그대로 작동한다.
+  if (r.safety_check) { await endRow(admin, p.userId, row.id, "safety_check"); return { kind: "continue" }; }
   return payload ? { kind: "reply", payload } : { kind: "continue" };
 }

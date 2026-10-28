@@ -3,7 +3,7 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { isInsightAction, isRootId } from "@/lib/interp/insights";
-import { applyInsightAction, clearInsights, loadInsights } from "@/lib/interp/insightsStore";
+import { applyInsightAction, clearInsights, loadGrowthLines, loadInsights } from "@/lib/interp/insightsStore";
 
 // 마이페이지 "쏘웰라가 파악한 내용"(2026-10-18, 로드맵 10번). 본인 것만: 보기(GET) · 맞아요/아니에요/지우기(PATCH) · 전부 지우기(DELETE).
 export const runtime = "nodejs";
@@ -18,7 +18,9 @@ export async function GET(req: NextRequest) {
   const u = await authed(req);
   if (typeof u !== "string") return u;
   try {
-    return NextResponse.json({ items: await loadInsights(createAdminClient(), u) });
+    const admin = createAdminClient();
+    const [items, growth] = await Promise.all([loadInsights(admin, u), loadGrowthLines(admin, u).catch(() => [] as string[])]);
+    return NextResponse.json({ items, growth });
   } catch (e) {
     console.error("파악한 내용 조회 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return NextResponse.json({ error: "불러오지 못했어요." }, { status: 500 });
@@ -45,7 +47,7 @@ export async function DELETE(req: NextRequest) {
   if (typeof u !== "string") return u;
   try {
     await clearInsights(createAdminClient(), u);
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ items: [], growth: [] });
   } catch (e) {
     console.error("파악한 내용 전체 삭제 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return NextResponse.json({ error: "지우지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });

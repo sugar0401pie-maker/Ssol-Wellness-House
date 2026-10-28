@@ -3,13 +3,14 @@
 // 가산 폭은 엔진 규칙대로 0~2 (확인된 뿌리 +2, 가능성 높은 뿌리 +1, 거절된 뿌리 0)이고, 주제 겹침 점수(문장 조각 개수)와 같은 눈금에서 가중치를 곱해 더한다.
 export const ROOT_BOOST_WEIGHT = 2;
 
-export type RootBoostFn = (practiceId: string, exposureStep?: number | null) => { boost: number; exclude: boolean };
+// tier = 운영 실천표 단계('가볍게 시작' 등). 엔진 pacingFilter(몸 단계)·동기 위치 가산이 단계와 불편 머무르기 단계를 본다.
+export type RootBoostFn = (practiceId: string, exposureStep?: number | null, tier?: string | null) => { boost: number; exclude: boolean };
 
-export function applyRootBoost<T extends { id: string; score: number; exposureStep?: number | null }>(rows: T[], fn: RootBoostFn | null | undefined, weight = ROOT_BOOST_WEIGHT): T[] {
+export function applyRootBoost<T extends { id: string; score: number; exposureStep?: number | null; tier?: string | null }>(rows: T[], fn: RootBoostFn | null | undefined, weight = ROOT_BOOST_WEIGHT): T[] {
   if (!fn) return rows;
   const out: T[] = [];
   for (const r of rows) {
-    const b = fn(r.id, r.exposureStep ?? null);
+    const b = fn(r.id, r.exposureStep ?? null, r.tier ?? null);
     if (b.exclude) continue;
     out.push(b.boost ? { ...r, score: r.score + b.boost * weight } : r);
   }

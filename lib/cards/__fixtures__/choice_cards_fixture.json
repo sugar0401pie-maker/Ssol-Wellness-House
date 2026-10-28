@@ -20161,9 +20161,9 @@
 "base_rank": 4,
 "show_if": "🔸 본인이 먼저 말했을 때만",
 "gate": [
-"never"
+"family_expect"
 ],
-"safety_hint": true,
+"safety_hint": false,
 "next_card": null,
 "core_thought": null,
 "lean": "본인이 말할 때만",
@@ -35059,7 +35059,7 @@
 "base_rank": 3,
 "show_if": null,
 "gate": null,
-"safety_hint": true,
+"safety_hint": false,
 "next_card": null,
 "core_thought": "새 곳에서 힘을 너무 많이 써 와서, 마음의 기운이 바닥 가까이 내려온 것 같아요",
 "lean": "“매일 아침이 너무 버거워요”",

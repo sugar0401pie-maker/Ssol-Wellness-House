@@ -3,7 +3,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import * as RS from "@/lib/interp/vendor/rootState.mjs";
 import * as C from "./vendor/choiceCards.mjs";
 import * as K from "@/lib/interp/vendor/claimClassifier.mjs";
-import { recordCardMotive } from "@/lib/interp/growth";
+import { recordCardMotive, retractCardMotive } from "@/lib/interp/growth";
 import { buildCardData, type CardData } from "./data";
 import { CARD_MARK, cardPayload, confirmPayload, offerExpired, toEnginePick, type CardPayload, type CardPick, type PresentLike } from "./flow";
 
@@ -166,6 +166,7 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
   }
   await flushEvents(admin, p.userId, sess);
   await save(admin, p.userId, row.id, sess);
+  if (p.pick.confirm === "CF-3") await retractCardMotive(admin, p.userId, p.chatId).catch(() => undefined); // "조금 달라요" → 이 대화에서 카드로 읽은 동기 위치는 거둔다
   // 고른 보기의 동기 위치("해야 해서" ↔ "하고 싶어서")를 기록한다(CSO MV-01). 뿌리 점수와 별개이고, 실패해도 카드 흐름에는 영향이 없다.
   if (p.pick.optionId) {
     const opt = data.options[p.pick.optionId];

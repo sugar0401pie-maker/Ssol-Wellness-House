@@ -24,16 +24,17 @@ async function all<T>(admin: Admin, table: string, cols: string): Promise<T[] | 
 }
 export async function ensureGrowthData(admin: Admin): Promise<boolean> {
   if (loaded && Date.now() - loaded.at < 10 * 60 * 1000) return loaded.ok;
-  const [claims, axes, texts, sceneDomains, positions] = await Promise.all([
+  const [claims, axes, texts, sceneDomains, positions, roots] = await Promise.all([
     all<{ claim_id: string; kind: string; direction: string | null; motive: string | null }>(admin, "sw_ob_claims", "claim_id,kind,direction,motive"),
     all<Record<string, unknown>>(admin, "sw_ob_direction_axes", "axis,slot,label,report_more,report_first"),
     all<{ root_id: string; strength: string | null }>(admin, "sw_ob_root_texts", "root_id,strength"),
     all<{ scene_key: string; domain: string }>(admin, "sw_ob_scene_domains", "scene_key,domain"),
     all<{ position: string; ord: number }>(admin, "sw_ob_motive_positions", "position,ord"),
+    all<{ root_id: string; nature_primary: string | null }>(admin, "sw_ob_roots", "root_id,nature_primary"), // 엔진 v2.6: 자원·중립 뿌리에는 "끌려다님" 한 줄을 붙이지 않는다
   ]);
-  const ok = !!(claims && axes && texts && sceneDomains && positions) && axes.length > 0;
+  const ok = !!(claims && axes && texts && sceneDomains && positions && roots) && axes.length > 0;
   if (ok) {
-    (D.setDirectionData as (x: unknown) => unknown)({ claims, axes, rootTexts: texts }); // 벤더(JS)의 기본값 [] 때문에 타입이 never[]로 추론되어 느슨하게 부른다
+    (D.setDirectionData as (x: unknown) => unknown)({ claims, axes, rootTexts: texts, roots }); // 벤더(JS)의 기본값 [] 때문에 타입이 never[]로 추론되어 느슨하게 부른다
     (M.setMotiveData as (x: unknown) => unknown)({ claims, sceneDomains, positions });
   }
   loaded = { at: Date.now(), ok };
@@ -52,13 +53,16 @@ async function insertFresh(admin: Admin, userId: string, chatId: string, rows: S
 }
 
 /** 자유 대화 한 번의 분류 결과(검증을 통과한 claim)에서 방향·동기 위치 신호를 만들어 기록한다. */
-export async function recordGrowth(admin: Admin, p: { userId: string; sessionId: string; messageId: string; text: string; lastBot?: string | null; claimIds: string[]; sceneKey?: string | null; rootIds: string[] }): Promise<number> {
-  if (!growthOn() || !p.claimIds.length || !(await ensureGrowthData(admin))) return 0;
+export async function recordGrowth(admin: Admin, p: { userId: string; sessionId: string; messageId: string; text: string; lastBot?: string | null; claims: { claim_id: string; confidence: number }[]; sceneKey?: string | null; rootIds: string[] }): Promise<number> {
+  const claimIds = p.claims.map((c) => c.claim_id);
+  if (!growthOn() || !claimIds.length || !(await ensureGrowthData(admin))) return 0;
   const at = new Date().toISOString();
   const bot = suggestedByBot(p.lastBot, p.text);
-  const dir = D.directionSignals({ claims: p.claimIds.map((id) => ({ claim_id: id, confidence: 1 })) }, { userId: p.userId, chatId: p.sessionId, messageId: p.messageId, at, rootsInMessage: p.rootIds, suggestedByAi: bot }) as SignalRow[];
-  const mot = M.motiveSignals(p.claimIds, { userId: p.userId, chatId: p.sessionId, at, scene: p.sceneKey ?? null, suggestedByAi: bot }) as SignalRow[];
-  return insertFresh(admin, p.userId, p.sessionId, withMessage([...dir, ...mot], p.messageId));
+  const dir = D.directionSignals({ claims: p.claims }, { userId: p.userId, chatId: p.sessionId, messageId: p.messageId, at, rootsInMessage: p.rootIds, suggestedByAi: bot }) as SignalRow[];
+  const mot = M.motiveSignals(claimIds, { userId: p.userId, chatId: p.sessionId, at, scene: p.sceneKey ?? null, suggestedByAi: bot }) as SignalRow[];
+  // 장면 신호 claim(CS-SCN-*, 엔진 v2.4~): 뿌리 점수가 없는 "그 장면 이야기가 나왔다" 표시. 온보딩 가설의 대화 조각 연결(OB-16)이 읽는다. 항목 id만 저장한다.
+  const scn: SignalRow[] = claimIds.filter((id) => id.startsWith("CS-SCN-")).map((id) => ({ user_id: p.userId, slot: "scene.signal", value: { claim_id: id }, source: "chat", observed_at: at, ref: p.sessionId }));
+  return insertFresh(admin, p.userId, p.sessionId, withMessage([...dir, ...mot, ...scn], p.messageId));
 }
 
 /** 선택지 카드에서 고른 보기의 동기 위치(방향 claim은 카드 보기에 없음). */
@@ -66,6 +70,12 @@ export async function recordCardMotive(admin: Admin, p: { userId: string; chatId
   if (!growthOn() || !p.claimId || !(await ensureGrowthData(admin))) return 0;
   const rows = M.motiveSignals([p.claimId], { userId: p.userId, chatId: p.chatId, at: new Date().toISOString(), scene: p.sceneKey }) as SignalRow[];
   return insertFresh(admin, p.userId, p.chatId, withMessage(rows, `card:${p.cardId}:${p.optionId}`));
+}
+
+/** 확인 카드에서 "조금 달라요"(CF-3)를 고른 대화의 카드 보기 동기 위치는 거둔다(CSO v4.6 확인 요청 3 — 지우지 않고 retracted_at만 표시). */
+export async function retractCardMotive(admin: Admin, userId: string, chatId: string): Promise<void> {
+  if (!growthOn()) return;
+  await admin.from("sw_user_signals").update({ retracted_at: new Date().toISOString() }).eq("user_id", userId).eq("ref", chatId).like("slot", "motive.%").like("value->>message_id", "card:%").is("retracted_at", null);
 }
 
 /** 최근 두 달의 방향·동기 위치 신호(숨김·취소 제외는 엔진 함수가 다시 거른다). */

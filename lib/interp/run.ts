@@ -74,7 +74,7 @@ async function work(p: InterpParams, at: (stage: string) => void): Promise<void>
     if (cls.claims?.length) {
       at("growth");
       const rootIds = [...new Set(cls.events.filter((e) => e.op === "apply").map((e) => e.root_id))];
-      await recordGrowth(admin, { userId: p.userId, sessionId: p.sessionId, messageId: p.messageId, text: p.text, lastBot: p.lastBot ?? null, claimIds: cls.claims.map((c) => c.claim_id), sceneKey: cls.scene_key ?? null, rootIds }).catch((e) => console.error("성장 방향 기록 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+      await recordGrowth(admin, { userId: p.userId, sessionId: p.sessionId, messageId: p.messageId, text: p.text, lastBot: p.lastBot ?? null, claims: cls.claims.map((c) => ({ claim_id: c.claim_id, confidence: c.confidence })), sceneKey: cls.scene_key ?? null, rootIds }).catch((e) => console.error("성장 방향 기록 실패(채팅에는 영향 없음):", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
     }
     if (!cls.events.length) return;
 

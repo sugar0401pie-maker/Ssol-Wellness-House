@@ -5,6 +5,7 @@ import * as OB from "./vendor/onboardingScoring.mjs";
 import * as LD from "./vendor/dbLoader.mjs";
 import * as K from "./vendor/claimClassifier.mjs";
 import { chatFacts, chatSignature, claimsFromStates } from "./onboardingChat";
+import { cardSceneKeys, loadSceneSignalClaims } from "./chatFactsStore";
 import { mapOnboardingAnswers, onboardingEligible } from "./onboardingInput";
 import { buildTestInput, forInstrument } from "./testInput";
 
@@ -17,8 +18,10 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 const TABLES = [
   "sw_ob_test_bands", "sw_ob_test_domains", "sw_ob_test_root_pairs", "sw_ob_test_root_cues", "sw_ob_astro_cues", "sw_ob_hypotheses",
-  "sw_ob_option_groups", "sw_ob_combos", "sw_ob_option_axes", "sw_ob_dessert_types", "sw_ob_node_polarity", "sw_ob_hyp_chat_links",
+  "sw_ob_option_groups", "sw_ob_combos", "sw_ob_option_axes", "sw_ob_dessert_types", "sw_ob_node_polarity", "sw_ob_hyp_chat_links", "sw_ob_chat_link_signals",
 ] as const;
+// v4.6에서 생긴 표 — SQL이 아직 안 올라간 DB에서도 온보딩 단서 전체가 멈추지 않게, 이 표만은 없으면 빈 것으로 본다.
+const OPTIONAL_TABLES = new Set<string>(["sw_ob_chat_link_signals"]);
 
 let cache: { at: number; onboarding: unknown } | null = null;
 async function loadEngineData(admin: Admin) {
@@ -28,7 +31,7 @@ async function loadEngineData(admin: Admin) {
     const out: unknown[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error } = await admin.from(name).select("*").range(from, from + 999);
-      if (error) throw new Error(`${name} 읽기 실패: ${error.code}`);
+      if (error) { if (OPTIONAL_TABLES.has(name)) break; throw new Error(`${name} 읽기 실패: ${error.code}`); }
       out.push(...(data ?? []));
       if ((data?.length ?? 0) < 1000) break;
     }
@@ -65,7 +68,9 @@ export async function syncOnboardingEvidence(admin: Admin, userId: string): Prom
   let chat: ReturnType<typeof chatFacts> | null = null;
   if (eligible && process.env.SW_ONBOARDING_CHAT !== "0") {
     const { data: recent } = await admin.from("chat_messages").select("content").eq("user_id", userId).eq("role", "user").order("created_at", { ascending: false }).limit(30);
-    chat = chatFacts(claimsFromStates(states as never), (recent ?? []).map((m) => String(m.content ?? "")), K.saidTopics as (t: string) => string[]);
+    // 카드 세션을 연 장면(엔진 v2.4~ cardScenes)과 분류기가 고른 장면 신호 claim(CS-SCN-*)도 대화 사실로 넘긴다.
+    const [cardScenes, sceneClaims] = await Promise.all([cardSceneKeys(admin, userId), loadSceneSignalClaims(admin, userId)]);
+    chat = chatFacts(new Set([...claimsFromStates(states as never), ...sceneClaims]), (recent ?? []).map((m) => String(m.content ?? "")), K.saidTopics as (t: string) => string[], cardScenes);
   }
   const key = `${baseKey}|${chatSignature(chat)}`;
   if (memo.get(userId) === key) return;

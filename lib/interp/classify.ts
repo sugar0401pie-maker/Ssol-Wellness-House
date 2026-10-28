@@ -50,7 +50,8 @@ export async function classifyUtterance(
   if (ctx.safetyHit) return { skipped: "safety", claims: [], events: [] };
   const [q] = await deps.embed([text]);
   const scores = scoreClaims(q, deps.index, ctx.excludeText);
-  const kctx = { ...ctx, scores };
+  // 분류기 v0.13(PATCH-1 정식 반영): 임베딩 검색 점수는 Map(claim_id → 비슷함)으로 넘긴다. 배열로 주면 모두 0점으로 읽혀 순위가 무너진다.
+  const kctx = { ...ctx, scores: new Map(scores.map((s) => [s.claim_id, s.sim])) };
   const ex = ctx.excludeText?.trim();
   const strip = (xs: string[]) => (ex ? xs.filter((x) => x.trim() !== ex) : xs);
   const cands = K.candidates(text, kctx).map((c: { examples: string[]; lean: string[]; core_thoughts: string[] }) => (ex ? { ...c, examples: strip(c.examples), lean: strip(c.lean), core_thoughts: strip(c.core_thoughts) } : c));

@@ -13,10 +13,16 @@ let cache: { at: number; claims: Claim[]; scenes: Scene[]; index: Promise<ClaimI
 // claim 문장이 그대로면 10분마다 임베딩을 다시 만들지 않는다(색인 만들기는 한 번에 약 10초·호출 몇 번).
 const signature = (claims: Claim[]) => claims.map((c) => c.claim_id + "|" + claimTexts(c).join("¶")).join("\n");
 
+// 한 번에 가져오는 행 수는 서버 설정상 1,000개가 상한이라(.limit(5000)을 줘도 1,000개에서 잘림) 끝까지 나눠서 읽는다.
+// 2026-10-28 발견: 의미 사전(claims)이 1,000개를 넘은 뒤(v4.0 이후)부터 일부 claim이 조용히 빠져 있었다.
 async function rows<T>(admin: Admin, table: string, cols: string): Promise<T[]> {
-  const { data, error } = await admin.from(table).select(cols).limit(5000);
-  if (error) throw new Error(`${table} 읽기 실패: ${error.code}`);
-  return (data ?? []) as T[];
+  const out: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from(table).select(cols).order(cols.split(",")[0]).range(from, from + 999);
+    if (error) throw new Error(`${table} 읽기 실패: ${error.code}`);
+    out.push(...((data ?? []) as T[]));
+    if ((data?.length ?? 0) < 1000) return out;
+  }
 }
 
 let loading: Promise<{ claims: Claim[]; scenes: Scene[]; index: ClaimIndex }> | null = null;

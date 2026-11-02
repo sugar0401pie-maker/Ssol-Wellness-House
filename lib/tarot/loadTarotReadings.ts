@@ -14,7 +14,7 @@ export async function loadTarotReadings(
 ): Promise<TarotReading[]> {
   const { data, error } = await admin
     .from("tarot_sessions")
-    .select("id, created_at, picks, classification, worry_skipped")
+    .select("id, created_at, picks, classification, worry_skipped, paid_at")
     .eq("user_id", userId)
     .eq("result_status", "ready")
     .order("created_at", { ascending: false })
@@ -23,5 +23,11 @@ export async function loadTarotReadings(
     console.warn("tarot_sessions 조회 실패(타로 마이그레이션 전일 수 있음):", error.message);
     return [];
   }
-  return (data as TarotRow[]).map((r) => toReading(r, TAROT_ORIGIN)).filter((r): r is TarotReading => r !== null);
+  // 타로는 세 번째 카드(앞으로의 열쇠)를 결제 뒤에 공개한다(2026-11-02) — 결제 전 결과는 그 카드를 빼고 넘긴다.
+  return (data as (TarotRow & { paid_at?: string | null })[])
+    .map((r) => {
+      const reading = toReading(r, TAROT_ORIGIN);
+      return reading && !r.paid_at ? { ...reading, cards: reading.cards.filter((c) => c.position !== "step") } : reading;
+    })
+    .filter((r): r is TarotReading => r !== null);
 }

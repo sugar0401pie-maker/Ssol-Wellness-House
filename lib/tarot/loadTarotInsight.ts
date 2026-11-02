@@ -31,9 +31,9 @@ export async function loadTarotWelcome(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   resultId: string,
-): Promise<{ worry: string | null; picks: unknown; nickname: string | null } | null> {
+): Promise<{ worry: string | null; picks: unknown; nickname: string | null; paid: boolean } | null> {
   if (!UUID.test(resultId)) return null;
-  const { data, error } = await admin.from("tarot_sessions").select("worry_text, picks, nickname").eq("id", resultId).eq("user_id", userId).maybeSingle();
+  const { data, error } = await admin.from("tarot_sessions").select("worry_text, picks, nickname, paid_at").eq("id", resultId).eq("user_id", userId).maybeSingle();
   if (error || !data) return null;
-  return { worry: (data.worry_text as string | null) ?? null, picks: data.picks, nickname: (data.nickname as string | null) ?? null };
+  return { worry: (data.worry_text as string | null) ?? null, picks: data.picks, nickname: (data.nickname as string | null) ?? null, paid: Boolean(data.paid_at) };
 }

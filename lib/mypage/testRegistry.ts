@@ -56,7 +56,8 @@ const TEST_PROVIDERS: TestProvider<Ctx>[] = [
       (await loadTarotReadings(admin, userId)).map((r) => ({
         id: r.id,
         createdAt: r.createdAt,
-        title: r.cards.length ? `앞으로의 열쇠 ‘${r.cards[r.cards.length - 1].name}’` : "타로 결과",
+        // 세 번째 카드는 결제 뒤에만 공개(타로 2026-11-02) — 결제 전 결과에는 그 카드가 없어 "타로 결과"로
+        title: ((k) => (k ? `앞으로의 열쇠 ‘${k.name}’` : "타로 결과"))(r.cards.find((c) => c.position === "step")),
         open: { label: "자세히 보기", href: `${TAROT_ORIGIN}/result/${r.id}`, external: true },
       })),
   },

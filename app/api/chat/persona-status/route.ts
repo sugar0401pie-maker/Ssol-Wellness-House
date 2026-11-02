@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
   if (tarotRow) {
     const picks = Array.isArray(tarotRow.picks) ? (tarotRow.picks as { id?: string; position?: string }[]) : [];
     const key = picks.find((p) => p.position === "step") ?? picks[2];
-    tarot = { worry: tarotRow.worry, card: (key?.id && TAROT_CARDS[key.id]?.name) || null };
+    // 세 번째 카드(앞으로의 열쇠)는 타로에서 결제 뒤에만 공개(2026-11-02) — 결제 전이면 인사에 카드 이름을 넣지 않는다
+    tarot = { worry: tarotRow.worry, card: (tarotRow.paid && key?.id && TAROT_CARDS[key.id]?.name) || null };
   }
   let q1: string | null = null;
   if (astro) {

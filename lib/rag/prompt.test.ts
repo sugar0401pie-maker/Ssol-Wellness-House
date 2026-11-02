@@ -503,7 +503,7 @@ describe("buildSystemPrompt — 쏠 타로 하우스 요약(tarotInsight, 2026-1
     assert.match(p, /\[2\. 첫 번째 카드 · 지나온 길\]/);
     assert.match(p, /미래를 맞히는 점괘가 아니라/);
     assert.match(p, /결정을 대신하지 않는다/);
-    assert.match(p, /역방향을 나쁘거나 불길한 뜻으로 말하지 않고/);
+    assert.match(p, /앞으로의 열쇠\(세 번째\) 카드와 앞날에 대해서는 역방향을 나쁘거나 불길한 뜻으로 말하지 않고/);
     assert.match(p, /지어내지 않는다/);
   });
 });

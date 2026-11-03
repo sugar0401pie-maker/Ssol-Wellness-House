@@ -378,7 +378,7 @@ export default function MyPageTab() {
         </div>
       )}
 
-      {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신사업자신고번호 포함). */}
+      {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신판매업신고번호 포함). */}
       <div className="px-4 pb-6">
         <SiteFooter />
       </div>

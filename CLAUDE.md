@@ -265,6 +265,7 @@ Non-negotiable rules (source: `system_prompt` and `safety_rules` tables, SAFE-00
 - **2026-11-02 — 타로 역방향 표현 규칙 일부 완화(owner, ssol-tarot과 같은 결정).** 채팅의 타로 지침(`lib/rag/prompt.ts`)에서 지나온 길·지금의 흐름(첫·두 번째) 카드의 역방향은 어려운 상태를 그대로 말해도 되고, 앞으로의 열쇠(세 번째) 카드와 앞날에 대해서만 나쁘거나 불길한 뜻으로 말하지 않는다.
 - **2026-11-03 — 푸터에 통신판매업신고번호 추가**: 대표님 요청으로 `components/SiteFooter.tsx`의 사업자등록번호 옆에 "통신판매업신고번호 2026-서울마포-2770"을 넣음(번호는 대표님이 알려 주신 그대로. 대표님은 "통신사업자신고번호"라고 하셨으나 같은 날 다른 세션이 정식 명칭인 "통신판매업신고번호"로 정정함 — 대표님 확인 필요). 이 푸터는 로그인 전 화면(`LoginScreen`·`LandingScreen`)과 약관 페이지(`/legal`)에서만 쓰인다 — 로그인 뒤 화면 하단에는 따로 사업자 정보가 없음.
 - **2026-11-03 — 카카오톡 등 링크 공유 미리보기 이미지 추가**: 대표님이 정한 첫 화면 문구 이미지("이유 없이 '그냥' 힘드신가요?…")를 카카오 권장 비율 2:1인 1200×600으로 맞춰 `public/og-image.jpg`로 두고, `app/layout.tsx`의 `metadata`에 `metadataBase`(`lib/seo/paths.ts`의 `SITE_URL`)·`openGraph.images`·`twitter`(summary_large_image)를 추가. 모든 페이지가 이 값을 물려받음(`/`·`/legal`에서 확인). **카카오톡은 한 번 읽은 미리보기를 저장해 두므로** 배포 후에도 예전 모양이 보이면 카카오 개발자 사이트의 공유 디버거(developers.kakao.com/tool/debugger/sharing)에서 이 주소로 "캐시 초기화"를 해야 함(대표님 몫). 이미지를 바꿀 때는 같은 파일명을 덮어쓰지 말고 파일명을 바꾸면 캐시 문제를 피한다.
+- **2026-11-03 — Bing 웹마스터 도구 사이트 소유 확인 태그 추가**: 대표님이 Bing 검색에 잡히도록 웹마스터 도구에 등록하며 받은 `msvalidate.01` 확인 태그를 `app/layout.tsx`의 `metadata.verification.other`에 넣음(모든 페이지 `<head>`에 출력, 홈에서 확인). **인증이 끝난 뒤에도 지우면 확인이 풀리므로 그대로 둘 것.** 비밀 값이 아니라 공개 태그. 배포 뒤 Bing 웹마스터 도구에서 "확인"을 누르고 `https://app.ssolwellnesshouse.com/sitemap.xml`을 제출하는 것은 대표님 몫(구글 서치콘솔에 이미 등록했다면 Bing에서 "Google Search Console에서 가져오기"로도 가능).
 
 ## 7. Coding conventions
 

@@ -33,6 +33,8 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   openGraph: { title: SITE_TITLE, description: SITE_DESCRIPTION, siteName: "쏠 웰니스 하우스", locale: "ko_KR", type: "website", images: [SHARE_IMAGE] },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [SHARE_IMAGE.url] },
+  // 2026-11-03 owner 요청: Bing 웹마스터 도구 사이트 소유 확인용 태그. 인증이 끝난 뒤에도 지우면 확인이 풀리니 그대로 둔다(비밀 값 아님).
+  verification: { other: { "msvalidate.01": "5F7F74F02C08FB70A6A250B0DB0A7ADF" } },
 };
 
 export const viewport: Viewport = {

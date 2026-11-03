@@ -17,7 +17,12 @@ export default function SiteFooter() {
           이용약관
         </a>
       </p>
-      <p className="mt-2">쏠 웰니스 하우스 · 대표 김준석 · 사업자등록번호 572-07-03549 · 통신판매업신고번호 2026-서울마포-2770</p>
+      {/* 항목마다 줄바꿈 단위를 묶어(nowrap) 좁은 화면에서 "통신판매업신고번호"처럼 단어 중간에서 끊기지 않게 한다. */}
+      <p className="mt-2">
+        <span className="whitespace-nowrap">쏠 웰니스 하우스</span> · <span className="whitespace-nowrap">대표 김준석</span> ·{" "}
+        <span className="whitespace-nowrap">사업자등록번호 572-07-03549</span> ·{" "}
+        <span className="whitespace-nowrap">통신판매업신고번호 2026-서울마포-2770</span>
+      </p>
       <p>서울시 마포구 독막로 100 4층 408호 · 연락처 010-2835-2263</p>
     </footer>
   );

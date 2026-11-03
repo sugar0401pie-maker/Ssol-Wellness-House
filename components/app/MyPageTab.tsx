@@ -10,6 +10,7 @@ import PasswordConfirmModal from "./PasswordConfirmModal";
 import InsightsSection from "./InsightsSection";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
 import type { TestGroup } from "@/lib/mypage/testTypes";
+import SiteFooter from "@/components/SiteFooter";
 
 type MyPageData = MyInfo & { gender: string | null; hasPassword: boolean };
 
@@ -376,6 +377,11 @@ export default function MyPageTab() {
           </SectionRow>
         </div>
       )}
+
+      {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신사업자신고번호 포함). */}
+      <div className="px-4 pb-6">
+        <SiteFooter />
+      </div>
 
       {showFeedback && <CustomerFeedbackModal onClose={() => setShowFeedback(false)} />}
 

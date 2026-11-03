@@ -6,6 +6,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { randomSeed, variantFor } from "@/lib/characters/variants";
 import { bootstrap } from "@/lib/app/bootstrapClient";
+import SiteFooter from "@/components/SiteFooter";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -193,6 +194,11 @@ export default function HomeTab() {
         {data && !data.practice && (
           <p className="mt-6 text-[13px] text-slate-400">오늘의 제안을 준비하지 못했어요. 채팅에서 편하게 이야기해보세요.</p>
         )}
+      </div>
+
+      {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신사업자신고번호 포함). 채팅은 입력창이 고정이라 제외. */}
+      <div className="px-4 pb-6">
+        <SiteFooter />
       </div>
     </div>
   );

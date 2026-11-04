@@ -175,12 +175,35 @@ export default function AboutPage() {
         <Table head={["이용자가 이렇게 말하면", "쏘웰라는"]} rows={C.SAFETY_ROWS} />
         <p className="mt-4 rounded-xl border border-navy bg-navy-soft p-4 text-[14px] leading-6 text-foreground">{C.SAFETY_HOTLINE}</p>
 
+        <H2>품질 점검 (자체 내부 평가)</H2>
+        <P>{C.QUALITY_INTRO}</P>
+        <Table head={C.QUALITY_HEAD} rows={C.QUALITY_ROWS} />
+        <P>{C.QUALITY_NOTE}</P>
+
         <H2>쏘웰라가 하지 않는 일</H2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
           {C.NOT_DOING.map((t) => (
             <li key={t}>{t}</li>
           ))}
         </ul>
+
+        <H2>대화 내용과 개인정보 보호</H2>
+        <P>{C.PRIVACY_NOTE}</P>
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
+          {C.PRIVACY_POINTS.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+        <P>
+          {C.PRIVACY_MORE}{" "}
+          <Link href="/legal#privacy" className="font-medium text-navy underline underline-offset-2">
+            개인정보처리방침
+          </Link>
+          {" · "}
+          <Link href="/legal#sensitive" className="font-medium text-navy underline underline-offset-2">
+            민감정보 처리방침
+          </Link>
+        </P>
 
         <H2>이용 방법과 요금</H2>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">

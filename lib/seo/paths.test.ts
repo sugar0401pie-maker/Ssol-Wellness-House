@@ -18,4 +18,8 @@ describe("검색엔진 안내 주소", () => {
   test("이용권 안내(/pricing) 자체는 막지 않는다 — 결제 결과 두 곳만 막음", () => {
     assert.equal(isBlocked("/pricing"), false);
   });
+
+  test("/about(요약 소개)은 robots로 막지 않는다 — 막으면 canonical 신호를 못 읽는다", () => {
+    assert.equal(isBlocked("/about"), false);
+  });
 });

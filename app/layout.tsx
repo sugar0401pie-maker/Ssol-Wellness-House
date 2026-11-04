@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR, Gowun_Batang } from "next/font/google";
 import "./globals.css";
-import { SITE_URL } from "@/lib/seo/paths";
+import { SHARE_IMAGE, SITE_URL } from "@/lib/seo/paths";
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -25,7 +25,6 @@ const SITE_DESCRIPTION =
 // 2026-11-03 owner 요청: 카카오톡 등으로 링크를 공유할 때 대표 이미지가 뜨게 한다. 이미지는 대표님이 정한 첫 화면 문구 이미지를
 // 카카오 권장 비율(2:1)인 1200×600으로 맞춘 것(public/og-image.jpg). 이미지 주소는 절대 주소여야 해서 metadataBase를 둔다.
 // 카카오톡은 한 번 읽은 링크 미리보기를 저장해 두므로, 이미지를 바꾸면 카카오 공유 디버거에서 "캐시 초기화"를 해야 바로 바뀐다.
-const SHARE_IMAGE = { url: "/og-image.jpg", width: 1200, height: 600, alt: "이유 없이 '그냥' 힘드신가요? 웰니스 상담 쏘웰라" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

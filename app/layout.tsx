@@ -33,8 +33,15 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   openGraph: { title: SITE_TITLE, description: SITE_DESCRIPTION, siteName: "쏠 웰니스 하우스", locale: "ko_KR", type: "website", images: [SHARE_IMAGE] },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [SHARE_IMAGE.url] },
-  // 2026-11-03 owner 요청: Bing 웹마스터 도구 사이트 소유 확인용 태그. 인증이 끝난 뒤에도 지우면 확인이 풀리니 그대로 둔다(비밀 값 아님).
-  verification: { other: { "msvalidate.01": "5F7F74F02C08FB70A6A250B0DB0A7ADF" } },
+  // 사이트 소유 확인용 태그(비밀 값 아님). 인증이 끝난 뒤에도 지우면 확인이 풀리니 그대로 둔다.
+  //  - 2026-11-03 Bing 웹마스터 도구(msvalidate.01)
+  //  - 2026-11-04 네이버 서치어드바이저(naver-site-verification)
+  verification: {
+    other: {
+      "msvalidate.01": "5F7F74F02C08FB70A6A250B0DB0A7ADF",
+      "naver-site-verification": "f192301c52bc33d97b664bd81faff6a2d30a3f71",
+    },
+  },
 };
 
 export const viewport: Viewport = {

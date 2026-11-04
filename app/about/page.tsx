@@ -120,13 +120,27 @@ export default function AboutPage() {
 
         <H2>이런 고민을 이야기할 수 있어요</H2>
         <P>{C.CONCERNS_INTRO}</P>
-        <ul className="mt-3 space-y-1.5 text-[14px] leading-6 text-slate-600">
-          {C.CONCERNS.map(([area, line]) => (
-            <li key={area}>
-              <span className="font-medium text-foreground">{area}</span> “{line}”
-            </li>
+        <P>{C.CONCERNS_MORE}</P>
+        <div className="mt-4 space-y-3">
+          {C.CONCERN_AREAS.map((a) => (
+            <section key={a.area} className="rounded-xl border border-line bg-white p-4">
+              <h3 className="text-[15px] font-semibold text-foreground">{a.area}</h3>
+              <ul className="mt-2 space-y-1 text-[14px] leading-6 text-navy">
+                {a.quotes.map((q) => (
+                  <li key={q}>“{q}”</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[14px] leading-6 text-slate-600">{a.help}</p>
+              {a.example && (
+                <p className="mt-2 rounded-lg bg-navy-soft px-3 py-2 text-[13px] leading-5 text-slate-600">
+                  <span className="font-medium text-foreground">이런 식으로 제안해요</span> · {a.example}
+                </p>
+              )}
+            </section>
           ))}
-        </ul>
+        </div>
+        <P>{C.CONCERNS_SENSITIVE}</P>
+        <P>{C.CONCERNS_LIMIT}</P>
         <P>{C.CONCERNS_OUTRO}</P>
 
         <H2>어떻게 대화가 흘러가나요</H2>
@@ -265,12 +279,18 @@ export default function AboutPage() {
         <Table head={C.COMPARE_AI_HEAD} rows={C.COMPARE_AI_ROWS} />
 
         <H2>자주 묻는 질문</H2>
-        <div className="mt-3 space-y-4">
+        {/* 접고 펼치기는 브라우저 기본 <details>를 쓴다 — 자바스크립트 없이 동작하고, 접힌 답변도 HTML에 그대로 있어 검색엔진·AI 검색이 읽는다. */}
+        <div className="mt-3 space-y-2">
           {C.FAQ.map(({ q, a }) => (
-            <div key={q}>
-              <h3 className="text-[14px] font-semibold text-foreground">{q}</h3>
-              <p className="mt-1 text-[14px] leading-6 text-slate-600">{a}</p>
-            </div>
+            <details key={q} className="group rounded-xl border border-line bg-white">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                <h3 className="text-[14px] font-semibold leading-5 text-foreground">{q}</h3>
+                <span aria-hidden className="shrink-0 text-slate-400 transition-transform group-open:rotate-180">
+                  ▾
+                </span>
+              </summary>
+              <p className="border-t border-line px-4 py-3 text-[14px] leading-6 text-slate-600">{a}</p>
+            </details>
           ))}
         </div>
 

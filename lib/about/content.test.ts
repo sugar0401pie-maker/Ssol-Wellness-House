@@ -68,6 +68,33 @@ describe("/about 글", () => {
     assert.doesNotMatch(privacy, /입력 단계에서 마스킹/); // 대화 원문은 마스킹하지 않는다(약관 예고문 1항)
   });
 
+  test("고민 영역 설명: 5개 영역이 모두 있고, 메인 페이지의 예시 문장 7개가 그대로 들어 있다", () => {
+    assert.deepEqual(C.CONCERN_AREAS.map((a) => a.area), ["커리어", "연애", "관계", "나 자신", "삶의 방향"]);
+    const quotes = C.CONCERN_AREAS.flatMap((a) => a.quotes).join("\n");
+    for (const q of [
+      "지금 다니는 회사, 옮길까 그냥 다닐까?",
+      "왜 계속 이상한 사람만 만나는 거야?",
+      "팀장님이 나만 싫어하는 걸까?",
+      "내가 진정으로 원하는 건 뭐지?",
+      "뭘 위해 모으는 거지?",
+      "부모님 노후, 결국 내 몫일까?",
+      "다들 잘 사는데, 나만 제자리인 것 같아",
+    ]) {
+      assert.ok(quotes.includes(q), q);
+    }
+    // 영역마다 설명이 있고, 주 이론은 메인 페이지 "대표 상담 이론"과 같다
+    const theory: Record<string, string> = { 커리어: "CBT", 연애: "EFT", 관계: "스키마치료", "나 자신": "웰빙치료", "삶의 방향": "ACT" };
+    for (const a of C.CONCERN_AREAS) {
+      assert.ok(a.help.length > 40, a.area);
+      assert.ok(a.help.includes(theory[a.area]), `${a.area}의 주 이론 ${theory[a.area]}`);
+    }
+    // 근거 없이 지어 쓴 단계 예시가 없다: 예시가 있는 영역은 메인 페이지 "단계별 제안" 표의 단계와 같아야 한다
+    const known = C.STEP_ROWS.map((r) => r[1]);
+    for (const a of C.CONCERN_AREAS.filter((a) => a.example)) {
+      assert.ok(known.includes(a.example!), `${a.area}의 예시가 단계별 제안 표에 없음`);
+    }
+  });
+
   test("요금은 실제 결제와 같은 값(pricing.ts)에서 만든다", () => {
     assert.deepEqual(C.PRICE_ROWS.map((r) => r[1]), ["4,500원", "8,700원", "22,800원"]);
     const priceFaq = C.FAQ.find((f) => f.q.includes("요금"))!;

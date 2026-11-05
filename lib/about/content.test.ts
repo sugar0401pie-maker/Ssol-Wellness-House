@@ -22,7 +22,7 @@ describe("/about 글", () => {
     assert.ok(allText.includes("설명을 위해 만든 가상의 사례예요. 실제 이용자 후기가 아니에요."));
     assert.ok(allText.includes("실제 사용자의 사례를 쏘웰라의 안전 기준에 맞춰 각색한 대화 예시예요."));
     assert.equal(C.MAKERS.length, 4);
-    assert.equal(C.FAQ.length, 20);
+    assert.equal(C.FAQ.length, 22);
   });
 
   test("기획 초안의 출처 표기·검토 표시가 화면 글에 남아 있지 않다", () => {
@@ -42,12 +42,12 @@ describe("/about 글", () => {
 
   test("퍼센트·건수 수치가 있는 글에는 '자체 내부 평가'와 '실제 결과는 다를 수 있음'이 반드시 같이 있다", () => {
     // 2026-11-04: 대표님 지시로 품질 점검 수치(97.4%·98.3%·97.0%·0/44)를 게시한다. 기획 문서의 조건(자체 내부 평가라는 말과 측정 조건을 같이 적기)은 유지한다.
-    const withNumbers = [C.QUALITY_INTRO, C.QUALITY_NOTE, ...C.QUALITY_ROWS.flat(), ...C.FAQ.filter((f) => /\d+(\.\d+)?\s*%|0\/44|44건/.test(f.a)).map((f) => f.a)];
-    assert.ok(C.FAQ.filter((f) => /97\.4%|44건/.test(f.a)).length === 2, "수치가 있는 FAQ 2개");
+    const withNumbers = [C.QUALITY_INTRO, C.QUALITY_NOTE, ...C.QUALITY_ROWS.flat(), ...C.FAQ.filter((f) => /\d+(\.\d+)?\s*%|0\/44|44개/.test(f.a)).map((f) => f.a)];
+    assert.ok(C.FAQ.filter((f) => /97\.4%|44개/.test(f.a)).length === 2, "수치가 있는 FAQ 2개");
     assert.match(C.QUALITY_INTRO, /자체 내부 평가/);
     assert.match(C.QUALITY_INTRO, /외부 기관의 인증이나 임상 효과를 뜻하지 않아요/);
     assert.match(C.QUALITY_INTRO, /실제 이용 결과는 다를 수 있어요/);
-    for (const f of C.FAQ.filter((f) => /\d+(\.\d+)?\s*%|44건/.test(f.a))) {
+    for (const f of C.FAQ.filter((f) => /\d+(\.\d+)?\s*%|44개/.test(f.a))) {
       assert.match(f.a, /자체 내부 평가/, f.q);
       assert.match(f.a, /다를 수 있어요|완벽히 걸러낼 수는 없어요/, f.q);
     }

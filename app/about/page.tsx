@@ -3,8 +3,10 @@ import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import { MAIN_SITE_ABOUT_URL, SHARE_IMAGE } from "@/lib/seo/paths";
 import * as C from "@/lib/about/content";
+import { TEST_PAGE_LIST } from "@/lib/about/testPages";
+import { FaqItem, H2, H3, Label, LabeledList, P, Table } from "@/components/about/ui";
 
-// 2026-11-04 owner 요청(SEO): 메인 사이트의 쏘웰라 상세 소개(ssowella.html)와 같은 내용을 앱 주소 /about에 따로 둔다(별도 페이지).
+// 2026-11-04 owner 요청(SEO): 메인 사이트의 쏘웰라 상세 소개(about.html — 처음 주소 ssowella.html은 2026-11-05에 about.html로 이동)와 같은 내용을 앱 주소 /about에 따로 둔다(별도 페이지).
 // 검색엔진에는 "같은 내용의 원본은 메인 사이트 쪽"이라고 canonical로 알린다(og:url도 같게) — 중복 페이지로 보지 않게 하려는 것이다.
 // 그래서 이 주소는 sitemap.xml에 넣지 않고(canonical 주소만 올린다), robots로도 막지 않는다(막으면 canonical 신호를 읽을 수 없다).
 // 로그인 없이 보이고, 본문은 서버가 처음부터 글자로 내려보낸다(자바스크립트 불필요).
@@ -26,65 +28,6 @@ export const metadata: Metadata = {
 
 const WELLNESS_SESSION_URL = "https://www.ssolwellness.com/wellnessintro";
 const QUIZ_URL = "https://quiz.ssolwellnesshouse.com?utm_source=app";
-
-function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-10 border-t border-line pt-8 text-[17px] font-semibold text-foreground">{children}</h2>;
-}
-
-function H3({ children }: { children: React.ReactNode }) {
-  return <h3 className="mt-6 text-[15px] font-semibold text-foreground">{children}</h3>;
-}
-
-function P({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <p className={`mt-3 text-[14px] leading-6 text-slate-600 ${className}`}>{children}</p>;
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <p className="mt-3 inline-block rounded-full bg-navy-soft px-3 py-1 text-[12px] font-medium text-navy">{children}</p>;
-}
-
-function Table({ head, rows }: { head?: string[]; rows: string[][] }) {
-  return (
-    <div className="mt-3 overflow-x-auto rounded-xl border border-line bg-white">
-      <table className="w-full min-w-[320px] text-left text-[13px] leading-5 text-slate-600">
-        {head && (
-          <thead className="bg-navy-soft text-foreground">
-            <tr>
-              {head.map((h) => (
-                <th key={h} className="px-3 py-2 font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-        )}
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r[0]} className="border-t border-line first:border-t-0">
-              {r.map((c, i) => (
-                <td key={i} className={`px-3 py-2 align-top ${i === 0 ? "font-medium text-foreground" : ""}`}>
-                  {c}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function LabeledList({ rows }: { rows: [string, string][] }) {
-  return (
-    <ul className="mt-3 space-y-2 text-[14px] leading-6 text-slate-600">
-      {rows.map(([name, text]) => (
-        <li key={name}>
-          <span className="font-medium text-foreground">{name}</span> — {text}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function StartButton() {
   return (
@@ -187,6 +130,7 @@ export default function AboutPage() {
         <H2>안전 장치</H2>
         <P>{C.SAFETY_INTRO}</P>
         <Table head={["이용자가 이렇게 말하면", "쏘웰라는"]} rows={C.SAFETY_ROWS} />
+        <P>{C.SAFETY_STATS}</P>
         <p className="mt-4 rounded-xl border border-navy bg-navy-soft p-4 text-[14px] leading-6 text-foreground">{C.SAFETY_HOTLINE}</p>
 
         <H2>품질 점검 (자체 내부 평가)</H2>
@@ -282,17 +226,21 @@ export default function AboutPage() {
         {/* 접고 펼치기는 브라우저 기본 <details>를 쓴다 — 자바스크립트 없이 동작하고, 접힌 답변도 HTML에 그대로 있어 검색엔진·AI 검색이 읽는다. */}
         <div className="mt-3 space-y-2">
           {C.FAQ.map(({ q, a }) => (
-            <details key={q} className="group rounded-xl border border-line bg-white">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-                <h3 className="text-[14px] font-semibold leading-5 text-foreground">{q}</h3>
-                <span aria-hidden className="shrink-0 text-slate-400 transition-transform group-open:rotate-180">
-                  ▾
-                </span>
-              </summary>
-              <p className="border-t border-line px-4 py-3 text-[14px] leading-6 text-slate-600">{a}</p>
-            </details>
+            <FaqItem key={q} q={q} a={a} />
           ))}
         </div>
+
+        <H2>쏘웰라와 이어지는 테스트</H2>
+        <P>쏠 웰니스 하우스의 테스트 결과를 쏘웰라 대화로 이어 갈 수 있어요. 테스트마다 소개 페이지가 따로 있어요.</P>
+        <ul className="mt-3 space-y-1.5 text-[14px] leading-6">
+          {TEST_PAGE_LIST.map((tp) => (
+            <li key={tp.slug}>
+              <Link href={`/about/${tp.slug}`} className="font-medium text-navy underline underline-offset-2">
+                {tp.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
 
         <div className="mt-10 border-t border-line pt-8 text-center">
           <h2 className="font-serif text-[18px] font-bold text-foreground">{C.CLOSING_TITLE}</h2>

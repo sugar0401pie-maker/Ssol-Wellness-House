@@ -17,6 +17,12 @@ export default function SiteFooter() {
           이용약관
         </a>
       </p>
+      {/* 2026-11-05: 검색·AI 크롤러가 소개 페이지를 찾을 수 있게 하는 링크. /legal은 서버가 이 푸터를 글자로 내려보내므로 여기서 /about으로 이어진다(소개 페이지는 사이트맵에 없다). */}
+      <p className="mt-1">
+        <a href="/about" className="text-navy underline">
+          쏘웰라 소개
+        </a>
+      </p>
       {/* 항목마다 줄바꿈 단위를 묶어(nowrap) 좁은 화면에서 "통신판매업신고번호"처럼 단어 중간에서 끊기지 않게 한다. */}
       <p className="mt-2">
         <span className="whitespace-nowrap">쏠 웰니스 하우스</span> · <span className="whitespace-nowrap">대표 김준석</span> ·{" "}

@@ -63,27 +63,13 @@ export default function AboutPage() {
 
         <H2>이런 고민을 이야기할 수 있어요</H2>
         <P>{C.CONCERNS_INTRO}</P>
-        <P>{C.CONCERNS_MORE}</P>
-        <div className="mt-4 space-y-3">
-          {C.CONCERN_AREAS.map((a) => (
-            <section key={a.area} className="rounded-xl border border-line bg-white p-4">
-              <h3 className="text-[15px] font-semibold text-foreground">{a.area}</h3>
-              <ul className="mt-2 space-y-1 text-[14px] leading-6 text-navy">
-                {a.quotes.map((q) => (
-                  <li key={q}>“{q}”</li>
-                ))}
-              </ul>
-              <p className="mt-2 text-[14px] leading-6 text-slate-600">{a.help}</p>
-              {a.example && (
-                <p className="mt-2 rounded-lg bg-navy-soft px-3 py-2 text-[13px] leading-5 text-slate-600">
-                  <span className="font-medium text-foreground">이런 식으로 제안해요</span> · {a.example}
-                </p>
-              )}
-            </section>
+        <ul className="mt-3 space-y-1.5 text-[14px] leading-6 text-slate-600">
+          {C.CONCERN_EXAMPLES.map(([area, quote]) => (
+            <li key={area}>
+              <span className="font-medium text-foreground">{area}</span> “{quote}”
+            </li>
           ))}
-        </div>
-        <P>{C.CONCERNS_SENSITIVE}</P>
-        <P>{C.CONCERNS_LIMIT}</P>
+        </ul>
         <P>{C.CONCERNS_OUTRO}</P>
 
         <H2>어떻게 대화가 흘러가나요</H2>
@@ -129,14 +115,11 @@ export default function AboutPage() {
 
         <H2>안전 장치</H2>
         <P>{C.SAFETY_INTRO}</P>
-        <Table head={["이용자가 이렇게 말하면", "쏘웰라는"]} rows={C.SAFETY_ROWS} />
-        <P>{C.SAFETY_STATS}</P>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-[14px] font-medium text-navy">{C.SAFETY_TABLE_TOGGLE}</summary>
+          <Table head={["이용자가 이렇게 말하면", "쏘웰라는"]} rows={C.SAFETY_ROWS} />
+        </details>
         <p className="mt-4 rounded-xl border border-navy bg-navy-soft p-4 text-[14px] leading-6 text-foreground">{C.SAFETY_HOTLINE}</p>
-
-        <H2>품질 점검 (자체 내부 평가)</H2>
-        <P>{C.QUALITY_INTRO}</P>
-        <Table head={C.QUALITY_HEAD} rows={C.QUALITY_ROWS} />
-        <P>{C.QUALITY_NOTE}</P>
 
         <H2>쏘웰라가 하지 않는 일</H2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
@@ -145,31 +128,14 @@ export default function AboutPage() {
           ))}
         </ul>
 
-        <H2>대화 내용과 개인정보 보호</H2>
-        <P>{C.PRIVACY_NOTE}</P>
-        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
-          {C.PRIVACY_POINTS.map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-        <P>
-          {C.PRIVACY_MORE}{" "}
-          <Link href="/legal#privacy" className="font-medium text-navy underline underline-offset-2">
-            개인정보처리방침
-          </Link>
-          {" · "}
-          <Link href="/legal#sensitive" className="font-medium text-navy underline underline-offset-2">
-            민감정보 처리방침
-          </Link>
-        </P>
-
         <H2>이용 방법과 요금</H2>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
           {C.HOW_TO_USE.map((t) => (
             <li key={t}>{t}</li>
           ))}
         </ol>
-        <Table head={["이용 기간", "요금(오픈 기념 특별가)", "참고"]} rows={C.PRICE_ROWS} />
+        <p className="mt-4 text-[13px] font-medium text-navy">{C.PROMO_CAPTION}</p>
+        <Table head={["이용 기간", "요금", "참고"]} rows={C.PRICE_ROWS} />
         <div className="mt-4">
           <StartButton />
         </div>

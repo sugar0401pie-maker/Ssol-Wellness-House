@@ -4,7 +4,7 @@
 // 무엇을 기준으로 옮겼나(2026-11-05 확인):
 //  · 디저트·타로: 게시된 원본(quiz·tarot /about)이 기획 문서 v2.1보다 더 최신이라(⚠️ 항목이 확정돼 들어가 있고, 타로는 FAQ가 더 많다) **원본 게시본의 문구**를 따랐다.
 //  · 아스트로: 원본 게시본이 아직 기획 문서 v2.1의 수정(입력에 출생 시간, 가격·쏘웰라 행, FAQ 확장 — 「게시 페이지 점검 및 수정 요청문」)을 반영하기 전이라 **기획 v2.1 문서**를 따랐다.
-//    아직 확정 전인 "출생 시간을 모를 때" FAQ(⚠️)는 뺐다. 원본이 고쳐지면 이 파일도 맞춘다.
+//    (2026-11-15: 아스트로 원본도 v2.1.1로 정정돼 "출생 시간을 모를 때"·로그인·개인정보 FAQ까지 원본 게시본과 같다.)
 //  · 공통 문서: 「SWH Ssowella AI 개발_테스트 3종_상세소개페이지 통합본_v2.1_261105.md」.
 // 문서 규칙을 그대로 따른다:
 //  · "(홈, 자료 n쪽)" 같은 출처 표기와 ⚠️·⏸ 표시는 화면에 넣지 않는다.
@@ -21,6 +21,9 @@ export type Block =
   | { t: "ol"; items: [string, string][] }
   | { t: "table"; head?: string[]; rows: string[][] };
 
+// 원본 사이트에 있는 하위 페이지(더 자세히 보기). note는 원본이 링크 옆에 적은 한 줄 설명(없으면 생략).
+export type MoreInfo = { label: string; href: string; note?: string };
+
 export type TestPage = {
   slug: "dessert" | "astro" | "tarot";
   name: string; // 서비스 이름(JSON-LD)
@@ -35,6 +38,7 @@ export type TestPage = {
   intro: string;
   sections: { h2: string; blocks: Block[] }[];
   faq: { group: string; items: { q: string; a: string }[] }[];
+  moreInfo: MoreInfo[];
   sowellaH2: string;
   sowella: string; // 쏘웰라 연결 설명(원본·문서에 적힌 문장만)
   disclaimer: string;
@@ -49,6 +53,7 @@ const REFUND = (what: string, input: string) => // input은 조사까지 포함(
 
 export const TAROT_URL = "https://tarot.ssolwellnesshouse.com/";
 export const TAROT_BUTTON = "타로 테스트 보러 가기";
+export const TAROT_CARDS_URL = "https://tarot.ssolwellnesshouse.com/cards";
 
 export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
   // ───────────────────────── 디저트 웰니스 유형 테스트 (quiz) — 원본 게시본 기준 ─────────────────────────
@@ -181,6 +186,7 @@ export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
         ],
       },
     ],
+    moreInfo: [{ label: "15가지 디저트 유형 한눈에 보기", href: "https://quiz.ssolwellnesshouse.com/types" }],
     sowellaH2: "쏘웰라로 이어가기",
     sowella:
       "테스트가 끝나면 결과를 바탕으로 AI 웰니스 상담 쏘웰라와 이야기를 이어갈 수 있어요. 가입하면 3일 무료로 써볼 수 있고, 심층 보고서를 결제하면 7일 이용권을 함께 받아요. 쏘웰라는 테스트 결과와 처음 알려준 이야기를 반영해서 첫 인사를 건네요.",
@@ -253,7 +259,7 @@ export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
         blocks: [
           {
             t: "p",
-            text: "상담심리사 2급·청소년상담사 2급 자격을 가진 김준석 대표, 산업심리상담사 1급 자격을 가진 곽혜진 CSO, 정신건강임상심리사 1급 오세민·통합예술심리지도사 1급 오유주 전문위원이 웰니스 제안을 설계하고 검토했어요. 테스트의 웰니스 제안은 상담심리 전문가가 검토해요.",
+            text: "쏠 웰니스 하우스에는 상담심리사 2급·청소년상담사 2급 자격을 가진 김준석 대표와, 정신건강임상심리사 1급 오세민·통합예술심리지도사 1급 오유주 전문위원이 함께해요. 테스트의 웰니스 제안은 상담심리 전문가가 검토해요.",
           },
         ],
       },
@@ -263,9 +269,13 @@ export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
         group: "이용 방법",
         items: [
           { q: "무엇을 입력하나요?", a: "생년월일, 출생 시간, 출생지를 입력하고, 지금의 고민에 대한 3문항에 답해요." },
+          {
+            q: "출생 시간을 몰라도 되나요?",
+            a: "네, 몰라도 돼요. '정확한 시간을 몰라요'를 고른 뒤 새벽·오전·오후·저녁 중 가까운 시간대를 고르거나, 그것도 모르면 '태어난 시간을 잘 모르겠어요'를 고르면 돼요. 그러면 그 시간 안에서 나올 수 있는 유형 가운데 나와 가까운 몇 가지를 보여 드리고, 그중 요즘의 나와 가장 닮은 유형을 직접 고르도록 안내해요. 시간을 전혀 모르면 상승궁과 하우스(삶의 영역별 자리)는 빼고 보여 줘요.",
+          },
           { q: "고민 3문항은 어떤 질문인가요?", a: "요즘 가장 마음에 걸리는 고민(6가지 중 선택), 2026년을 한 단어로 표현하면(10가지 중 선택), 2027년에 바라는 것(11가지 중 선택)이에요." },
           { q: "출생차트는 어떻게 계산하나요?", a: "입력한 생년월일과 출생지로 10개 천체의 위치를 계산해 차트를 그려요." },
-          { q: "로그인이 꼭 필요한가요?", a: "결과를 확인할 때 로그인이 필요해요. 로그인하면 결과 페이지에서 내 리포트를 다시 볼 수 있어요." },
+          { q: "로그인이 꼭 필요한가요?", a: "아니요, 로그인 없이 테스트하고 결과와 리포트까지 볼 수 있어요. 로그인하지 않은 결과는 이 기기에서 30일 동안 볼 수 있어요. 로그인하면 내 결과에서 리포트를 다시 볼 수 있고, 쏘웰라로 이어서 이야기할 수 있어요." },
         ],
       },
       {
@@ -286,15 +296,21 @@ export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
           { q: "누가 만들었나요?", a: "쏠 웰니스 하우스의 상담심리 전문가들이 웰니스 제안을 설계하고 검토했어요." },
           {
             q: "생년월일과 출생지는 어떻게 쓰이나요?",
-            a: "생년월일과 출생지, 고민 답변은 출생차트와 리포트를 만드는 데 쓰여요. 서비스 개선과 통계에도 쓸 수 있는데, 이때는 개인을 알아볼 수 없는 형태로 처리하는 것을 원칙으로 해요. 이용자가 동의했거나 법령에 따른 경우가 아니면 외부에 제공하지 않아요. 자세한 내용은 개인정보처리방침에서 확인할 수 있어요.",
+            a: "생년월일·출생 시간·출생지는 출생차트와 리포트를 만드는 데에만 쓰고, 통계 분석을 포함한 그 밖의 용도로는 쓰지 않아요. 고민 답변은 리포트를 만드는 데 쓰이고, 서비스 개선과 통계에도 쓸 수 있는데 이때는 개인을 알아볼 수 없는 형태로 처리하는 것을 원칙으로 해요. 이용자가 동의했거나 법령에 따른 경우가 아니면 외부에 제공하지 않아요. 자세한 내용은 개인정보처리방침에서 확인할 수 있어요.",
           },
           { q: "환불이 되나요?", a: REFUND("리포트", "내 정보로") },
         ],
       },
     ],
+    moreInfo: [
+      { label: "이용 방법", href: "https://astro.ssolwellnesshouse.com/about/how-it-works", note: "생년월일·출생 시간·출생지와 고민 3문항만 있으면 돼요. 출생 시간을 모를 때의 처리와 출생차트 계산 방법을 알려드려요." },
+      { label: "별 리포트 구성", href: "https://astro.ssolwellnesshouse.com/about/report", note: "출생차트·나의 유형·2026년 회고는 무료, 연말·2027년·5년 흐름과 질문·실천 제안은 1,900원. 쏘웰라로 이어 갈 수 있어요." },
+      { label: "점성술을 다루는 방법", href: "https://astro.ssolwellnesshouse.com/about/trust", note: "출생차트를 자기 이해와 돌아보기의 도구로 써요. 상담심리 전문가가 웰니스 제안을 검토하고, 힘들 때 도움받을 곳도 안내해요." },
+      { label: "개인정보와 환불", href: "https://astro.ssolwellnesshouse.com/about/privacy-refund", note: "생년월일·출생 시간·출생지는 출생차트와 리포트를 만드는 데에만 써요. 청약철회와 환불 기준도 안내해요." },
+    ],
     sowellaH2: "쏘웰라로 이어 가기",
     sowella: "리포트의 질문과 실천 제안을 쏘웰라에서 대화로 이어갈 수 있어요. 쏘웰라는 가입만 해도 3일 동안 무료로 써볼 수 있어요.",
-    disclaimer: `예측 도구가 아니며, ${BASE_DISCLAIMER}`,
+    disclaimer: `쏠 아스트로 하우스는 예측 도구가 아니며, ${BASE_DISCLAIMER}`,
   },
 
   // ───────────────────────── 쏠 타로 하우스 (tarot) — 원본 게시본 기준 ─────────────────────────
@@ -329,6 +345,7 @@ export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
               ["하지 않는 일", "미래 예측, 진단, 상담 대신하기"],
             ],
           },
+          { t: "linkp", text: "22장 카드가 각각 어떤 뜻인지 궁금하다면", linkText: "카드 22장의 뜻 모아 보기 →", href: TAROT_CARDS_URL },
         ],
       },
       {
@@ -409,6 +426,7 @@ export const TEST_PAGES: Record<"dessert" | "astro" | "tarot", TestPage> = {
         ],
       },
     ],
+    moreInfo: [{ label: "카드 22장의 뜻 모아 보기", href: TAROT_CARDS_URL }],
     sowellaH2: "쏘웰라로 이어 가기",
     sowella: "결과 마지막 쪽에서 쏘웰라로 넘어가면 내 타로 결과를 바탕으로 대화를 이어 갈 수 있어요. 쏘웰라는 처음 이용하면 3일 동안 무료예요.",
     disclaimer: BASE_DISCLAIMER,

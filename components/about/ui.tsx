@@ -91,3 +91,17 @@ export function ButtonLink({ href, children, variant = "primary" }: { href: stri
     </a>
   );
 }
+
+// 문단 안의 링크. 앱 안 이동(/로 시작)은 Link, 다른 사이트는 일반 링크(<a>)다.
+export function TextLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const cls = "font-medium text-navy underline underline-offset-2";
+  return href.startsWith("/") ? (
+    <Link href={href} className={cls}>
+      {children}
+    </Link>
+  ) : (
+    <a href={href} className={cls}>
+      {children}
+    </a>
+  );
+}

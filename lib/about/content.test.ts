@@ -46,6 +46,12 @@ describe("/about 글", () => {
     assert.equal(/0\/44|44개|자체 내부 평가/.test(allText), false);
   });
 
+  test("쏘웰라 이용권 기간은 디저트 7일·타로 아스트로 3일로 구분해 쓴다(메인 사이트 최신)", () => {
+    assert.ok(C.HOW_TO_USE.some((s) => s.includes("디저트 테스트 심층 보고서") && s.includes("7일") && s.includes("타로·아스트로 리포트는 3일")));
+    const free = C.FAQ.find((f) => f.q.includes("무료로 써볼 수 있나요"))!;
+    assert.ok(free.a.includes("디저트 테스트의 심층 보고서") && free.a.includes("타로·아스트로 리포트는 3일 이용권"));
+  });
+
   test("효과 보장·치료 단정 표현이 없다", () => {
     assert.equal(/효과를?\s*보장|완치|치료됩니다|확실히\s*나아/.test(allText), false);
   });

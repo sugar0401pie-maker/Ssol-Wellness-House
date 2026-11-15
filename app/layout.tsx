@@ -53,7 +53,18 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className={`${notoSansKr.variable} ${gowunBatang.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* 2026-11-15: 앱 첫 화면(/)은 로그인 확인이 끝나야 그려져서, 서버 HTML에는 "불러오고 있어요" 문구뿐이다. 자바스크립트를 실행하지 않는 크롤러(검색·AI)가
+            소개 페이지를 찾을 수 있게, 자바스크립트가 꺼진 환경에서만 보이는 링크 모음을 둔다(자바스크립트가 켜진 일반 사용자 화면에는 나오지 않는다). */}
+        <noscript>
+          <p style={{ padding: 16 }}>
+            쏘웰라는 쏠 웰니스 하우스의 AI 심리상담 서비스예요. <a href="/about">쏘웰라 소개</a> · <a href="/about/dessert">디저트 웰니스 유형 테스트</a> · <a href="/about/astro">쏠 아스트로 하우스</a> ·{" "}
+            <a href="/about/tarot">쏠 타로 하우스</a> · <a href="https://www.ssolwellnesshouse.com/about.html">쏘웰라 자세한 소개</a> · <a href="https://www.ssolwellnesshouse.com/faq.html">자주 묻는 질문</a> ·{" "}
+            <a href="https://www.ssolwellnesshouse.com/safety.html">안전 안내</a> · <a href="/legal">약관과 정책</a> · <a href="/signup">3일 무료로 시작하기</a>
+          </p>
+        </noscript>
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,7 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { TAROT_BUTTON, TAROT_URL, TEST_PAGES, TEST_PAGE_LIST, testPageJsonLd, type Block } from "./testPages.ts";
+import { TAROT_BUTTON, TAROT_CARDS_URL, TAROT_URL, TEST_PAGES, TEST_PAGE_LIST, testPageJsonLd, type Block } from "./testPages.ts";
 import { PUBLIC_PATHS } from "../seo/paths.ts";
+import { LEGAL_LINKS, MAIN_LINKS, moreLinkGroups } from "./links.ts";
 
 function collect(v: unknown, out: string[] = []): string[] {
   if (typeof v === "string") out.push(v);
@@ -50,8 +51,12 @@ describe("테스트 소개 페이지(디저트·아스트로·타로) 글", () =
     }
   });
 
-  test("아직 확정 전이라 뺀 항목(아스트로 '출생 시간을 모를 때' FAQ)은 확정되기 전까지 없다", () => {
-    assert.equal(TEST_PAGES.astro.faq.flatMap((g) => g.items).some((f) => f.q.includes("출생 시간을 몰라도")), false);
+  test("아스트로 FAQ는 원본 게시본(기획 v2.1.1)과 같다: 출생 시간을 몰라도 됨, 로그인 없이 결과·리포트까지(30일 보관)", () => {
+    const astro = TEST_PAGES.astro.faq.flatMap((g) => g.items);
+    assert.ok(astro.some((f) => f.q.includes("출생 시간을 몰라도")));
+    const login = astro.find((f) => f.q.includes("로그인"))!;
+    assert.ok(login.a.includes("로그인 없이 테스트하고 결과와 리포트까지 볼 수 있어요") && login.a.includes("30일"));
+    assert.equal(textOf(TEST_PAGES.astro).includes("결과를 확인할 때 로그인이 필요해요"), false);
   });
 
   test("디저트 페이지는 게시된 원본 기준이다: 영역·대처 방식 이름, 무료 범위(궁합 카드·웰니스 프로파일), 가입 없이 결제 가능", () => {
@@ -83,7 +88,7 @@ describe("테스트 소개 페이지(디저트·아스트로·타로) 글", () =
   test("하단 고지: 기본 문장이 있고, 아스트로는 앞에 '예측 도구가 아니며'가 붙는다", () => {
     const base = "쏠 웰니스 하우스의 서비스는 의학적 진단·치료·처방을 제공하지 않으며, 전문 의료·상담을 대신하지 않습니다.";
     for (const p of TEST_PAGE_LIST) assert.ok(p.disclaimer.includes(base), p.slug);
-    assert.ok(TEST_PAGES.astro.disclaimer.startsWith("예측 도구가 아니며"));
+    assert.ok(TEST_PAGES.astro.disclaimer.startsWith("쏠 아스트로 하우스는 예측 도구가 아니며"));
   });
 
   test("한눈에 보기 표·이용 순서·쏘웰라 연결·FAQ가 모두 있다", () => {
@@ -114,5 +119,53 @@ describe("테스트 소개 페이지(디저트·아스트로·타로) 글", () =
       const json = JSON.stringify(ld);
       for (const k of ["offers", "Review", "aggregateRating"]) assert.equal(json.includes(k), false, `${p.slug}: ${k}`);
     }
+  });
+});
+
+describe("소개 페이지 링크", () => {
+  test("더 알아보기 링크: 메인 사이트 안내 6개·약관 3개가 모든 페이지에 있고, 자기 자신으로 가는 링크는 없다", () => {
+    for (const key of ["about", "dessert", "astro", "tarot"] as const) {
+      const groups = moreLinkGroups(key);
+      const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+      for (const l of Object.values(MAIN_LINKS)) assert.ok(hrefs.includes(l.href), `${key}: ${l.href}`);
+      for (const l of LEGAL_LINKS) assert.ok(hrefs.includes(l.href), `${key}: ${l.href}`);
+      assert.equal(hrefs.includes(key === "about" ? "/about" : `/about/${key}`), false, `${key}: 자기 자신`);
+      assert.equal(new Set(hrefs).size, hrefs.length, `${key}: 중복 링크`);
+    }
+  });
+
+  test("테스트 페이지는 쏘웰라 소개·다른 테스트 두 개·이 테스트의 원본 페이지로 이어진다", () => {
+    for (const p of TEST_PAGE_LIST) {
+      const hrefs = moreLinkGroups(p.slug).flatMap((g) => g.items.map((i) => i.href));
+      assert.ok(hrefs.includes("/about"), p.slug);
+      for (const o of TEST_PAGE_LIST.filter((x) => x.slug !== p.slug)) assert.ok(hrefs.includes(`/about/${o.slug}`), `${p.slug} → ${o.slug}`);
+      assert.ok(hrefs.includes(p.canonical), `${p.slug}: 원본 ${p.canonical}`);
+      for (const m of p.moreInfo) assert.ok(hrefs.includes(m.href), `${p.slug}: 원본 하위 페이지 ${m.href}`);
+    }
+  });
+
+  test("쏘웰라 소개는 세 테스트 소개 페이지로 이어진다", () => {
+    const hrefs = moreLinkGroups("about").flatMap((g) => g.items.map((i) => i.href));
+    for (const p of TEST_PAGE_LIST) assert.ok(hrefs.includes(`/about/${p.slug}`), p.slug);
+  });
+
+  test("메인 사이트 링크는 모두 https www 주소이고 추적 꼬리표(utm)가 없다", () => {
+    for (const l of Object.values(MAIN_LINKS)) {
+      assert.ok(l.href.startsWith("https://www.ssolwellnesshouse.com/"), l.href);
+      assert.equal(l.href.includes("utm_"), false, l.href);
+    }
+  });
+
+  test("아스트로 원본의 하위 페이지 4개(이용 방법·별 리포트 구성·점성술을 다루는 방법·개인정보와 환불)와 퀴즈 유형 모음이 모두 걸려 있다", () => {
+    const astro = TEST_PAGES.astro.moreInfo.map((m) => m.href);
+    for (const k of ["how-it-works", "report", "trust", "privacy-refund"]) assert.ok(astro.includes(`https://astro.ssolwellnesshouse.com/about/${k}`), k);
+    assert.ok(TEST_PAGES.astro.moreInfo.every((m) => m.note));
+    assert.deepEqual(TEST_PAGES.dessert.moreInfo.map((m) => m.href), ["https://quiz.ssolwellnesshouse.com/types"]);
+  });
+
+  test("타로 소개에는 카드 22장의 뜻 모음 링크가 있다", () => {
+    const blocks = TEST_PAGES.tarot.sections.flatMap((s) => s.blocks);
+    assert.ok(blocks.some((b) => b.t === "linkp" && b.href === TAROT_CARDS_URL));
+    assert.equal(TAROT_CARDS_URL, "https://tarot.ssolwellnesshouse.com/cards");
   });
 });

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import { SHARE_IMAGE } from "@/lib/seo/paths";
-import { TAROT_BUTTON, TAROT_URL, TEST_PAGE_LIST, testPageJsonLd, type Block, type TestPage } from "@/lib/about/testPages";
+import { TAROT_BUTTON, TAROT_URL, testPageJsonLd, type Block, type TestPage } from "@/lib/about/testPages";
+import MoreLinks from "./MoreLinks";
 import { ButtonLink, FaqItem, H2, P, Table } from "./ui";
 
 // 테스트 소개 페이지(/about/dessert · astro · tarot)의 공통 화면. 쏘웰라 /about과 같은 방식이다:
@@ -63,7 +64,6 @@ function Blocks({ blocks }: { blocks: Block[] }) {
 }
 
 export default function TestAboutPage({ page }: { page: TestPage }) {
-  const others = TEST_PAGE_LIST.filter((p) => p.slug !== page.slug);
   return (
     <div className="min-h-dvh bg-background px-5 py-8">
       <script
@@ -102,6 +102,22 @@ export default function TestAboutPage({ page }: { page: TestPage }) {
           </div>
         ))}
 
+        {page.moreInfo.some((m) => m.note) && (
+          <>
+            <H2>더 자세히 보기</H2>
+            <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
+              {page.moreInfo.map((m) => (
+                <li key={m.href}>
+                  <a href={m.href} className="font-medium text-navy underline underline-offset-2">
+                    {m.label}
+                  </a>
+                  {m.note ? <> — {m.note}</> : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
         <H2>{page.sowellaH2}</H2>
         <P>{page.sowella}</P>
         <p className="mt-3">
@@ -110,16 +126,7 @@ export default function TestAboutPage({ page }: { page: TestPage }) {
           </Link>
         </p>
 
-        <H2>다른 테스트도 둘러보세요</H2>
-        <ul className="mt-3 space-y-1.5 text-[14px] leading-6">
-          {others.map((o) => (
-            <li key={o.slug}>
-              <Link href={`/about/${o.slug}`} className="font-medium text-navy underline underline-offset-2">
-                {o.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <MoreLinks current={page.slug} />
 
         {/* 맨 아래 버튼(대표님 요청 2026-11-05): 페이지마다 "타로 테스트 보러 가기"와 "쏘웰라 연결"을 하나씩 단다. 이 테스트 버튼은 문서 규칙대로 그대로 두고,
             타로 페이지에서는 이 테스트 버튼이 곧 타로 테스트라 같은 버튼을 두 번 만들지 않는다. 원본 퀴즈 사이트 맨 아래도 같은 세 버튼이다. */}

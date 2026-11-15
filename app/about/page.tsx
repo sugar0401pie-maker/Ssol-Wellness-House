@@ -3,8 +3,9 @@ import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 import { MAIN_SITE_ABOUT_URL, SHARE_IMAGE } from "@/lib/seo/paths";
 import * as C from "@/lib/about/content";
-import { TEST_PAGE_LIST } from "@/lib/about/testPages";
-import { FaqItem, H2, H3, Label, LabeledList, P, Table } from "@/components/about/ui";
+import { MAIN_LINKS } from "@/lib/about/links";
+import MoreLinks from "@/components/about/MoreLinks";
+import { FaqItem, H2, H3, Label, LabeledList, P, Table, TextLink } from "@/components/about/ui";
 
 // 2026-11-04 owner 요청(SEO): 메인 사이트의 쏘웰라 상세 소개(about.html — 처음 주소 ssowella.html은 2026-11-05에 about.html로 이동)와 같은 내용을 앱 주소 /about에 따로 둔다(별도 페이지).
 // 검색엔진에는 "같은 내용의 원본은 메인 사이트 쪽"이라고 canonical로 알린다(og:url도 같게) — 중복 페이지로 보지 않게 하려는 것이다.
@@ -120,6 +121,9 @@ export default function AboutPage() {
           <Table head={["이용자가 이렇게 말하면", "쏘웰라는"]} rows={C.SAFETY_ROWS} />
         </details>
         <p className="mt-4 rounded-xl border border-navy bg-navy-soft p-4 text-[14px] leading-6 text-foreground">{C.SAFETY_HOTLINE}</p>
+        <P>
+          안전 장치가 어떻게 일하는지는 메인 사이트의 <TextLink href={MAIN_LINKS.safety.href}>쏘웰라 안전 장치와 품질 점검</TextLink>에서 자세히 볼 수 있어요.
+        </P>
 
         <H2>쏘웰라가 하지 않는 일</H2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[14px] leading-6 text-slate-600">
@@ -151,6 +155,8 @@ export default function AboutPage() {
           <a href={WELLNESS_SESSION_URL} className="text-[14px] font-medium text-navy underline underline-offset-2">
             멘탈 웰니스 세션이 궁금하다면 →
           </a>
+          {" · "}
+          <TextLink href={MAIN_LINKS.session.href}>1:1 웰니스 세션 안내 보기</TextLink>
         </p>
 
         <H2>만든 사람들</H2>
@@ -170,6 +176,9 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+        <p className="mt-3 text-[14px]">
+          <TextLink href={MAIN_LINKS.team.href}>쏠 웰니스 하우스를 만드는 사람들 — 자격·경력과 콘텐츠 검수 체계 보기</TextLink>
+        </p>
 
         <H2>{C.LIMITS_TITLE}</H2>
         <P>{C.LIMITS_INTRO}</P>
@@ -195,18 +204,11 @@ export default function AboutPage() {
             <FaqItem key={q} q={q} a={a} />
           ))}
         </div>
+        <p className="mt-3 text-[14px]">
+          <TextLink href={MAIN_LINKS.faq.href}>쏘웰라·웰니스 테스트·1:1 세션 자주 묻는 질문 모음 보기</TextLink>
+        </p>
 
-        <H2>쏘웰라와 이어지는 테스트</H2>
-        <P>쏠 웰니스 하우스의 테스트 결과를 쏘웰라 대화로 이어 갈 수 있어요. 테스트마다 소개 페이지가 따로 있어요.</P>
-        <ul className="mt-3 space-y-1.5 text-[14px] leading-6">
-          {TEST_PAGE_LIST.map((tp) => (
-            <li key={tp.slug}>
-              <Link href={`/about/${tp.slug}`} className="font-medium text-navy underline underline-offset-2">
-                {tp.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <MoreLinks current="about" />
 
         <div className="mt-10 border-t border-line pt-8 text-center">
           <h2 className="font-serif text-[18px] font-bold text-foreground">{C.CLOSING_TITLE}</h2>

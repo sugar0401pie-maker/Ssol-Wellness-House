@@ -7,6 +7,7 @@ import { kstDay } from "./range.ts";
 export type FMessage = {
   message_id: string; session_id: string; role: "user" | "assistant"; content: string; route: string | null; framework_id: string | null;
   theory_id: string | null; technique_id: string | null; dialogue_mode: string | null; reflection_signal_id: string | null; created_at: string;
+  explicit?: boolean; // 위기·폭력 경로에서 이용자 글에 명시적 표현이 있었는지(lib/admin/alerts.ts)
 };
 export type FSession = { session_id: string; safety_flag: string | null; topic_tag: string | null; started_at: string; deleted_at: string | null };
 export type FNames = { theory: Map<string, string>; technique: Map<string, string>; rootMainTheory: Map<string, string> };

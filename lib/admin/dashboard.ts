@@ -6,7 +6,7 @@ export type AuthRow = { id: string; email: string; createdAt: string; lastSignIn
 export type ProfileRow = { user_id: string; display_name: string | null; nickname: string | null; terms_agreed_at: string | null; ai_training_consent: boolean | null };
 export type Ent = { user_id: string; plan: string; status: string; amount: number | null; expires_at: string | null; toss_payment_key: string | null };
 export type Order = { user_id: string | null; status: string; amount: number | null };
-export type Msg = { session_id: string; user_id: string; role: string; route: string | null; reflection_signal_id: string | null; created_at: string };
+export type Msg = { session_id: string; user_id: string; role: string; route: string | null; reflection_signal_id: string | null; created_at: string; explicit?: boolean };
 export type Ses = { session_id: string; user_id: string; safety_flag: string | null; started_at: string };
 export type Root = { user_id: string; caution_hold: boolean | null; safety2_level: string | null };
 

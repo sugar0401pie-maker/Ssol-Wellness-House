@@ -53,7 +53,7 @@ describe("보고서 사실 집계", () => {
     assert.equal(f.alerts[0].code, "S02");
     assert.equal(f.alerts[0].level, "urgent");
     assert.equal(f.alerts[0].excerpt, "요즘 아무 의욕이 없고 너무 힘들어요");
-    assert.ok(f.alerts[0].reasons.length >= 2);
+    assert.deepEqual(f.alerts[0].reasons, ["위기 표현이 명시되어 고정 안내 1회"]); // 이용자 행·응답 행을 따로 세지 않고, 같은 사건의 세션 상태도 중복으로 적지 않는다
   });
   test("경고가 없으면 비어 있고, 뿌리 상태의 주의 표시만 있어도 전체 단계는 watch", () => {
     const clean = buildReportFacts({ sessions: [sessions[1]], messages: messages.slice(0, 2), names, rootStates: [] });

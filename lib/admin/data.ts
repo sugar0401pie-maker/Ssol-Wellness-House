@@ -1,6 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assessRootStates, assessSession, maxLevel, type AlertLevel } from "./alerts.ts";
+import { annotateExplicit, assessRootStates, assessSession, maxLevel, type AlertLevel } from "./alerts.ts";
+import { getSafetyData } from "@/lib/safety/rules";
+import { findKeywordHits } from "@/lib/safety/keywordCheck";
 import { type Range } from "./range.ts";
 import { summarizeDashboard, type AuthRow, type Ent, type Msg, type Order, type ProfileRow, type Root, type Ses } from "./dashboard.ts";
 
@@ -84,23 +86,39 @@ export async function searchAccounts(q: string): Promise<AccountHit[]> {
   return out;
 }
 
+
+// 위기·폭력 고정 안내가 "이용자가 직접 위험 표현을 해서(키워드 즉시 판정)" 나간 것인지 알아내는 판정기. 라우터가 쓰는 것과 같은 키워드 규칙을 그대로 쓴다.
+// 규칙을 DB에서 읽지 못해 최소 안전망만 쓰는 상태(loadedAt=0)에서는 값을 모른다고 답한다 — 모르면 낮추지 않는다(lib/admin/alerts.ts).
+async function explicitChecker(): Promise<(text: string, kind: string) => boolean | undefined> {
+  const data = await getSafetyData();
+  if (data.loadedAt === 0) return () => undefined;
+  return (text, kind) => findKeywordHits(text, data.rules).some((h) => !h.weak && h.route === kind);
+}
+
+async function withExplicit(messages: MessageRow[]): Promise<MessageRow[]> {
+  if (!messages.some((m) => m.route === "crisis" || m.route === "violence")) return messages;
+  const check = await explicitChecker();
+  return annotateExplicit(messages, (m) => check(m.content, m.route as string));
+}
+
 // ───── 대화 ─────
 export type SessionRow = { session_id: string; user_id: string; safety_flag: string | null; topic_tag: string | null; started_at: string; last_message_at: string; deleted_at: string | null };
 export type MessageRow = {
   message_id: string; session_id: string; user_id: string; role: "user" | "assistant"; content: string; route: string | null; framework_id: string | null;
   theory_id: string | null; technique_id: string | null; dialogue_mode: string | null; reflection_signal_id: string | null; created_at: string;
+  explicit?: boolean;
 };
 const MSG_COLS = "message_id,session_id,user_id,role,content,route,framework_id,theory_id,technique_id,dialogue_mode,reflection_signal_id,created_at";
 const SES_COLS = "session_id,user_id,safety_flag,topic_tag,started_at,last_message_at,deleted_at";
 
 // 기간은 "메시지가 쓰인 시각" 기준이다. 사용자가 목록에서 삭제한 대화도 DB에는 남아 있어 포함한다(deleted_at으로 구분해 표시).
 export async function loadAccountChats(userId: string, range: Range): Promise<{ sessions: SessionRow[]; messages: MessageRow[] }> {
-  const messages = await pageAll<MessageRow>((a, b) => {
+  const messages = await withExplicit(await pageAll<MessageRow>((a, b) => {
     let q = db().from("chat_messages").select(MSG_COLS).eq("user_id", userId);
     if (range.fromIso) q = q.gte("created_at", range.fromIso);
     if (range.toIso) q = q.lt("created_at", range.toIso);
     return q.order("created_at").order("message_id").range(a, b);
-  });
+  }));
   const ids = [...new Set(messages.map((m) => m.session_id))];
   const sessions: SessionRow[] = [];
   for (let i = 0; i < ids.length; i += 100) {
@@ -138,12 +156,12 @@ export async function loadTheoryNames(): Promise<TheoryNames> {
 export async function loadAllChats(range: Range): Promise<{ sessions: SessionRow[]; messages: MessageRow[]; excludedUsers: number; includedUsers: number }> {
   const profiles = await loadProfiles();
   const consented = new Set(profiles.filter((p) => p.ai_training_consent !== false).map((p) => p.user_id));
-  const messages = await pageAll<MessageRow>((a, b) => {
+  const messages = await withExplicit(await pageAll<MessageRow>((a, b) => {
     let q = db().from("chat_messages").select(MSG_COLS);
     if (range.fromIso) q = q.gte("created_at", range.fromIso);
     if (range.toIso) q = q.lt("created_at", range.toIso);
     return q.order("created_at").order("message_id").range(a, b);
-  });
+  }));
   const allUsers = new Set(messages.map((m) => m.user_id));
   const keep = messages.filter((m) => consented.has(m.user_id));
   const keepUsers = new Set(keep.map((m) => m.user_id));
@@ -164,11 +182,16 @@ export async function loadDashboard() {
     listAuthUsers(),
     loadProfiles(),
     pageAll<Ses>((a, b) => db().from("chat_sessions").select("session_id,user_id,safety_flag,started_at").order("session_id").range(a, b)),
-    pageAll<Msg>((a, b) => db().from("chat_messages").select("session_id,user_id,role,route,reflection_signal_id,created_at").order("message_id").range(a, b)),
+    pageAll<Msg & { message_id: string }>((a, b) => db().from("chat_messages").select("message_id,session_id,user_id,role,route,reflection_signal_id,created_at").order("message_id").range(a, b)),
     pageAll<Ent>((a, b) => db().from("chat_entitlements").select("user_id,plan,status,amount,expires_at,toss_payment_key").order("id").range(a, b)),
     pageAll<Order>((a, b) => db().from("ssol_orders").select("user_id,status,amount").order("id").range(a, b)).catch(() => [] as Order[]), // 퀴즈·결제 사이트 표 — 읽기만, 못 읽어도 대시보드는 계속
     pageAll<Root>((a, b) => db().from("sw_user_root_state").select("user_id,caution_hold,safety2_level").order("user_id").order("root_id").range(a, b)).catch(() => [] as Root[]),
   ]);
-  return summarizeDashboard({ users, profiles, sessions, messages, ents, orders, roots }, new Date());
+  // 위기·폭력 경로의 이용자 메시지만 글을 읽어 명시적 표현 여부를 매긴다(전체 글을 읽지 않는다).
+  const danger = await pageAll<{ message_id: string; content: string }>((a, b) => db().from("chat_messages").select("message_id,content").eq("role", "user").in("route", ["crisis", "violence"]).order("message_id").range(a, b)).catch(() => []);
+  const text = new Map(danger.map((d) => [d.message_id, d.content]));
+  const check = await explicitChecker();
+  const annotated = annotateExplicit(messages, (m) => { const c = text.get(m.message_id); return c === undefined ? undefined : check(c, m.route as string); });
+  return summarizeDashboard({ users, profiles, sessions, messages: annotated, ents, orders, roots }, new Date());
 }
 

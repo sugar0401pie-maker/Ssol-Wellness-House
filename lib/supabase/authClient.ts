@@ -245,7 +245,9 @@ const NAVER_PROVIDER_ID = "custom:naver";
 // 실제 앱 설정과 코드가 요청하는 범위를 일치시킨다(공백으로 구분 — 카카오 공식 문서 형식).
 const KAKAO_SCOPES = "profile_nickname account_email";
 
-export async function signInWithOAuth(provider: "kakao" | "naver"): Promise<AuthResult> {
+// redirectPath: 로그인을 마치고 돌아올 화면(예: "/admin" — 2026-11-17 관리자 페이지). 비우면 첫 화면. Supabase의 허용 주소 목록에 없으면
+// Supabase가 기본 주소(첫 화면)로 돌려보낸다 — 그때는 로그인은 된 상태이니 주소창에서 직접 이동하면 된다.
+export async function signInWithOAuth(provider: "kakao" | "naver", redirectPath = ""): Promise<AuthResult> {
   const supabase = getBrowserClient();
   if (!supabase) return { ok: false, error: "설정 오류로 로그인을 사용할 수 없어요." };
   const providerId = provider === "naver" ? NAVER_PROVIDER_ID : provider;
@@ -253,7 +255,7 @@ export async function signInWithOAuth(provider: "kakao" | "naver"): Promise<Auth
     // 커스텀 provider("custom:naver")는 supabase-js의 내장 Provider 타입에 없어 타입 단언이 필요하다.
     provider: providerId as Parameters<typeof supabase.auth.signInWithOAuth>[0]["provider"],
     options: {
-      redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}${redirectPath}` : undefined,
       ...(provider === "kakao" ? { scopes: KAKAO_SCOPES } : {}),
     },
   });

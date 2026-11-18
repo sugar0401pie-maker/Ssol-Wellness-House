@@ -384,6 +384,8 @@ function Downloads({ onNeedPassword }: { onNeedPassword: () => void }) {
                     <br />
                     <span className="text-slate-500">{r.email} · {r.provider}{r.code ? ` · ${r.code}` : ""}</span>
                     <br />
+                    <span className={r.payment.paid ? "font-medium text-emerald-700" : "text-slate-500"}>{r.payment.paid ? "결제함 · " : ""}{r.payment.label}</span>
+                    <br />
                     <span className="text-slate-400">가입 {r.createdAt.slice(0, 10)} · 대화 {r.sessions}개 · 메시지 {r.messages}개{r.lastMessageAt ? ` · 마지막 ${r.lastMessageAt.slice(0, 10)}` : ""}</span>
                   </span>
                 </label>
@@ -394,7 +396,8 @@ function Downloads({ onNeedPassword }: { onNeedPassword: () => void }) {
 
         {picked && (
           <div className="mt-4 rounded-xl bg-slate-50 p-4">
-            <p className="mb-2 text-[13px] font-medium text-slate-700">선택: {picked.name || picked.email}</p>
+            <p className="mb-1 text-[13px] font-medium text-slate-700">선택: {picked.name || picked.email}</p>
+            <p className="mb-2 text-[12px] text-slate-500">결제: {picked.payment.label}</p>
             <div className="flex flex-wrap items-center gap-2 text-[13px] text-slate-600">
               <span>기간</span>
               <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={input} aria-label="시작 날짜" />

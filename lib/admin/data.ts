@@ -5,6 +5,7 @@ import { getSafetyData } from "@/lib/safety/rules";
 import { findKeywordHits } from "@/lib/safety/keywordCheck";
 import { type Range } from "./range.ts";
 import { normalizeUserCode, pseudonymCode } from "./privacy.ts";
+import { summarizePayment, type EntRow, type OrderRow, type PaymentSummary } from "./payment.ts";
 import { summarizeDashboard, type AuthRow, type Ent, type Msg, type Order, type ProfileRow, type Root, type Ses } from "./dashboard.ts";
 
 export type { AuthRow, ProfileRow };
@@ -62,7 +63,7 @@ export async function loadAccount(userId: string): Promise<AccountInfo | null> {
   return toInfo({ id: u.id, email: u.email ?? "", createdAt: u.created_at, lastSignInAt: u.last_sign_in_at ?? null, anonymous: u.is_anonymous === true, provider: (u.app_metadata?.provider as string | undefined) ?? "email", metaNames: names }, (p as ProfileRow | null) ?? undefined);
 }
 
-export type AccountHit = AccountInfo & { code: string; sessions: number; messages: number; lastMessageAt: string | null; alert: AlertLevel | null };
+export type AccountHit = AccountInfo & { code: string; payment: PaymentSummary; sessions: number; messages: number; lastMessageAt: string | null; alert: AlertLevel | null };
 
 // 이메일·이름·닉네임의 일부, 또는 이용자 코드(U-XXXXXXXX — 종합 내보내기·검토 엑셀에 나오는 코드)로 계정을 최대 20개 찾는다(대소문자·공백 무시).
 // 코드는 계정 id에서 되돌려 만들 수 없어서, 계정마다 코드를 다시 계산해 같은 것을 찾는다(codeSecret은 종합 내보내기와 같은 값).
@@ -84,7 +85,8 @@ export async function searchAccounts(q: string, codeSecret: string): Promise<Acc
     const roots = await loadRootStates(u.id);
     let level: AlertLevel | null = assessRootStates(roots).level;
     for (const s of sessions) level = maxLevel(level, assessSession({ safety_flag: s.safety_flag, messages: messages.filter((m) => m.session_id === s.session_id) }).level);
-    out.push({ ...toInfo(u, p), code: codeSecret ? pseudonymCode(u.id, codeSecret) : "", sessions: sessions.length, messages: messages.length, lastMessageAt: messages.at(-1)?.created_at ?? null, alert: level });
+    const payment = await loadPayment(u.id);
+    out.push({ ...toInfo(u, p), payment, code: codeSecret ? pseudonymCode(u.id, codeSecret) : "", sessions: sessions.length, messages: messages.length, lastMessageAt: messages.at(-1)?.created_at ?? null, alert: level });
   }
   return out;
 }
@@ -102,6 +104,16 @@ async function withExplicit(messages: MessageRow[]): Promise<MessageRow[]> {
   if (!messages.some((m) => m.route === "crisis" || m.route === "violence")) return messages;
   const check = await explicitChecker();
   return annotateExplicit(messages, (m) => check(m.content, m.route as string));
+}
+
+// 한 계정의 결제 요약(이용권 + 심층 보고서). ssol_orders는 퀴즈·결제 사이트 표라 읽기만 하고, 못 읽으면 보고서 부분만 빠진다.
+export async function loadPayment(userId: string): Promise<PaymentSummary> {
+  const [e, o] = await Promise.all([
+    db().from("chat_entitlements").select("plan,status,amount,starts_at,expires_at,toss_payment_key,created_at").eq("user_id", userId),
+    db().from("ssol_orders").select("status,amount,report_kind,paid_at,created_at").eq("user_id", userId),
+  ]);
+  if (e.error) throw new Error(`이용권: ${e.error.message}`);
+  return summarizePayment((e.data ?? []) as EntRow[], o.error ? [] : ((o.data ?? []) as OrderRow[]), new Date());
 }
 
 // ───── 대화 ─────

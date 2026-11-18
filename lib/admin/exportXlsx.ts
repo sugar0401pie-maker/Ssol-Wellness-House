@@ -51,7 +51,7 @@ const who = (role: string) => (role === "user" ? "이용자" : "쏘웰라");
 const flagText = (l: AlertLevel | null) => (l ? ALERT_LABEL[l] : "");
 
 export type AccountExportInput = {
-  account: { userId: string; email: string; name: string; nickname: string; provider: string; createdAt: string; code?: string };
+  account: { userId: string; email: string; name: string; nickname: string; provider: string; createdAt: string; code?: string; payment?: string };
   range: Range; adminEmail: string; now: Date; facts: ReportFacts; names: FNames;
 };
 
@@ -64,7 +64,7 @@ export async function buildAccountWorkbook(i: AccountExportInput): Promise<Buffe
 
   keyValueSheet(wb, "요약", [
     ["⚠ 취급 주의", "내부 라운드테이블 검토 전용 자료입니다. 이용자의 대화 원문과 개인 정보가 들어 있어 외부 공유·재배포·모델 학습 사용을 하지 않습니다."],
-    ["이용자 코드", account.code ?? ""], ["이름", account.name], ["닉네임", account.nickname], ["이메일", account.email], ["가입 방식", account.provider], ["가입일(KST)", kstDateTime(account.createdAt)],
+    ["이용자 코드", account.code ?? ""], ["이름", account.name], ["닉네임", account.nickname], ["이메일", account.email], ["가입 방식", account.provider], ["가입일(KST)", kstDateTime(account.createdAt)], ["결제", account.payment ?? ""],
     ["추출 기간(KST)", i.range.label],
     ["추출 일시(KST)", kstDateTime(i.now.toISOString())], ["추출한 관리자", i.adminEmail],
     ["대화(세션) 수", String(facts.sessionCount)], ["메시지 수", `${facts.messageCount} (이용자 ${facts.userMessageCount})`], ["활동한 날 수", String(facts.activeDays)],

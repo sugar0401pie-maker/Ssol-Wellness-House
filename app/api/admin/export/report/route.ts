@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminSecretForCodes, auditOrBlock, clientIp, fileResponse, requireAdmin } from "@/lib/admin/server";
 import { pseudonymCode } from "@/lib/admin/privacy";
-import { loadAccount, loadAccountChats, loadRootStates, loadTheoryNames } from "@/lib/admin/data";
+import { loadAccount, loadAccountChats, loadPayment, loadRootStates, loadTheoryNames } from "@/lib/admin/data";
 import { parseRange, kstDay } from "@/lib/admin/range";
 import { buildReportFacts } from "@/lib/admin/reportFacts";
 import { evaluateWithAi } from "@/lib/admin/reportAi";
@@ -26,12 +26,12 @@ export async function GET(req: Request) {
   try {
     const account = await loadAccount(userId);
     if (!account) return NextResponse.json({ error: "계정을 찾지 못했어요." }, { status: 404 });
-    const [chats, rootStates, names] = await Promise.all([loadAccountChats(userId, range.range), loadRootStates(userId), loadTheoryNames()]);
+    const [chats, rootStates, names, payment] = await Promise.all([loadAccountChats(userId, range.range), loadRootStates(userId), loadTheoryNames(), loadPayment(userId)]);
     const facts = buildReportFacts({ sessions: chats.sessions, messages: chats.messages, names, rootStates });
     const blocked = await auditOrBlock(gate.admin, "export_account_report", { targetUserId: userId, ip: clientIp(req), detail: { range: range.range.label, sessions: facts.sessionCount, messages: facts.messageCount, sentToAi: true } });
     if (blocked) return blocked;
     const ai = facts.sessionCount ? await evaluateWithAi(facts) : { overall: null, perSession: new Map<string, string>(), error: null, evaluatedSessions: 0 };
-    const buf = await buildReportDocx({ account: { ...account, code: pseudonymCode(userId, adminSecretForCodes()) }, range: range.range, adminEmail: gate.admin.email, now: new Date(), facts, ai });
+    const buf = await buildReportDocx({ account: { ...account, code: pseudonymCode(userId, adminSecretForCodes()), payment: payment.label }, range: range.range, adminEmail: gate.admin.email, now: new Date(), facts, ai });
     return fileResponse(buf, `ssowella-report-${userId.slice(0, 8)}-${kstDay(new Date()).replaceAll("-", "")}.docx`, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   } catch (e) {
     console.error("[admin/export/report]", e instanceof Error ? e.message : e);

@@ -1,13 +1,21 @@
 // 한 계정의 결제 요약(순수 함수 — 시험: payment.test.ts). 대시보드의 "결제" 숫자와 같은 기준을 쓴다:
-//  · 이용권(chat_entitlements): active·expired만 결제로 센다. pending은 신청만 한 상태라 결제 아님. 토스 결제 키가 있으면 토스, 없으면 수동 승인(계좌이체·오프라인 등).
+//  · 이용권(chat_entitlements): active·expired만 결제로 센다. pending은 신청만 한 상태라 결제 아님. 결제 수단은 paymentProviderOf — 카카오페이(2026-11-18~)·토스·수동 승인(계좌이체·오프라인 등).
 //  · 심층 보고서(ssol_orders, 퀴즈·결제 사이트 소유 — 읽기만): status=paid만.
-export type EntRow = { plan: string; status: string; amount: number | null; starts_at?: string | null; expires_at: string | null; toss_payment_key: string | null; created_at?: string | null };
+export type EntRow = { plan: string; status: string; amount: number | null; starts_at?: string | null; expires_at: string | null; toss_payment_key: string | null; created_at?: string | null; payment_provider?: string | null; kakaopay_aid?: string | null };
+
+// 결제 수단 판별. 예전 행에는 payment_provider가 없어서 토스 결제 키 유무로 본다(마이그레이션 20261118000000 전 행).
+export function paymentProviderOf(e: Pick<EntRow, "toss_payment_key" | "payment_provider" | "kakaopay_aid">): "kakaopay" | "toss" | "manual" {
+  if (e.payment_provider === "kakaopay" || e.kakaopay_aid) return "kakaopay";
+  if (e.payment_provider === "toss" || e.toss_payment_key) return "toss";
+  return "manual";
+}
 export type OrderRow = { status: string; amount: number | null; report_kind?: string | null; paid_at?: string | null; created_at?: string | null };
 
 export type PaymentSummary = {
   paid: boolean;            // 이용권이든 보고서든 실제 결제가 한 번이라도 있는가
   passPaid: number;         // 결제된 이용권 건수
   passToss: number;
+  passKakaopay: number;
   passManual: number;
   passAmount: number;
   activeNow: boolean;       // 지금 이용 중인 이용권이 있는가
@@ -32,8 +40,9 @@ export function summarizePayment(ents: EntRow[], orders: OrderRow[], now: Date):
   const s = {
     paid: paid.length > 0 || reports.length > 0,
     passPaid: paid.length,
-    passToss: paid.filter((e) => e.toss_payment_key).length,
-    passManual: paid.filter((e) => !e.toss_payment_key).length,
+    passToss: paid.filter((e) => paymentProviderOf(e) === "toss").length,
+    passKakaopay: paid.filter((e) => paymentProviderOf(e) === "kakaopay").length,
+    passManual: paid.filter((e) => paymentProviderOf(e) === "manual").length,
     passAmount: paid.reduce((n, e) => n + (e.amount ?? 0), 0),
     activeNow: active.length > 0,
     activeUntil,
@@ -45,7 +54,7 @@ export function summarizePayment(ents: EntRow[], orders: OrderRow[], now: Date):
   const parts: string[] = [];
   if (s.passPaid) {
     const plans = [...new Set(paid.map((e) => PLAN[e.plan] ?? e.plan))].join("·");
-    parts.push(`이용권 결제 ${s.passPaid}건(${plans}, ${[s.passToss ? `토스 ${s.passToss}` : "", s.passManual ? `수동 ${s.passManual}` : ""].filter(Boolean).join(" · ")}, ${won(s.passAmount)})`);
+    parts.push(`이용권 결제 ${s.passPaid}건(${plans}, ${[s.passKakaopay ? `카카오페이 ${s.passKakaopay}` : "", s.passToss ? `토스 ${s.passToss}` : "", s.passManual ? `수동 ${s.passManual}` : ""].filter(Boolean).join(" · ")}, ${won(s.passAmount)})`);
   }
   if (s.activeNow) parts.push(s.unlimited ? "지금 이용 중(기한 없음)" : `지금 이용 중(~${day(s.activeUntil!)})`);
   else if (s.passPaid) parts.push("이용권 만료");

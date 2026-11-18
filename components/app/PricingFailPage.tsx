@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function PricingFailPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const message = params.get("message") ?? "결제가 취소됐거나 실패했어요.";
+  const message = params.get("message") ?? (params.get("provider") === "kakaopay" ? "카카오페이 결제가 완료되지 않았어요. 결제된 금액은 없어요." : "결제가 취소됐거나 실패했어요.");
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-6 py-10 text-center">

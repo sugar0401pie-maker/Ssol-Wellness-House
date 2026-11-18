@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import {
@@ -19,6 +19,8 @@ import {
   type PlanId,
 } from "@/lib/billing/pricing";
 import type { PaymentWidgetInstance } from "@tosspayments/payment-widget-sdk";
+import KakaoPayButton from "@/components/billing/KakaoPayButton";
+import { isMobileUserAgent } from "@/lib/billing/kakaopayRequest";
 
 // 2026-09-27: "이용권 결제하기" 눌러 들어오는 요금 안내 + 실제 토스페이먼츠 결제 화면.
 // 전용 주소(/pricing)를 할당해달라는 요청대로 별도 페이지로 만든다.
@@ -79,8 +81,45 @@ export default function PricingPage() {
   const [readyForOrderId, setReadyForOrderId] = useState<string | null>(null);
   const widgetReady = order !== null && readyForOrderId === order.orderId;
   const widgetRef = useRef<PaymentWidgetInstance | null>(null);
+  // 2026-11-18 대표님 결정: 주문서(토스 결제위젯) 없이 버튼 한 번에 카카오페이 결제창으로 간다. 서버에 카카오페이 키와
+  // DB 칸이 모두 있을 때만 켜지고(/api/billing/methods), 아니면 예전 토스 주문서 흐름이 그대로 동작한다. null = 아직 확인 중.
+  const [kakaopay, setKakaopay] = useState<boolean | null>(null);
+  const searchParams = useSearchParams();
+  const kakaoCanceled = searchParams.get("kakaopay") === "cancel";
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/billing/methods", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (alive) setKakaopay(d?.kakaopay === true); })
+      .catch(() => { if (alive) setKakaopay(false); });
+    return () => { alive = false; };
+  }, []);
+
+  async function startKakaoPay(plan: PlanId) {
+    if (submitting) return;
+    setSubmitting(plan);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        setError("로그인 정보를 확인하지 못했어요. 새로고침 후 다시 시도해주세요.");
+        setSubmitting(null);
+        return;
+      }
+      const res = await fetch("/api/billing/kakaopay/ready", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ plan }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.pcUrl) throw new Error(data?.error);
+      // 카카오페이가 준 결제 화면으로 바로 이동한다(휴대폰은 모바일 화면 → 카카오톡, 컴퓨터는 PC 화면).
+      window.location.href = isMobileUserAgent(navigator.userAgent) ? data.mobileUrl : data.pcUrl;
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "카카오페이 결제창을 열지 못했어요. 잠시 후 다시 시도해주세요.");
+      setSubmitting(null);
+    }
+  }
 
   async function startCheckout(plan: PlanId) {
+    if (kakaopay) return startKakaoPay(plan);
     if (submitting) return;
     if (!TOSS_CLIENT_KEY) {
       setError("결제 연동이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.");
@@ -158,7 +197,8 @@ export default function PricingPage() {
       ctaLabel={promoActive ? `${won(PROMO_MONTHLY_PRICE)}으로 1개월 시작하기` : undefined}
       onApply={() => startCheckout("monthly")}
       submitting={submitting === "monthly"}
-      disabled={submitting !== null}
+      disabled={submitting !== null || kakaopay === null}
+      kakaopay={kakaopay === true}
     />
   );
 
@@ -179,7 +219,8 @@ export default function PricingPage() {
       ctaLabel="연간 멤버십으로 가장 저렴하게 이용하기"
       onApply={() => startCheckout("annual")}
       submitting={submitting === "annual"}
-      disabled={submitting !== null}
+      disabled={submitting !== null || kakaopay === null}
+      kakaopay={kakaopay === true}
     />
   );
 
@@ -244,7 +285,8 @@ export default function PricingPage() {
               ctaLabel={`월 ${PROMO_QUARTERLY_MONTHLY_EQUIVALENT.toLocaleString()}원으로 3개월 시작하기`}
               onApply={() => startCheckout("quarterly")}
               submitting={submitting === "quarterly"}
-              disabled={submitting !== null}
+              disabled={submitting !== null || kakaopay === null}
+              kakaopay={kakaopay === true}
             />
           )}
           {/* 2026-10-05 owner 요청: 프로모션 중에는 3개월권 → 연간 → 1개월권 순서. 프로모션이 아닐 때는
@@ -263,6 +305,7 @@ export default function PricingPage() {
         </div>
       )}
 
+      {kakaoCanceled && !error && !order && <p className="mt-3 text-[13px] text-slate-500">카카오페이 결제를 취소했어요. 결제된 금액은 없어요.</p>}
       {error && <p className="mt-3 text-[13px] text-red-600">{error}</p>}
 
       {!order && (
@@ -311,6 +354,7 @@ function PlanCard({
   onApply,
   submitting,
   disabled,
+  kakaopay = false,
 }: {
   title: string;
   originalPrice?: string;
@@ -325,6 +369,7 @@ function PlanCard({
   onApply: () => void;
   submitting: boolean;
   disabled: boolean;
+  kakaopay?: boolean;
 }) {
   return (
     <div className={`rounded-2xl border p-4 ${highlight ? "border-navy bg-navy-soft" : "border-line bg-white"}`}>
@@ -350,14 +395,18 @@ function PlanCard({
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={onApply}
-        disabled={disabled}
-        className="mt-3 h-11 w-full rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-40"
-      >
-        {submitting ? "준비하는 중…" : (ctaLabel ?? "이용권 결제하기")}
-      </button>
+      {kakaopay ? (
+        <KakaoPayButton label="카카오페이로 결제하고 바로 시작하기" onClick={onApply} busy={submitting} disabled={disabled} />
+      ) : (
+        <button
+          type="button"
+          onClick={onApply}
+          disabled={disabled}
+          className="mt-3 h-11 w-full rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-40"
+        >
+          {submitting ? "준비하는 중…" : (ctaLabel ?? "이용권 결제하기")}
+        </button>
+      )}
     </div>
   );
 }

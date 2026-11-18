@@ -57,6 +57,7 @@ describe("대시보드 계산", () => {
     assert.equal(d.payments.payers, 3); // a(토스) b(수동) c(만료된 토스)
     assert.equal(d.payments.tossPayers, 2);
     assert.equal(d.payments.manualPayers, 1);
+    assert.equal(d.payments.kakaopayPayers, 0);
     assert.equal(d.payments.pending, 1);
     assert.equal(d.payments.activeNow, 2);
     assert.equal(d.payments.revenue, 2900 + 22800 + 2900);

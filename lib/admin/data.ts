@@ -109,7 +109,7 @@ async function withExplicit(messages: MessageRow[]): Promise<MessageRow[]> {
 // 한 계정의 결제 요약(이용권 + 심층 보고서). ssol_orders는 퀴즈·결제 사이트 표라 읽기만 하고, 못 읽으면 보고서 부분만 빠진다.
 export async function loadPayment(userId: string): Promise<PaymentSummary> {
   const [e, o] = await Promise.all([
-    db().from("chat_entitlements").select("plan,status,amount,starts_at,expires_at,toss_payment_key,created_at").eq("user_id", userId),
+    db().from("chat_entitlements").select("*").eq("user_id", userId), // 카카오페이 칸(마이그레이션 20261118000000)이 아직 없어도 깨지지 않게 *
     db().from("ssol_orders").select("status,amount,report_kind,paid_at,created_at").eq("user_id", userId),
   ]);
   if (e.error) throw new Error(`이용권: ${e.error.message}`);
@@ -198,7 +198,7 @@ export async function loadDashboard() {
     loadProfiles(),
     pageAll<Ses>((a, b) => db().from("chat_sessions").select("session_id,user_id,safety_flag,started_at").order("session_id").range(a, b)),
     pageAll<Msg & { message_id: string }>((a, b) => db().from("chat_messages").select("message_id,session_id,user_id,role,route,reflection_signal_id,created_at").order("message_id").range(a, b)),
-    pageAll<Ent>((a, b) => db().from("chat_entitlements").select("user_id,plan,status,amount,expires_at,toss_payment_key").order("id").range(a, b)),
+    pageAll<Ent>((a, b) => db().from("chat_entitlements").select("*").order("id").range(a, b)), // 새 칸이 아직 없어도 깨지지 않게 *
     pageAll<Order>((a, b) => db().from("ssol_orders").select("user_id,status,amount").order("id").range(a, b)).catch(() => [] as Order[]), // 퀴즈·결제 사이트 표 — 읽기만, 못 읽어도 대시보드는 계속
     pageAll<Root>((a, b) => db().from("sw_user_root_state").select("user_id,caution_hold,safety2_level").order("user_id").order("root_id").range(a, b)).catch(() => [] as Root[]),
   ]);

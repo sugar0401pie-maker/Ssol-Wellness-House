@@ -1,10 +1,11 @@
 // 대시보드 숫자 계산(순수 함수 — DB 접근 없음, 시험 가능: dashboard.test.ts). 읽어 오는 일은 data.ts가 한다.
 import { assessRootStates, assessSession, maxLevel, type AlertLevel } from "./alerts.ts";
 import { kstDay } from "./range.ts";
+import { paymentProviderOf } from "./payment.ts";
 
 export type AuthRow = { id: string; email: string; createdAt: string; lastSignInAt: string | null; anonymous: boolean; provider: string; metaNames: string[] };
 export type ProfileRow = { user_id: string; display_name: string | null; nickname: string | null; terms_agreed_at: string | null; ai_training_consent: boolean | null };
-export type Ent = { user_id: string; plan: string; status: string; amount: number | null; expires_at: string | null; toss_payment_key: string | null };
+export type Ent = { user_id: string; plan: string; status: string; amount: number | null; expires_at: string | null; toss_payment_key: string | null; payment_provider?: string | null; kakaopay_aid?: string | null };
 export type Order = { user_id: string | null; status: string; amount: number | null };
 export type Msg = { session_id: string; user_id: string; role: string; route: string | null; reflection_signal_id: string | null; created_at: string; explicit?: boolean };
 export type Ses = { session_id: string; user_id: string; safety_flag: string | null; started_at: string };
@@ -33,9 +34,10 @@ export function summarizeDashboard(d: { users: AuthRow[]; profiles: ProfileRow[]
 
   // 결제: 이용권 표(chat_entitlements). 토스 결제 키가 있으면 자동 결제, 없으면 수동 승인(계좌이체·오프라인 패키지 등). pending은 신청만 한 상태라 결제로 세지 않는다.
   const paidEnts = d.ents.filter((e) => e.status === "active" || e.status === "expired");
-  const tossUsers = new Set(paidEnts.filter((e) => e.toss_payment_key).map((e) => e.user_id));
-  const manualUsers = new Set(paidEnts.filter((e) => !e.toss_payment_key).map((e) => e.user_id));
-  const payers = new Set([...tossUsers, ...manualUsers]);
+  const tossUsers = new Set(paidEnts.filter((e) => paymentProviderOf(e) === "toss").map((e) => e.user_id));
+  const kakaopayUsers = new Set(paidEnts.filter((e) => paymentProviderOf(e) === "kakaopay").map((e) => e.user_id));
+  const manualUsers = new Set(paidEnts.filter((e) => paymentProviderOf(e) === "manual").map((e) => e.user_id));
+  const payers = new Set([...tossUsers, ...kakaopayUsers, ...manualUsers]);
   const byPlan: Record<string, number> = {};
   for (const e of paidEnts) byPlan[e.plan] = (byPlan[e.plan] ?? 0) + 1;
   const activeNow = new Set(d.ents.filter((e) => e.status === "active" && (!e.expires_at || new Date(e.expires_at) > now)).map((e) => e.user_id));
@@ -75,7 +77,7 @@ export function summarizeDashboard(d: { users: AuthRow[]; profiles: ProfileRow[]
       avgSessionsPerChatter: chatters.size ? Math.round((realSessions.length / chatters.size) * 10) / 10 : 0,
     },
     payments: {
-      payers: payers.size, tossPayers: tossUsers.size, manualPayers: manualUsers.size, revenue: entRevenue, activeNow: activeNow.size, pending: pendingUsers.size, byPlan,
+      payers: payers.size, tossPayers: tossUsers.size, kakaopayPayers: kakaopayUsers.size, manualPayers: manualUsers.size, revenue: entRevenue, activeNow: activeNow.size, pending: pendingUsers.size, byPlan,
       reportBuyers: orderBuyers.size, reportOrders: paidOrders.length, reportRevenue: paidOrders.reduce((s, o) => s + (o.amount ?? 0), 0),
     },
     safety: {

@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { summarizePayment } from "./payment.ts";
+import { paymentProviderOf, summarizePayment } from "./payment.ts";
 
 const now = new Date("2026-11-18T03:00:00Z");
 const ent = (o: Partial<Parameters<typeof summarizePayment>[0][number]>) => ({ plan: "monthly", status: "active", amount: 2900, expires_at: "2026-12-18T00:00:00Z", toss_payment_key: "pk", ...o });
@@ -47,5 +47,21 @@ describe("계정 결제 요약", () => {
   test("여러 개가 함께 있을 때 한 줄로", () => {
     const s = summarizePayment([ent({}), ent({ plan: "annual", toss_payment_key: null, amount: 22800, expires_at: "2027-11-18T00:00:00Z" })], [{ status: "paid", amount: 9900 }], now);
     assert.equal(s.label, "이용권 결제 2건(1개월·연간, 토스 1 · 수동 1, 25,700원) · 지금 이용 중(~2027-11-18) · 심층 보고서 구매 1건(9,900원)");
+  });
+});
+
+describe("결제 수단 구분(카카오페이 2026-11-18)", () => {
+  test("카카오페이 행은 카카오페이로, 예전 행은 토스 키 유무로", () => {
+    assert.equal(paymentProviderOf({ toss_payment_key: null, payment_provider: "kakaopay", kakaopay_aid: "A1" }), "kakaopay");
+    assert.equal(paymentProviderOf({ toss_payment_key: null, kakaopay_aid: "A1" }), "kakaopay");
+    assert.equal(paymentProviderOf({ toss_payment_key: "pk" }), "toss");
+    assert.equal(paymentProviderOf({ toss_payment_key: null }), "manual");
+    assert.equal(paymentProviderOf({ toss_payment_key: null, payment_provider: "toss" }), "toss");
+  });
+  test("요약 문구에 카카오페이가 따로 나온다", () => {
+    const s = summarizePayment([ent({ toss_payment_key: null, payment_provider: "kakaopay", kakaopay_aid: "A1" })], [], now);
+    assert.equal(s.passKakaopay, 1);
+    assert.equal(s.passManual, 0);
+    assert.ok(s.label.startsWith("이용권 결제 1건(1개월, 카카오페이 1, 2,900원)"));
   });
 });

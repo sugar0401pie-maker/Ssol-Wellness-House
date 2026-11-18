@@ -260,8 +260,8 @@ function DashboardView({ dash, err, reload }: { dash: Dashboard | null; err: str
         <Stat label="대화·메시지" value={`${nf(u.sessions)} · ${nf(u.userMessages)}`} sub={`1인당 대화 ${u.avgSessionsPerChatter}개`} />
       </Group>
 
-      <Group title="결제" note="이용권 = 결제 확인된(이용 중·만료) 이용권 기준. 토스 = 자동 결제, 수동 = 계좌이체·오프라인 등 직접 승인. 신청만 하고 결제 전인 건은 세지 않아요.">
-        <Stat label="이용권 결제한 사람" value={nf(p.payers)} sub={`토스 ${nf(p.tossPayers)} · 수동 ${nf(p.manualPayers)}`} />
+      <Group title="결제" note="이용권 = 결제 확인된(이용 중·만료) 이용권 기준. 카카오페이·토스 = 자동 결제, 수동 = 계좌이체·오프라인 등 직접 승인. 신청만 하고 결제 전인 건은 세지 않아요.">
+        <Stat label="이용권 결제한 사람" value={nf(p.payers)} sub={`카카오페이 ${nf(p.kakaopayPayers)} · 토스 ${nf(p.tossPayers)} · 수동 ${nf(p.manualPayers)}`} />
         <Stat label="현재 이용 중" value={nf(p.activeNow)} sub={`결제 대기(신청만) ${nf(p.pending)}`} />
         <Stat label="이용권 결제 금액" value={won(p.revenue)} sub={Object.entries(p.byPlan).map(([k, v]) => `${planName[k] ?? k} ${v}`).join(" · ")} />
         <Stat label="심층 보고서 구매" value={`${nf(p.reportBuyers)}명`} sub={`${nf(p.reportOrders)}건 · ${won(p.reportRevenue)}`} />

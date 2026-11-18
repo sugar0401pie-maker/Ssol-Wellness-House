@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import HelpResources from "@/components/help/HelpResources";
@@ -10,6 +10,10 @@ import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
 import InsightsSection from "./InsightsSection";
+import { HELP_RESOURCES } from "@/lib/safety/safetyReplyData";
+
+// 안내 문구의 '마들랜' 링크 — 도움받을 곳 목록과 같은 주소를 쓴다(한 곳만 고치면 되게).
+const MADLAN_URL = HELP_RESOURCES.find((r) => r.res_id === "HR-06")?.url ?? "https://pf.kakao.com/_DAxbYG";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
 import type { TestGroup } from "@/lib/mypage/testTypes";
 import SiteFooter from "@/components/SiteFooter";
@@ -75,8 +79,9 @@ export default function MyPageTab() {
   const [testGroups, setTestGroups] = useState<TestGroup[] | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<"type" | "insights" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | null>(null);
+  const [open, setOpen] = useState<"type" | "insights" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | "help" | null>(null);
   const [editingOnboarding, setEditingOnboarding] = useState(false);
+  const helpOpenedRef = useRef(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -89,7 +94,11 @@ export default function MyPageTab() {
   // 위쪽 내용이 데이터를 불러온 뒤 늘어나므로, 데이터가 바뀐 뒤에도 한 번 더 맞춘다.
   useEffect(() => {
     if (typeof window === "undefined" || window.location.hash !== "#help") return;
-    const t = setTimeout(() => document.getElementById("help")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    const t = setTimeout(() => {
+      // 접혀 있는 '도움받을 곳'을 한 번만 펼쳐서 보여 준다(데이터가 다시 불러와져도 사용자가 접은 것을 다시 펴지 않게).
+      if (!helpOpenedRef.current) { helpOpenedRef.current = true; setOpen("help"); }
+      document.getElementById("help")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
     return () => clearTimeout(t);
   }, [data, testGroups, billing]);
 
@@ -388,16 +397,29 @@ export default function MyPageTab() {
         </div>
       )}
 
-      {/* 2026-11-18 CSO 결정: '도움받을 곳'은 마이페이지에 늘 보이게 둔다(접지 않음). 대화에는 전화번호를 넣지 않고
-          "마이페이지로 가기" 버튼이 이곳(#help)을 가리킨다. 마들랜 카카오톡·109·1577-0199·1366·112·119. */}
-      <section id="help" className="scroll-mt-4 border-t border-line px-4 py-5">
-        <h2 className="text-[15px] font-medium text-foreground">도움받을 곳</h2>
-        <p className="mt-1 mb-3 text-[13px] leading-5 text-slate-500">혼자 감당하기 벅찬 순간에 바로 이야기할 수 있는 곳이에요. 언제든 여기서 찾을 수 있어요.</p>
-        <HelpResources compact />
-        <Link href="/help" className="mt-3 inline-block text-[13px] text-navy underline underline-offset-2">
-          도움받을 곳 자세히 보기
-        </Link>
-      </section>
+      {/* 2026-11-18 CSO 결정: 대화에는 전화번호를 넣지 않고 "마이페이지로 가기" 버튼이 이곳(#help)을 가리킨다(들어오면 펼쳐 둔다).
+          같은 날 대표님 요청: 다른 항목처럼 접어 두고, 대신 아래 안내 문구(마들랜 링크 포함)는 늘 보이게 한다. */}
+      <div id="help" className="scroll-mt-4 border-t border-line">
+        <SectionRow title="도움받을 곳" open={open === "help"} onToggle={() => setOpen(open === "help" ? null : "help")}>
+          <p className="mb-3 text-[13px] leading-5 text-slate-500">혼자 감당하기 벅찬 순간에 바로 이야기할 수 있는 곳이에요. 언제든 여기서 찾을 수 있어요.</p>
+          <HelpResources compact />
+          <Link href="/help" className="mt-3 inline-block text-[13px] text-navy underline underline-offset-2">
+            도움받을 곳 자세히 보기
+          </Link>
+        </SectionRow>
+      </div>
+      <p className="px-4 pt-4 text-[12px] leading-5 text-slate-600">
+        쏘웰라는 일상의 고민과 생각을 편하게 털어놓는 공간입니다. 우리 서비스는 진료 또는 진단을 대신할 수 없기 때문에 더 큰 힘듦과 불안을 느끼는 분들께는
+        부족할 수 있어요. 쏘웰라가 해결하기 어려운 고민을 가진 분께는 한국생명존중희망재단에서 운영하는 &lsquo;
+        <a href={MADLAN_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          마들랜
+        </a>
+        &rsquo;을 비롯한 상담처를 권해드립니다. 이외의 자세한 상담처는 &lsquo;
+        <button type="button" onClick={() => setOpen("help")} className="underline underline-offset-2">
+          도움받을 곳
+        </button>
+        &rsquo;에서 참고해주세요. 감사합니다.
+      </p>
 
       {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신판매업신고번호 포함). */}
       <div className="px-4 pb-6">

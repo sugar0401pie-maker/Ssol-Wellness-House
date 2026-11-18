@@ -5,7 +5,7 @@ import * as C from "./vendor/choiceCards.mjs";
 import * as K from "@/lib/interp/vendor/claimClassifier.mjs";
 import { recordCardMotive, retractCardMotive } from "@/lib/interp/growth";
 import { buildCardData, type CardData } from "./data";
-import { CARD_MARK, cardPayload, confirmPayload, offerExpired, toEnginePick, type CardPayload, type CardPick, type PresentLike } from "./flow";
+import { CARD_MARK, cardPayload, confirmPayload, offerExpired, scopePayload, toEnginePick, type CardPayload, type CardPick, type PresentLike } from "./flow";
 
 // 선택지 카드 서버 쪽(2026-10-20, 로드맵 3·4번): 데이터 읽기 · 세션 저장(sw_choice_sessions) · 장부 반영 · 탭 처리.
 // 흐름: ① 해석(뒤에서 도는 작업)이 장면을 감지하면 세션 행을 만든다(아직 아무 카드도 보여 주지 않은 상태)
@@ -33,10 +33,10 @@ async function rows<T>(admin: Admin, table: string): Promise<T[]> {
 }
 export async function loadCardData(admin: Admin): Promise<CardData> {
   if (cache && Date.now() - cache.at < 10 * 60 * 1000) return cache.data;
-  const [scenes, cards, options, fixed, confirm, practices] = await Promise.all(
-    ["sw_ob_choice_scenes", "sw_ob_choice_cards", "sw_ob_choice_options", "sw_ob_choice_cards_fixed", "sw_ob_choice_confirm", "sw_ob_choice_practice_candidates"].map((t) => rows(admin, t)),
+  const [scenes, cards, options, fixed, confirm, practices, layers] = await Promise.all(
+    ["sw_ob_choice_scenes", "sw_ob_choice_cards", "sw_ob_choice_options", "sw_ob_choice_cards_fixed", "sw_ob_choice_confirm", "sw_ob_choice_practice_candidates", "sw_ob_root_layers"].map((t) => rows(admin, t)),
   );
-  const data = buildCardData({ scenes, cards, options, fixed, confirm, practices } as Parameters<typeof buildCardData>[0]);
+  const data = buildCardData({ scenes, cards, options, fixed, confirm, practices, layers } as Parameters<typeof buildCardData>[0]);
   C.setData(data);
   cache = { at: Date.now(), data };
   return data;
@@ -45,13 +45,19 @@ export async function loadCardData(admin: Admin): Promise<CardData> {
 // ───── 세션 ─────
 const asSess = (r: Row): Sess => C.sessionFromRow({ ...r, last_option_id: r.last_option_id, dk_count: r.dk_count, cards_shown: r.cards_shown });
 async function activeRow(admin: Admin, userId: string, chatId: string): Promise<Row | null> {
-  const { data, error } = await admin.from("sw_choice_sessions").select("*").eq("user_id", userId).eq("chat_id", chatId).is("ended", null).order("id", { ascending: false }).limit(1).maybeSingle();
+  // 엔진 v0.17: "딱 내 마음이에요"(CF-A) 뒤에는 범위 질문을 기다리는 동안 ended='confirmed_scope_pending'이다 — 그 세션도 이어받는다.
+  const { data, error } = await admin.from("sw_choice_sessions").select("*").eq("user_id", userId).eq("chat_id", chatId).or("ended.is.null,ended.eq.confirmed_scope_pending").order("id", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new Error(`sw_choice_sessions 조회 ${error.code}`);
   return (data as Row | null) ?? null;
 }
 async function save(admin: Admin, userId: string, id: number, sess: Sess): Promise<void> {
   const r = C.sessionToRow(sess, userId) as Record<string, unknown>;
-  const { error } = await admin.from("sw_choice_sessions").update({ card_id: r.card_id, last_option_id: r.last_option_id, cards_shown: r.cards_shown, dk_count: r.dk_count, path: r.path, evidence: r.evidence, shown: r.shown, pending_branch: r.pending_branch, ended: r.ended, no_root_label: r.no_root_label, generalized: r.generalized }).eq("id", id).eq("user_id", userId);
+  // 엔진 v0.17 세션 칸(모름 다시 묻기 denied · 맞는 보기 없는 말 unmatched · 거둔 claim · 갈래 · 건너뛰기 · 결핍 추측)까지 저장해야 다음 턴에 이어진다.
+  const { error } = await admin.from("sw_choice_sessions").update({
+    card_id: r.card_id, last_option_id: r.last_option_id, cards_shown: r.cards_shown, dk_count: r.dk_count, path: r.path, evidence: r.evidence, shown: r.shown, pending_branch: r.pending_branch,
+    ended: r.ended, no_root_label: r.no_root_label, generalized: r.generalized,
+    denied: r.denied, unmatched: r.unmatched, rejected_claims: r.rejected_claims, branch: r.branch, branch_paid: r.branch_paid, skip_offer: r.skip_offer, deficit_root: r.deficit_root,
+  }).eq("id", id).eq("user_id", userId);
   if (error) throw new Error(`sw_choice_sessions 저장 ${error.code}`);
 }
 async function endRow(admin: Admin, userId: string, id: number, reason: string): Promise<void> {
@@ -144,7 +150,10 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
   const mentioned = await mentionedTopics(admin, p.userId, p.chatId);
   let r: Record<string, unknown>;
 
-  if (p.pick.confirm) {
+  if (p.pick.scope) {
+    if (!(shown.SCOPE ?? []).includes(p.pick.scope)) { await endRow(admin, p.userId, row.id, "invalid_scope"); return { kind: "continue" }; }
+    r = C.confirmScope(sess, states, p.pick.scope, nowIso, data);
+  } else if (p.pick.confirm) {
     if (!(shown.CONFIRM ?? []).includes(p.pick.confirm)) { await endRow(admin, p.userId, row.id, "invalid_confirm"); return { kind: "continue" }; }
     r = C.confirmChoice(sess, states, p.pick.confirm, nowIso, data);
   } else {
@@ -154,10 +163,14 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
 
   let payload: CardPayload | null = null;
   if (r.type === "card") {
-    // 모름 한 번(retry)이면 같은 카드에서 이미 보여 준 보기를 빼고 다시 보여 준다.
-    const denied = r.retry ? (shown[String(r.card_id)] ?? []).filter((id) => id.startsWith("GO-") || id.startsWith("CO-")) : [];
-    const pr = C.presentCard(sess, String(r.card_id), states, { mentioned, hypCues: [], deniedOptions: denied }, data);
+    // 엔진 v0.17: "잘 모르겠어요"·"다른 이유 더 보기"는 엔진이 앞서 보인 보기를 스스로 빼고(세션 denied) 같은 카드를 다시 돌려준다 — 서버가 따로 빼지 않는다.
+    const pr = C.presentCard(sess, String(r.card_id), states, { mentioned, hypCues: [] }, data);
     if (pr.type === "card") payload = cardPayload(pr as unknown as PresentLike);
+  } else if (r.type === "confirm_scope") {
+    // "딱 내 마음이에요" 뒤 범위 질문 한 번(CS-1 그 장면만 · CS-2 다른 데서도).
+    const scopeOpts = (Array.isArray(r.options) ? r.options : data.confirm_scope?.options ?? []) as { id: string; text: string }[];
+    sess.shown = { ...(sess.shown ?? {}), SCOPE: scopeOpts.map((o) => o.id) };
+    payload = scopePayload(String(r.text ?? data.confirm_scope?.template ?? ""), scopeOpts);
   } else if (r.type === "confirm") {
     // 확인 카드 보기는 엔진이 돌려준 options를 그대로 쓴다(CF-1 "맞아요, {장면} 특히 그래요"에 장면 자리 말이 들어 있음 — CSO v1.5 확인 요청 ②).
     const confirmOpts = (Array.isArray(r.options) ? r.options : C.confirmOptions(sess, data)) as { id: string; text: string }[];
@@ -166,7 +179,7 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
   }
   await flushEvents(admin, p.userId, sess);
   await save(admin, p.userId, row.id, sess);
-  if (p.pick.confirm === "CF-3") await retractCardMotive(admin, p.userId, p.chatId).catch(() => undefined); // "조금 달라요" → 이 대화에서 카드로 읽은 동기 위치는 거둔다
+  if (p.pick.confirm === "CF-3" || p.pick.confirm === "CF-D") await retractCardMotive(admin, p.userId, p.chatId).catch(() => undefined); // "조금 달라요" → 이 대화에서 카드로 읽은 동기 위치는 거둔다
   // 고른 보기의 동기 위치("해야 해서" ↔ "하고 싶어서")를 기록한다(CSO MV-01). 뿌리 점수와 별개이고, 실패해도 카드 흐름에는 영향이 없다.
   if (p.pick.optionId) {
     const opt = data.options[p.pick.optionId];

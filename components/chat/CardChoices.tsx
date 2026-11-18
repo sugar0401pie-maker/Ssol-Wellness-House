@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CardPayload, CardPick } from "@/lib/cards/flow";
+import type { CardPayload, CardPick, ConfirmId } from "@/lib/cards/flow";
 
 // 선택지 카드(2026-10-20, 로드맵 3·4번): 말풍선 아래 보기 칩. 보기 하나를 누르면 바로 보내고, "두 개 이상이에요"는 두 개를 고른 뒤 보낸다.
 // "다른 이유가 있어요"는 입력창에 직접 쓰게 한다(부모가 입력창을 연다). 진단·점수가 아니라 이유를 함께 찾는 보기다.
@@ -16,11 +16,13 @@ export default function CardChoices({ card, disabled, onPick, onOther }: {
   const [multi, setMulti] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
 
-  if (card.kind === "confirm") {
+  // 2026-11-18(엔진 v0.17): 확인 카드는 4단계(딱 내 마음이에요 · 꽤 비슷해요 · 조금은 비슷해요 · 별로 아니에요), "딱 내 마음" 뒤에는 범위 질문 한 번.
+  if (card.kind === "confirm" || card.kind === "scope") {
     return (
       <div className="flex flex-wrap gap-1.5 pl-1">
         {card.options.map((o) => (
-          <button key={o.id} type="button" disabled={disabled} className={chip} onClick={() => onPick({ confirm: o.id as "CF-1" | "CF-2" | "CF-3" }, o.label)}>
+          <button key={o.id} type="button" disabled={disabled} className={chip}
+            onClick={() => onPick(card.kind === "scope" ? { scope: o.id as "CS-1" | "CS-2" } : { confirm: o.id as ConfirmId }, o.label)}>
             {o.label}
           </button>
         ))}
@@ -74,6 +76,8 @@ export default function CardChoices({ card, disabled, onPick, onOther }: {
               onClick={() => {
                 if (f.id === "FX-MULTI") setMulti(true);
                 else if (f.id === "FX-DK") onPick({ cardId: card.cardId, dk: true }, f.label);
+                else if (f.id === "FX-MORE") onPick({ cardId: card.cardId, more: true }, f.label);
+                else if (f.id === "FX-STOP") onPick({ cardId: card.cardId, stop: true }, f.label);
                 else onOther(card.cardId);
               }}
             >

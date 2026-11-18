@@ -36,7 +36,8 @@ test("엔진 입력으로 변환", () => {
 
 test("화면에 보낼 모양: 카드는 보기 + 고정 보기, 확인은 보기만", () => {
   const p = cardPayload({ card: { id: "CC-GRP-1", lead: "이유를 골라 줄래요?" }, options: [{ id: "A", text: "가" }], fixed: [{ id: "FX-MULTI", text: "두 개" }, { id: "FX-DK", text: "몰라" }, { id: "FX-OTHER", text: "다른" }, { id: "FX-X", text: "무시" }] });
-  assert.deepEqual(p.fixed.map((f) => f.id), ["FX-MULTI", "FX-DK", "FX-OTHER"]);
+  // 2026-11-18(엔진 v0.17): 맨 끝에 서버 고정 버튼 "그만할래요"(FX-STOP)가 붙는다. 모르는 고정 보기(FX-X)는 빠진다.
+  assert.deepEqual(p.fixed.map((f) => f.id), ["FX-MULTI", "FX-DK", "FX-OTHER", "FX-STOP"]);
   assert.equal(p.kind, "card");
   const c = confirmPayload("“…” — 어때요?", [{ id: "CF-1", text: "맞아요" }]);
   assert.deepEqual([c.kind, c.cardId, c.fixed.length], ["confirm", "CC-CONFIRM", 0]);
@@ -46,4 +47,23 @@ test("장면을 감지한 지 15분이 넘으면 카드를 꺼내지 않는다",
   const now = Date.parse("2026-10-20T12:00:00Z");
   assert.equal(offerExpired("2026-10-20T11:50:00Z", now), false);
   assert.equal(offerExpired("2026-10-20T11:40:00Z", now), true);
+});
+
+import { parseCardPick as parsePick2, cardPayload as cardPayload2, scopePayload, toEnginePick as toEngine2 } from "./flow.ts";
+test("엔진 v0.17 새 버튼: 확인 4단계·범위 질문·더 보기·그만할래요를 받고, 모르는 값은 거절", () => {
+  for (const c of ["CF-A", "CF-B", "CF-C", "CF-D", "CF-1"]) assert.deepEqual(parsePick2({ confirm: c }), { confirm: c });
+  assert.equal(parsePick2({ confirm: "CF-Z" }), null);
+  assert.deepEqual(parsePick2({ scope: "CS-2" }), { scope: "CS-2" });
+  assert.equal(parsePick2({ scope: "CS-9" }), null);
+  assert.deepEqual(parsePick2({ cardId: "CC-GRP-1", more: true }), { cardId: "CC-GRP-1", more: true });
+  assert.deepEqual(parsePick2({ cardId: "CC-GRP-1", stop: true }), { cardId: "CC-GRP-1", stop: true });
+  assert.deepEqual(toEngine2({ cardId: "x", more: true }, ""), { more: true });
+  assert.deepEqual(toEngine2({ cardId: "x", stop: true }, ""), { stop: true });
+  assert.deepEqual(toEngine2({ scope: "CS-1" }, ""), {});
+});
+test("더 보여 줄 보기가 없으면(no_more) '다른 이유 더 보기'를 숨긴다", () => {
+  const base = { card: { id: "C", lead: "?" }, options: [], fixed: [{ id: "FX-DK", text: "몰라" }, { id: "FX-MORE", text: "더 보기" }] };
+  assert.deepEqual(cardPayload2(base).fixed.map((f) => f.id), ["FX-DK", "FX-MORE", "FX-STOP"]);
+  assert.deepEqual(cardPayload2({ ...base, no_more: true }).fixed.map((f) => f.id), ["FX-DK", "FX-STOP"]);
+  assert.equal(scopePayload("다른 데서도?", [{ id: "CS-1", text: "아니요" }]).kind, "scope");
 });

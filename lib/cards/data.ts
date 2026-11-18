@@ -10,14 +10,17 @@ export type CardOption = {
 export type PracticeCandidate = { practice_id: string; title: string; root: string; relation: string; review_status: string; auto_expose: boolean };
 export type Card = { id: string; module: string; level: number; when: string; lead: string; parent_option: string | null; show: number; style: string };
 export type CardData = {
-  scenes: { key: string; name: string; module: string; first_card: string; open_when: string; confirm_place: string }[];
+  scenes: { key: string; name: string; module: string; first_card: string; open_when: string; confirm_place: string; focus: string[] }[];
   cards: Record<string, Card>;
   options: Record<string, CardOption>;
   fixed: { id: string; text: string; effect: string }[];
   confirm: { id: string; template: string; options: { id: string; text: string; effect: string }[] };
+  // 2026-11-18(엔진 v0.17): 확인 4단계 CF-A 뒤 범위 질문(CS-1 그 장면만 · CS-2 다른 데서도) · 뿌리 층(결핍층이면 확인으로 확정하지 않음)
+  confirm_scope: { id: string; template: string; options: { id: string; text: string; effect: string }[] } | null;
+  root_layers: Record<string, string>;
 };
 
-export type SceneRow = { scene_key: string; name: string; module: string | null; first_card_id: string | null; open_when: string | null; confirm_place?: string | null };
+export type SceneRow = { scene_key: string; name: string; module: string | null; first_card_id: string | null; open_when: string | null; confirm_place?: string | null; focus?: string | null };
 export type CardRow = { card_id: string; module: string | null; level: number | null; open_when: string | null; lead_text: string | null; parent_option_id: string | null; show_n: number | null; card_style: string | null };
 export type OptionRow = {
   option_id: string; card_id: string; text: string; kind: string | null; node_id: string | null; roots_json: unknown; rank_roots: string | null; base_rank: number | null;
@@ -26,7 +29,8 @@ export type OptionRow = {
   gate?: string | null; safety_hint?: boolean | string | null; // DB v4.5에서 생긴 칸(v4.0 DB에는 없음 → undefined)
 };
 export type FixedRow = { fixed_id: string; text: string; effect: string | null };
-export type ConfirmRow = { confirm_id: string; template: string; text: string; effect: string | null };
+export type ConfirmRow = { confirm_id: string; template: string; text: string; effect: string | null; step?: string | null };
+export type LayerRow = { root_id: string; layer: string | null };
 export type PracticeRow = { option_id: string; practice_id: string; title: string | null; root_id: string | null; relation: string | null; review_status: string | null; auto_expose: boolean | null };
 
 const json = <T,>(v: unknown, fallback: T): T => {
@@ -48,9 +52,10 @@ export function gateKeys(gateCol: string | null | undefined, showIf: string | nu
 // CSV로 적재된 boolean이 "True"/"true"/"t" 문자열로 올 수도 있어 둘 다 받는다.
 export const truthy = (v: unknown): boolean => v === true || (typeof v === "string" && /^(true|t|1)$/i.test(v.trim()));
 
-const FIXED_ORDER = ["FX-MULTI", "FX-DK", "FX-OTHER"];
+// 2026-11-18(엔진 v0.17): "다른 이유 더 보기"(FX-MORE)가 맨 뒤 — CSO 시험 데이터(choice_cards_v0.21)와 같은 순서.
+const FIXED_ORDER = ["FX-MULTI", "FX-DK", "FX-OTHER", "FX-MORE"];
 
-export function buildCardData(p: { scenes: SceneRow[]; cards: CardRow[]; options: OptionRow[]; fixed: FixedRow[]; confirm: ConfirmRow[]; practices: PracticeRow[] }): CardData {
+export function buildCardData(p: { scenes: SceneRow[]; cards: CardRow[]; options: OptionRow[]; fixed: FixedRow[]; confirm: ConfirmRow[]; practices: PracticeRow[]; layers?: LayerRow[] }): CardData {
   const candBy = new Map<string, PracticeCandidate[]>();
   for (const r of p.practices) {
     const c: PracticeCandidate = { practice_id: r.practice_id, title: r.title ?? "", root: r.root_id ?? "", relation: r.relation ?? "", review_status: r.review_status ?? "", auto_expose: !!r.auto_expose };
@@ -70,12 +75,18 @@ export function buildCardData(p: { scenes: SceneRow[]; cards: CardRow[]; options
       note: o.note ?? "", meaning_key: o.meaning_key ?? "", claim_id: o.claim_id ?? "",
     };
   }
-  const conf = p.confirm;
+  // 확인 표에 단계(step) 칸이 있으면(DB v5.1~) 확인 4단계(confirm)와 범위 질문(scope)을 나누고, 단계가 없는 예전 행(CF-1~3)은 쓰지 않는다.
+  const stepped = p.confirm.some((c) => c.step);
+  const conf = (stepped ? p.confirm.filter((c) => c.step === "confirm") : p.confirm).sort((a, b) => a.confirm_id.localeCompare(b.confirm_id));
+  const scope = stepped ? p.confirm.filter((c) => c.step === "scope").sort((a, b) => a.confirm_id.localeCompare(b.confirm_id)) : [];
   return {
-    scenes: p.scenes.map((s) => ({ key: s.scene_key, name: s.name, module: s.module ?? "", first_card: s.first_card_id ?? "", open_when: s.open_when ?? "", confirm_place: s.confirm_place ?? "" })),
+    scenes: p.scenes.map((s) => ({ key: s.scene_key, name: s.name, module: s.module ?? "", first_card: s.first_card_id ?? "", open_when: s.open_when ?? "", confirm_place: s.confirm_place ?? "",
+      focus: (s.focus ?? "").split(",").map((x) => x.trim()).filter(Boolean) })),
     cards, options,
     // 화면에 보이는 순서(두 개 이상 → 잘 모르겠어요 → 다른 이유)를 DB 행 순서와 무관하게 고정한다.
     fixed: [...p.fixed].sort((a, b) => FIXED_ORDER.indexOf(a.fixed_id) - FIXED_ORDER.indexOf(b.fixed_id)).map((f) => ({ id: f.fixed_id, text: f.text, effect: f.effect ?? "" })),
     confirm: { id: "CC-CONFIRM", template: conf[0]?.template ?? "", options: conf.map((c) => ({ id: c.confirm_id, text: c.text, effect: c.effect ?? "" })) },
+    confirm_scope: scope.length ? { id: "CC-CONFIRM-SCOPE", template: scope[0].template, options: scope.map((c) => ({ id: c.confirm_id, text: c.text, effect: c.effect ?? "" })) } : null,
+    root_layers: Object.fromEntries((p.layers ?? []).filter((l) => l.layer).map((l) => [l.root_id, l.layer as string])),
   };
 }

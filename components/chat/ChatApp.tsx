@@ -73,6 +73,9 @@ export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // 2026-11-18(3부-3): 새 대화 첫머리 — 지난번에 고른 작은 연습이 있으면 "해 보니 어땠어요?" 카드(서버 /api/tasks/opening). 그냥 글을 쓰면 사라진다.
+  const [taskOpening, setTaskOpening] = useState<CardPayload | null>(null);
+  const isEmptyChat = messages.length === 0;
   // 선택지 카드의 "다른 이유가 있어요": 다음에 쓰는 글을 그 카드의 직접 쓴 답으로 보낸다(2026-10-20).
   const [otherFor, setOtherFor] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -214,6 +217,26 @@ export default function ChatApp() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isEmptyChat) return;
+    let cancelled = false;
+    void (async () => {
+      const token = await getAccessToken();
+      if (!token) return;
+      try {
+        const res = await fetch("/api/tasks/opening", { headers: authHeaders(token) });
+        if (!res.ok) return;
+        const json = (await res.json()) as { opening: CardPayload | null };
+        if (!cancelled) setTaskOpening(json.opening ?? null);
+      } catch {
+        // 못 불러오면 평소 첫 인사만 보인다.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmptyChat]);
 
   function appendMessage(role: Message["role"], content: string) {
     setMessages((prev) => [...prev, { id: nextId.current++, role, content }]);
@@ -501,6 +524,25 @@ export default function ChatApp() {
                 온보딩 테스트 하기
               </button>
             </div>
+          </div>
+        )}
+        {messages.length === 0 && taskOpening && (
+          <div className="space-y-2">
+            <Bubble role="assistant" content={taskOpening.text} />
+            {!sending && (
+              <CardChoices
+                card={taskOpening}
+                disabled={sending}
+                onPick={(pick, label) => {
+                  // 물음을 대화에 남기고(서버도 같은 문장을 첫 쏘웰라 말로 저장한다) 답을 보낸다.
+                  const op = taskOpening;
+                  setTaskOpening(null);
+                  setMessages((prev) => [...prev, { id: nextId.current++, role: "assistant", content: op.text }]);
+                  void send(label, { cardPick: pick });
+                }}
+                onOther={() => undefined}
+              />
+            )}
           </div>
         )}
         {messages.length === 0 && starterChips.length > 0 && (

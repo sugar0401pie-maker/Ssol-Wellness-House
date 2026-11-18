@@ -18,8 +18,9 @@ import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTop
 import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { generateAnswer } from "@/lib/rag/generate";
-import { CARD_ROUTES, TAP_MARK, parseCardPick, tapMarker } from "@/lib/cards/flow";
-import { cardMessageMark, endOffer, handlePick, noteScene } from "@/lib/cards/session";
+import { CARD_ROUTES, TAP_MARK, isTaskPick, parseCardPick, tapMarker } from "@/lib/cards/flow";
+import { cardMessageMark, endOffer, handlePick, noteScene, type CardEnded } from "@/lib/cards/session";
+import { chooseTask, planTaskOffer, recordTaskCheck, recordTaskResult, taskOpening } from "@/lib/tasks/server";
 import { cardsOnFor, planCardOffer } from "@/lib/cards/offer";
 import { matchFirstWorry, worrySignals } from "@/lib/worry/match";
 import { isHeavyText, worryGuidanceBlock } from "@/lib/worry/guidance";
@@ -139,6 +140,14 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     }
   }
   if (!sessionId) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 }); // TS 안전망(도달 안 함)
+  // 2026-11-18(3부-3): 새 대화 첫머리의 "지난번에 고른 거, 해 보니 어땠어요?"에 답한 것이면, 그 물음을 대화의 첫 쏘웰라 말로 먼저 저장한다(문장은 서버가 다시 만든다).
+  if (cardPick?.taskResult && recentMessages.length === 0) {
+    const opening = await taskOpening(admin, userId).catch(() => null);
+    if (opening && opening.row === cardPick.taskResult.row) {
+      const { error: oErr } = await admin.from("chat_messages").insert({ session_id: sessionId, user_id: userId, role: "assistant", content: opening.text, reflection_signal_id: `sw-task:opening:${opening.row}` });
+      if (!oErr) recentMessages = [{ role: "assistant", content: opening.text }];
+    }
+  }
 
   timer.lap("session_history");
 
@@ -300,7 +309,25 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 2026-10-20(로드맵 3·4번): 선택지 카드 보기를 눌렀다면 AI 없이 다음 카드·확인 카드를 바로 돌려준다(하루/대화당 제한에도 걸리지 않음).
   // 안전 라우터가 먼저 이 말(보기 글자 또는 직접 쓴 말)을 검사했고, 위기·폭력이면 위에서 이미 끝났다. 허용 경로가 아니면 카드를 접고 평소 대화로 간다.
   let cardTapStopped = false;
-  if (cardPick && (await cardsOnFor(admin, userId))) {
+  let cardEnded: CardEnded | undefined;
+  // 2026-11-18(3부-3): 과제 카드 누름(연습 고르기 · 해 보니 어땠는지 · 확인 답). AI 없이 정해진 문장으로 답하고 장부·과제 기록에 남긴다.
+  if (cardPick && isTaskPick(cardPick) && CARD_ROUTES.has(decision.route) && (await cardsOnFor(admin, userId))) {
+    try {
+      const r = cardPick.task ? await chooseTask(admin, userId, cardPick.task)
+        : cardPick.taskResult ? await recordTaskResult(admin, userId, sessionId, cardPick.taskResult)
+        : cardPick.taskCheck ? await recordTaskCheck(admin, userId, sessionId, cardPick.taskCheck) : null;
+      if (r) {
+        const reply = r.card?.text ?? r.text;
+        await admin.from("chat_messages").insert({
+          session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route, reflection_signal_id: `sw-task:${r.card ? r.card.kind : "reply"}:${r.card?.row ?? ""}`,
+        });
+        return NextResponse.json({ sessionId, route: decision.route, reply, ...(r.card ? { card: r.card } : {}), done: true, ...routingMeta });
+      }
+    } catch (e) {
+      console.warn("과제 처리 실패, 평소 대화로 진행:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
+    }
+    cardTapStopped = true; // 이미 처리된 누름·맞지 않는 요청 → 평소 대화가 이어서 받는다
+  } else if (cardPick && (await cardsOnFor(admin, userId))) {
     if (!CARD_ROUTES.has(decision.route)) {
       await endOffer(admin, userId, sessionId, "route_changed");
     } else {
@@ -313,6 +340,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
           return NextResponse.json({ sessionId, route: decision.route, reply: picked.payload.text, card: picked.payload, done: true, ...routingMeta });
         }
         cardTapStopped = true; // 멈춤(끝 보기·확인 뒤·직접 쓴 말 등) → 평소 대화가 이어서 받는다
+        cardEnded = picked.ended; // 확인으로 끝났으면 아래에서 작은 연습 두 가지를 건넨다(lib/tasks)
       } catch (e) {
         console.warn("카드 처리 실패, 평소 대화로 진행:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
       }
@@ -398,6 +426,11 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     otherFlowActive: dialogue.generationExtras.dialogueMode !== undefined, tapped: cardPick !== null || cardTapStopped,
     preferOptions: worry?.route.preferOptions,
   });
+  // 2026-11-18(3부-3): 카드가 확인으로 끝났으면 엔진이 고른 작은 연습 두 가지를 이번 답변 뒤에 건넨다(이론 탐색 흐름이 이번 턴을 쓰면 겹치지 않음).
+  const taskPlan = cardEnded && dialogue.generationExtras.dialogueMode === undefined
+    ? await planTaskOffer({ admin, userId, sessionId, route: decision.route, ended: cardEnded, recentUserTexts: [...recentUserTexts, message] })
+    : null;
+  timer.lap("task_plan");
   // 2026-10-18(개발 1·2·5번): 해석이 쌓인 뿌리가 있으면 이번 답변에 "이런 마음일 수도 있을까요?" 확인 문장을 건넨다(2~4번째 답변까지).
   // 이론 질문 선택 흐름이 이번 턴을 쓰고 있으면 겹치지 않는다. 실패하면 말하지 않고 평소처럼 답한다.
   const hypothesis = await planHypothesis({
@@ -406,7 +439,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     sessionId,
     route: suppressOffers ? "clinical_distress" : decision.route,
     recentMessages,
-    theoryActive: dialogue.generationExtras.dialogueMode !== undefined || cardPlan !== null,
+    theoryActive: dialogue.generationExtras.dialogueMode !== undefined || cardPlan !== null || taskPlan !== null,
   });
   timer.lap("hypothesis_plan");
   // 깊어짐(③): 넘김(주의 표시)이 난 뿌리가 있으면 도움받을 곳 안내를 이번 답변에서 한 번만 준다. 위기·폭력·정해진 안내 경로는 이 앞에서 끝났다. 끄기: SW_DEEPENING_ENABLED=0.
@@ -425,6 +458,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     timer,
     ...dialogue.generationExtras,
     ...cardPlan?.generationExtras,
+    ...(taskPlan ? { dialogueMode: "task_follows" as const } : {}),
     ...hypothesis?.generationExtras,
     worryGuidance: worryGuidanceBlock(worry?.route ?? null, { secondaryLine: worry?.secondaryLine }),
     // SAFE-018~021 지침 + 사별·질병 지침(R3) + 점수·진단 확정 요청 첫 번째/되풀이 지침(S5)을 한 블록으로 합친다.
@@ -462,7 +496,8 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   timer.lap("save_assistant");
   const { followUp: theoryFollowUp } = await dialogue.finalize({ usedFallback: result.usedFallback });
   const cardFollowUp = cardPlan ? await cardPlan.finalize(result.usedFallback) : undefined;
-  const followUp = theoryFollowUp ?? cardFollowUp;
+  const taskFollowUp = taskPlan ? await taskPlan.finalize(result.usedFallback) : undefined;
+  const followUp = theoryFollowUp ?? cardFollowUp ?? taskFollowUp;
 
   // 2026-10-18: 발화 해석(CSO 해석 엔진) — 답변을 보낸 뒤 뒤에서 돌고 결과는 다음 턴부터 반영된다(지연 0). 기본 꺼짐:
   // SW_INTERP_ENABLED=1 이고 SW_INTERP_ALLOWLIST에 있는 사용자만. 실패해도 채팅에는 영향이 없다(lib/interp/run.ts).

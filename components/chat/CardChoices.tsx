@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CardPayload, CardPick, ConfirmId } from "@/lib/cards/flow";
+import type { CardPayload, CardPick, ConfirmId, TaskCheckAnswer, TaskResult } from "@/lib/cards/flow";
 
 // 선택지 카드(2026-10-20, 로드맵 3·4번): 말풍선 아래 보기 칩. 보기 하나를 누르면 바로 보내고, "두 개 이상이에요"는 두 개를 고른 뒤 보낸다.
 // "다른 이유가 있어요"는 입력창에 직접 쓰게 한다(부모가 입력창을 연다). 진단·점수가 아니라 이유를 함께 찾는 보기다.
@@ -15,6 +15,40 @@ export default function CardChoices({ card, disabled, onPick, onOther }: {
 }) {
   const [multi, setMulti] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
+
+  // 2026-11-18(3부-3): 작은 연습 고르기(task) · 해 보니 어땠는지(task_result) · 확인 질문(task_check). 연습 이름은 길어서 한 줄씩 버튼으로 보인다.
+  if (card.kind === "task" || card.kind === "task_result" || card.kind === "task_check") {
+    const row = card.row ?? 0;
+    const pickOf = (id: string): CardPick =>
+      card.kind === "task" ? { task: { row, practice: id } } : card.kind === "task_result" ? { taskResult: { row, result: id as TaskResult } } : { taskCheck: { row, answer: id as TaskCheckAnswer } };
+    if (card.kind === "task") {
+      return (
+        <div className="space-y-1.5 pl-1">
+          {card.options.map((o) => (
+            <button key={o.id} type="button" disabled={disabled} onClick={() => onPick(pickOf(o.id), o.label)}
+              className="block w-full max-w-[85%] rounded-xl border border-navy bg-white px-3.5 py-2.5 text-left text-[13.5px] font-medium leading-5 text-navy active:bg-navy-soft disabled:opacity-50">
+              {o.label}
+            </button>
+          ))}
+          {card.fixed.map((f) => (
+            <button key={f.id} type="button" disabled={disabled} onClick={() => onPick({ task: { row, practice: "later" } }, f.label)}
+              className="rounded-full border border-line bg-white px-3.5 py-2 text-[13px] text-slate-600 active:bg-background disabled:opacity-50">
+              {f.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-wrap gap-1.5 pl-1">
+        {card.options.map((o) => (
+          <button key={o.id} type="button" disabled={disabled} className={chip} onClick={() => onPick(pickOf(o.id), o.label)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   // 2026-11-18(엔진 v0.17): 확인 카드는 4단계(딱 내 마음이에요 · 꽤 비슷해요 · 조금은 비슷해요 · 별로 아니에요), "딱 내 마음" 뒤에는 범위 질문 한 번.
   if (card.kind === "confirm" || card.kind === "scope") {

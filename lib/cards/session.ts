@@ -138,7 +138,9 @@ export async function presentFirstCard(admin: Admin, userId: string, chatId: str
 
 export const cardMessageMark = (p: CardPayload) => `${CARD_MARK}:${p.cardId}`;
 
-export type PickResult = { kind: "reply"; payload: CardPayload } | { kind: "continue" };
+// ended(2026-11-18 3부-3): 이번 누름으로 카드 묶음이 끝났으면 끝 이유·지나온 길·장면 — 과제 고르기(lib/tasks)가 쓴다.
+export type CardEnded = { reason: string; path: unknown; sceneKey: string | null; route: string | null; rejected: string[] };
+export type PickResult = { kind: "reply"; payload: CardPayload } | { kind: "continue"; ended?: CardEnded };
 
 // ③ 보기 누름 처리. 카드·확인 카드면 AI 없이 바로 답을 돌려주고(reply), 멈춤이거나 맞지 않는 요청이면 평소 대화로 넘긴다(continue).
 export async function handlePick(admin: Admin, p: { userId: string; chatId: string; pick: CardPick; text: string }): Promise<PickResult> {
@@ -191,5 +193,10 @@ export async function handlePick(admin: Admin, p: { userId: string; chatId: stri
   // CSO v1.5 확인 요청 ①: 이 보기는 위기·폭력 신호가 섞일 수 있어(safety_hint) 카드 흐름으로 이어 가지 않고 평소 대화로 넘긴다.
   // 점수는 이미 기록했고, 이 말은 라우터가 먼저 검사했다. 평소 대화에서는 처음엔 이유를 묻고 반복되면 스크리닝 질문을 하는 안전 단계가 그대로 작동한다.
   if (r.safety_check) { await endRow(admin, p.userId, row.id, "safety_check"); return { kind: "continue" }; }
-  return payload ? { kind: "reply", payload } : { kind: "continue" };
+  if (payload) return { kind: "reply", payload };
+  if (r.type === "stop" && sess.ended) {
+    const scene = data.scenes.find((s) => s.first_card === sess.started_card_id);
+    return { kind: "continue", ended: { reason: String(sess.ended), path: sess.path, sceneKey: scene?.key ?? null, route: typeof r.route === "string" ? r.route : null, rejected: [] } };
+  }
+  return { kind: "continue" };
 }

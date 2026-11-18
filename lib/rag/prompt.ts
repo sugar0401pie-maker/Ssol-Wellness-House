@@ -36,7 +36,7 @@ export type PersonaHint = {
   reportInsight?: string;
 };
 export type PersonaMode = "subtle" | "characterization";
-export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead" | "hypothesis_lead" | "card_follows";
+export type DialogueMode = "offer_follows" | "action" | "explore" | "explore_lead" | "commit_lead" | "hypothesis_lead" | "card_follows" | "task_follows";
 
 const STAGE_GUIDE: Record<TheoryStage, string> = {
   OPEN: "상황과 감정을 사용자의 말로 풀어내도록 돕는 단계",
@@ -67,6 +67,10 @@ function dialogueModeInstruction(mode: DialogueMode, guide: TheoryGuide | null |
   if (mode === "card_follows") {
     // 2026-10-20: 이 답변 바로 뒤에 시스템이 "가능한 이유"를 고르는 선택 카드(보기 3개)를 붙인다. AI는 마음을 반영하는 것으로 마무리한다.
     return "이번 답변 바로 뒤에 시스템이 '지금 마음에 가장 가까운 이유를 고르는 선택 카드'를 이어서 붙입니다. 그래서 이번 답변은 질문이나 확인 요청으로 끝내지 말고, 방금 한 말에 담긴 마음을 따뜻하게 한두 문장(150자 이내)으로 반영하는 것으로 마무리하세요. 이유를 짐작해 말하거나 해결책·행동 제안을 먼저 내놓지 마세요. 선택 카드 문구 자체는 쓰지 마세요.";
+  }
+  if (mode === "task_follows") {
+    // 2026-11-18(3부-3): 카드로 마음을 확인한 뒤, 이 답변 바로 뒤에 시스템이 "해 볼 만한 작은 연습 두 가지"를 고르는 카드를 붙인다(엔진이 고른 검수된 실천).
+    return "사용자가 방금 선택 카드로 자기 마음에 가까운 이유를 확인했습니다. 이번 답변 바로 뒤에 시스템이 '해 볼 만한 작은 연습 두 가지'를 고르는 카드를 이어서 붙입니다. 그래서 이번 답변은 사용자가 확인한 마음을 따뜻하게 받아 주고, 그 마음을 알아차린 것 자체를 짧게 인정하는 두세 문장(200자 이내)으로 마무리하세요. 연습·행동 제안을 직접 늘어놓지 말고, 질문이나 확인 요청으로 끝내지 마세요. 연습 카드 문구 자체는 쓰지 마세요.";
   }
   if (mode === "hypothesis_lead") {
     // 2026-10-18: 시스템이 이어서 "이런 마음일 수도 있을까요?" 식의 확인 문장(DB의 검수된 원문)을 붙인다. AI는 공감 앞부분만 쓴다.

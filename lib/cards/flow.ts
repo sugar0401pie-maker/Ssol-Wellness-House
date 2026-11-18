@@ -24,7 +24,15 @@ export type CardPick = {
   stop?: true; // "그만할래요"(엔진 v0.17 고정 버튼 — 세션을 멈추고 평소 대화로)
   confirm?: ConfirmId; // 확인 카드 답(CF-A~D · 진행 중이던 예전 세션은 CF-1~3)
   scope?: "CS-1" | "CS-2"; // CF-A 뒤 범위 질문 답
+  // 2026-11-18(3부-3 과제): 카드 끝에 건넨 연습 고르기 · 다음 대화 첫머리의 "해 보니 어땠어요?" 답 · 확인 질문 답(lib/tasks/flow.ts)
+  task?: { row: number; practice: string }; // practice = 실천 id 또는 "later"(지금은 괜찮아요)
+  taskResult?: { row: number; result: TaskResult };
+  taskCheck?: { row: number; answer: TaskCheckAnswer };
 };
+export type TaskResult = "다 함" | "조금" | "못 함";
+export type TaskCheckAnswer = "조금 나아졌어요" | "그대로예요" | "더 버거웠어요" | "잘 모르겠어요";
+export const TASK_RESULTS: readonly TaskResult[] = ["다 함", "조금", "못 함"];
+export const TASK_CHECK_ANSWERS: readonly TaskCheckAnswer[] = ["조금 나아졌어요", "그대로예요", "더 버거웠어요", "잘 모르겠어요"];
 export type ConfirmId = "CF-A" | "CF-B" | "CF-C" | "CF-D" | "CF-1" | "CF-2" | "CF-3";
 const CONFIRM_IDS: readonly string[] = ["CF-A", "CF-B", "CF-C", "CF-D", "CF-1", "CF-2", "CF-3"];
 
@@ -36,6 +44,19 @@ export function parseCardPick(v: unknown): CardPick | null {
   const id = (x: unknown) => (typeof x === "string" && ID.test(x) ? x : null);
   if (o.confirm !== undefined) return typeof o.confirm === "string" && CONFIRM_IDS.includes(o.confirm) ? { confirm: o.confirm as ConfirmId } : null;
   if (o.scope !== undefined) return o.scope === "CS-1" || o.scope === "CS-2" ? { scope: o.scope } : null;
+  const rowOf = (x: unknown) => (typeof x === "number" && Number.isSafeInteger(x) && x > 0 ? x : null);
+  if (o.task !== undefined) {
+    const t = o.task as Record<string, unknown> | null, row = rowOf(t?.row), practice = t?.practice === "later" ? "later" : id(t?.practice);
+    return row && practice ? { task: { row, practice } } : null;
+  }
+  if (o.taskResult !== undefined) {
+    const t = o.taskResult as Record<string, unknown> | null, row = rowOf(t?.row);
+    return row && TASK_RESULTS.includes(t?.result as TaskResult) ? { taskResult: { row, result: t!.result as TaskResult } } : null;
+  }
+  if (o.taskCheck !== undefined) {
+    const t = o.taskCheck as Record<string, unknown> | null, row = rowOf(t?.row);
+    return row && TASK_CHECK_ANSWERS.includes(t?.answer as TaskCheckAnswer) ? { taskCheck: { row, answer: t!.answer as TaskCheckAnswer } } : null;
+  }
   const cardId = id(o.cardId);
   if (!cardId) return null;
   if (o.dk === true) return { cardId, dk: true };
@@ -50,7 +71,9 @@ export function parseCardPick(v: unknown): CardPick | null {
   return optionId ? { cardId, optionId } : null;
 }
 
-export const tapMarker = (p: CardPick): string => `${TAP_MARK}:${p.confirm ?? p.scope ?? p.cardId ?? "x"}`;
+export const tapMarker = (p: CardPick): string =>
+  `${TAP_MARK}:${p.confirm ?? p.scope ?? p.cardId ?? (p.task ? "task" : p.taskResult ? "task-result" : p.taskCheck ? "task-check" : "x")}`;
+export const isTaskPick = (p: CardPick | null): boolean => !!(p && (p.task || p.taskResult || p.taskCheck));
 
 // 엔진 입력으로 바꾼다. other는 사용자가 쓴 글을 함께 넘긴다.
 export function toEnginePick(p: CardPick, text: string): Record<string, unknown> {
@@ -64,13 +87,14 @@ export function toEnginePick(p: CardPick, text: string): Record<string, unknown>
 }
 
 export type CardPayload = {
-  kind: "card" | "confirm" | "scope";
+  kind: "card" | "confirm" | "scope" | "task" | "task_result" | "task_check";
+  row?: number; // 과제 카드(task*)일 때 sw_user_tasks 행 id
   cardId: string; // kind=confirm이면 "CC-CONFIRM", scope면 "CC-CONFIRM-SCOPE"
   text: string; // 말풍선에 보이는 문장(카드 안내문 · 확인 문장 · 범위 질문)
   options: { id: string; label: string }[];
   fixed: { id: FixedId; label: string }[]; // 확인 카드·범위 질문에는 없다
 };
-export type FixedId = "FX-MULTI" | "FX-DK" | "FX-OTHER" | "FX-MORE" | "FX-STOP";
+export type FixedId = "FX-MULTI" | "FX-DK" | "FX-OTHER" | "FX-MORE" | "FX-STOP" | "FX-LATER";
 const FIXED_IDS: readonly string[] = ["FX-MULTI", "FX-DK", "FX-OTHER", "FX-MORE"];
 // "그만할래요"는 DB 고정 보기 표에 없는 서버 고정 버튼이다(엔진 안내 v3.0 "서버에 부탁" 5 — {stop: true}).
 export const STOP_BUTTON = { id: "FX-STOP" as const, label: "그만할래요" };

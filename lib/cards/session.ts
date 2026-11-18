@@ -122,13 +122,15 @@ export async function endOffer(admin: Admin, userId: string, chatId: string, rea
 }
 
 // ② 첫 카드 보여 주기(답변을 저장한 뒤 호출): 세션에 "보여 준 보기"를 기록하고 화면에 보낼 모양을 돌려준다.
-export async function presentFirstCard(admin: Admin, userId: string, chatId: string): Promise<CardPayload | null> {
+// opts.preferOptions(2026-11-18, 엔진 v0.17): 첫 말의 세부 고민에 맞는 보기를 먼저(sw_ob_worry_entry — 이직·짝사랑 22세부). 주제를 꺼내야 열리는 🔸 보기는 여기 없다.
+export async function presentFirstCard(admin: Admin, userId: string, chatId: string, opts: { preferOptions?: string[] } = {}): Promise<CardPayload | null> {
   const offer = await findOffer(admin, userId, chatId);
   if (!offer) return null;
   const data = await loadCardData(admin);
   const states = await loadStates(admin, userId);
   const mentioned = await mentionedTopics(admin, userId, chatId);
-  const r = C.presentCard(offer.sess, offer.sess.started_card_id, states, { mentioned, hypCues: [] }, data);
+  const preferOptions = (opts.preferOptions ?? []).filter((id) => data.options[id]);
+  const r = C.presentCard(offer.sess, offer.sess.started_card_id, states, { mentioned, hypCues: [], ...(preferOptions.length ? { preferOptions } : {}) }, data);
   if (r.type !== "card") return null;
   await save(admin, userId, offer.rowId, offer.sess);
   return cardPayload(r as unknown as PresentLike);

@@ -559,3 +559,11 @@ describe("층위 5 신호", () => {
     assert.doesNotMatch(buildSystemPrompt({ ...base, turnCount: 2, humanSessionAlreadyOffered: true, reportQuery: { message: "어떻게 관리하면 좋을까요" } }), /한 문장 반드시 포함하세요/);
   });
 });
+
+test("첫 말 세부 고민 지침(2026-11-18): 있을 때만 들어가고, 필수 규칙·안전 지침이 우선한다고 적힌다", () => {
+  const base = { sections: SECTIONS, matchedRules: [], usedClinicalChunk: false };
+  const withWorry = buildSystemPrompt({ ...base, route: "wellness", turnCount: 0, worryGuidance: "- 답의 맨 앞에서 힘듦을 먼저 받아 준다." });
+  assert.match(withWorry, /첫 답변의 재료/);
+  assert.match(withWorry, /필수 규칙과 안전 지침이 늘 우선/);
+  assert.doesNotMatch(buildSystemPrompt({ ...base, route: "wellness", turnCount: 0 }), /첫 답변의 재료/);
+});

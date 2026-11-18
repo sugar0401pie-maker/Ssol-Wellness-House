@@ -24,6 +24,7 @@ export type CardOfferPlan = {
 
 export async function planCardOffer(p: {
   admin: Admin; userId: string; sessionId: string; route: string; message: string; recentUserMessages: string[]; otherFlowActive: boolean; tapped: boolean;
+  preferOptions?: string[]; // 첫 말의 세부 고민에 맞는 첫 카드 보기(lib/worry — 2026-11-18)
 }): Promise<CardOfferPlan | null> {
   try {
     if (!(await cardsOnFor(p.admin, p.userId))) return null;
@@ -42,7 +43,7 @@ export async function planCardOffer(p: {
       generationExtras: { dialogueMode: "card_follows" },
       finalize: async (usedFallback) => {
         if (usedFallback) return undefined;
-        const payload = await presentFirstCard(p.admin, p.userId, p.sessionId);
+        const payload = await presentFirstCard(p.admin, p.userId, p.sessionId, { preferOptions: p.preferOptions });
         if (!payload) return undefined;
         const { error } = await p.admin.from("chat_messages").insert({
           session_id: p.sessionId, user_id: p.userId, role: "assistant", content: payload.text, route: p.route, reflection_signal_id: cardMessageMark(payload),

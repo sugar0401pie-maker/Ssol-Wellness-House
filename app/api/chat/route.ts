@@ -19,8 +19,10 @@ import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { generateAnswer } from "@/lib/rag/generate";
 import { CARD_ROUTES, TAP_MARK, parseCardPick, tapMarker } from "@/lib/cards/flow";
-import { cardMessageMark, endOffer, handlePick } from "@/lib/cards/session";
+import { cardMessageMark, endOffer, handlePick, noteScene } from "@/lib/cards/session";
 import { cardsOnFor, planCardOffer } from "@/lib/cards/offer";
+import { matchFirstWorry, worrySignals } from "@/lib/worry/match";
+import { isHeavyText, worryGuidanceBlock } from "@/lib/worry/guidance";
 import { planHypothesis } from "@/lib/interp/hypothesis";
 import { runInterpretation } from "@/lib/interp/run";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
@@ -167,6 +169,15 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 2026-10-23(SAFE-018~021): 일반 대화로 답하되 주의할 주제(섭식·현실감·술·약 등). 섭식·현실감은 운영 검토를 위해 세션 안전 표시를 올린다(대화 열람 근거 = 약관 예고 4항).
   const guidanceTopics = detectGuidanceTopics(message);
   const recentUserTexts = recentMessages.filter((m) => m.role === "user").map((m) => m.content);
+  // 섭식·현실감·과음 상태에서는 이론 탐색·선택 카드·가설 말하기를 열지 않는다(CSO SAFE-018·020·021: 걱정을 전하고 전문 도움 안내가 먼저).
+  // 2026-10-26: 사용자가 "왜 이런 성향이 생겼는지·어떻게 관리할지"(층위 5)를 직접 물은 턴에도 카드·가설 말하기를 열지 않는다 — 그 질문에 휴먼 웰니스 세션 안내로 답해야 하기 때문(lib/rag/layers.ts).
+  const suppressOffers = guidanceTopics.some((t) => SUPPRESS_OFFERS.includes(t)) || ((decision.route === "wellness" || decision.route === "life_decision") && isLayer5Signal(message));
+  // 2026-11-18(3부-2): 대화의 첫 말이면 세부 고민 고르기(모델 호출 2~5초)를 여기서 미리 시작해, 저장·안전 응답·이용권 확인·이론 흐름 계획과 시간을 겹친다.
+  // 위기·폭력 등 일반 대화 경로가 아니면 시작하지 않는다. 뒤에서 일찍 끝나는 경우(듣기 모드·이용권·사용량)엔 결과를 쓰지 않고 버린다(실패해도 예외 없음).
+  const worryPromise =
+    recentUserTexts.length === 0 && !suppressOffers && CARD_ROUTES.has(decision.route) && !isPersonaQuestion && !tarotResultId && !choiceId && !cardPick
+      ? matchFirstWorry({ admin, text: message, queryEmbedding })
+      : Promise.resolve(null);
   const newFlag = (guidanceTopics.some((t) => WATCH_TOPICS.includes(t)) || softenedDespair) && safetyFlagFor(decision.route) === "none" ? "elevated" : safetyFlagFor(decision.route);
   // 메시지 저장과 세션 상태 조회는 서로 필요하지 않아 동시에 한다(2026-10-16).
   // 2026-10-18: 발화 해석이 이 메시지를 가리킬 수 있게 id를 먼저 정해 저장한다(사건 id에 쓰인다).
@@ -219,7 +230,10 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // AI·DB 장애와 무관하게 동작: 문장 기본값이 코드에 있고(safetyReplyData.ts), 직접 위험 표현은 분류기를 부르지 않는다(CLAUDE.md §5).
   const replyCodes = decision.safetyCodes?.length ? decision.safetyCodes : decision.route === "crisis" ? ["S1-b"] : decision.route === "violence" ? ["V1"] : [];
   const { state: savedReplyState, persist: replyPersist } = await loadReplyState(admin, sessionId);
-  const { state: replyState, plan: replyPlan } = planTurn(savedReplyState, { codes: replyCodes, heavy: decision.aiHeavy === true, text: message });
+  // 2026-11-18(3부-2): 힘듦을 직접 쓴 메시지(고민 문장 DB의 강도 단서 중 감정 갈래)도 "힘든 메시지"로 센다(엔진 안내 · 1부에서 남겨 둔 것).
+  // 위험 판단이 아니라 4번째에 마이페이지 안내를 붙이기 위한 세기다. 위기·폭력 경로는 이미 신호가 있어 재지 않는다(DB 읽기도 하지 않음).
+  const worrySig = decision.route === "crisis" || decision.route === "violence" ? null : await worrySignals(admin, message);
+  const { state: replyState, plan: replyPlan } = planTurn(savedReplyState, { codes: replyCodes, heavy: decision.aiHeavy === true || isHeavyText(worrySig), text: message });
   if (replyPersist) await admin.from("chat_sessions").update({ safety_reply_state: replyState }).eq("session_id", sessionId);
   const replyComposed = composeReply(replyPlan);
   // 위기·폭력 경로는 어떤 경우에도 AI 답변을 만들지 않는다(문장 표가 비어 평소 모드가 나와도 안전 쪽 기본 문장).
@@ -353,9 +367,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // route 3~7: 실제 검색 → 프롬프트 조립 → 생성 → 출력 검사.
   const { rules: safetyRules } = await getSafetyData();
   // 이론 질문 선택 흐름(준비 단계). 기능이 꺼져 있으면(기본값) 즉시 빈 계획을 돌려주고 아무 조회도 하지 않는다.
-  // 섭식·현실감·과음 상태에서는 이론 탐색·선택 카드·가설 말하기를 열지 않는다(CSO SAFE-018·020·021: 걱정을 전하고 전문 도움 안내가 먼저).
-  // 2026-10-26: 사용자가 "왜 이런 성향이 생겼는지·어떻게 관리할지"(층위 5)를 직접 물은 턴에도 카드·가설 말하기를 열지 않는다 — 그 질문에 휴먼 웰니스 세션 안내로 답해야 하기 때문(lib/rag/layers.ts).
-  const suppressOffers = guidanceTopics.some((t) => SUPPRESS_OFFERS.includes(t)) || ((decision.route === "wellness" || decision.route === "life_decision") && isLayer5Signal(message));
+  // 섭식·현실감·과음 상태·층위 5 질문에서는 이론 탐색·선택 카드·가설 말하기를 열지 않는다(suppressOffers — 위에서 정함).
   const dialogue = await planDialogue({
     admin,
     userId,
@@ -367,10 +379,24 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     recentMessages,
   });
   timer.lap("dialogue_plan");
+  // 2026-11-18(CSO 묶음 v2.24 3부-2): 대화의 첫 말이면 세부 고민을 고른다(고민 문장 DB 임베딩 후보 → 분류 모델이 하나 고름). 끄기: SW_WORRY_MATCH=0.
+  // 기존 장면 고민이면 그 장면 카드를 이번 답변 뒤에 바로 열 준비를 하고(카드 기능이 켜진 사용자만), 첫 답변에 받아 주는 한 줄·기저 생각 한 줄을 재료로 넘긴다.
+  // 실패하거나 고를 것이 없으면 아무것도 바뀌지 않는다(평소 대화).
+  const worry = await worryPromise;
+  timer.lap("worry_match");
+  if (worry) {
+    void admin.from("chat_sessions").update({ worry_pick: worry.record }).eq("session_id", sessionId).then(({ error }) => {
+      if (error) console.warn("세부 고민 기록 실패(채팅에는 영향 없음):", error.code); // 마이그레이션 20261118000200 전이면 칸이 없다
+    });
+    if (worry.route.mode === "cards" && worry.route.scene_key && dialogue.generationExtras.dialogueMode === undefined && (await cardsOnFor(admin, userId))) {
+      await noteScene(admin, userId, sessionId, worry.route.scene_key).catch((e) => console.warn("세부 고민 장면 기록 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
+    }
+  }
   // 2026-10-20(로드맵 3·4번): 장면이 감지돼 열 준비된 선택지 카드가 있으면 이번 답변 뒤에 첫 카드를 붙인다(기본 꺼짐). 이론 탐색 흐름이 이번 턴을 쓰면 겹치지 않는다.
   const cardPlan = await planCardOffer({
     admin, userId, sessionId, route: suppressOffers ? "clinical_distress" : decision.route, message, recentUserMessages: recentUserTexts,
     otherFlowActive: dialogue.generationExtras.dialogueMode !== undefined, tapped: cardPick !== null || cardTapStopped,
+    preferOptions: worry?.route.preferOptions,
   });
   // 2026-10-18(개발 1·2·5번): 해석이 쌓인 뿌리가 있으면 이번 답변에 "이런 마음일 수도 있을까요?" 확인 문장을 건넨다(2~4번째 답변까지).
   // 이론 질문 선택 흐름이 이번 턴을 쓰고 있으면 겹치지 않는다. 실패하면 말하지 않고 평소처럼 답한다.
@@ -400,6 +426,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     ...dialogue.generationExtras,
     ...cardPlan?.generationExtras,
     ...hypothesis?.generationExtras,
+    worryGuidance: worryGuidanceBlock(worry?.route ?? null, { secondaryLine: worry?.secondaryLine }),
     // SAFE-018~021 지침 + 사별·질병 지침(R3) + 점수·진단 확정 요청 첫 번째/되풀이 지침(S5)을 한 블록으로 합친다.
     safetyGuidance:
       [

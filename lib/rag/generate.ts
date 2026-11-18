@@ -138,6 +138,8 @@ export async function generateAnswer(params: {
   theoryGuide?: TheoryGuide | null;
   // 2026-10-23: SAFE-018~021 답변 지침(lib/safety/supplemental.ts). 없으면 이전과 같다.
   safetyGuidance?: string | null;
+  // 2026-11-18: 첫 말의 세부 고민 지침(lib/worry). 없으면 이전과 같다.
+  worryGuidance?: string | null;
 }): Promise<{
   reply: string;
   retrievedChunkIds: string[];
@@ -231,6 +233,7 @@ export async function generateAnswer(params: {
     dialogueMode: params.dialogueMode,
     theoryGuide: params.theoryGuide,
     safetyGuidance: params.safetyGuidance,
+    worryGuidance: params.worryGuidance,
     humanSessionAlreadyOffered: params.recentMessages.some((m) => m.role === "assistant" && m.content.includes("개인 웰니스 세션")),
     personaMode: params.isPersonaQuestion ? "characterization" : "subtle",
     traumaStage,

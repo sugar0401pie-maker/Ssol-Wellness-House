@@ -198,6 +198,8 @@ export function buildSystemPrompt(params: {
   safetyGuidance?: string | null;
   // 2026-10-26: 개인 웰니스 세션 안내를 이 대화에서 이미 했는지(층위 5 경계 지침에서 되풀이 방지). lib/rag/layers.ts
   humanSessionAlreadyOffered?: boolean;
+  // 2026-11-18(CSO 엔진 v3.19): 대화 첫 말에서 고른 세부 고민의 첫 답변 재료(받아 주는 한 줄 · 기저 생각 한 줄 — lib/worry/guidance.ts). 없으면 블록이 들어가지 않는다.
+  worryGuidance?: string | null;
 }): string {
   const parts: string[] = [];
 
@@ -216,6 +218,10 @@ export function buildSystemPrompt(params: {
 
   if (params.safetyGuidance) {
     parts.push(`이번 메시지에서 특히 지켜야 할 안전 지침(전문위원 검수 반영):\n${params.safetyGuidance}`);
+  }
+
+  if (params.worryGuidance) {
+    parts.push(`이번 첫 답변의 재료(전문위원 검수 문장 · 참고용 — 위 필수 규칙과 안전 지침이 늘 우선하고, 진단·유형 단정은 하지 않는다):\n${params.worryGuidance}`);
   }
 
   if (params.userMemory) {

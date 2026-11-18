@@ -2,7 +2,7 @@ import "server-only";
 import { buildApproveBody, buildReadyBody, checkApprove, parseReady, type ApproveCheck, type ReadyInput, type ReadyResult } from "./kakaopayRequest.ts";
 
 // 카카오페이 단건 결제(직접 연동) 호출. 비밀 키(KAKAOPAY_SECRET_KEY)와 가맹점 코드(KAKAOPAY_CID)는 서버 환경변수에만 있다.
-// 둘 중 하나라도 없으면 카카오페이를 쓰지 않고, 화면은 기존 토스 결제(주문서)로 자동으로 돌아간다(/api/billing/methods).
+// 둘 중 하나라도 없으면 결제 버튼이 막히고 "결제 준비 중"이 보인다(/api/billing/methods). 2026-11-18부터 토스는 쓰지 않는다.
 const HOST = "https://open-api.kakaopay.com/online/v1/payment";
 
 export function kakaopayConfig(): { secret: string; cid: string } | null {

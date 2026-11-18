@@ -19,7 +19,7 @@ export default function KakaoPayButton({ label, onClick, busy, disabled }: { lab
         className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FFEB00] text-sm font-medium text-[#191919] disabled:opacity-50"
       >
         {busy ? (
-          "카카오페이로 이동하는 중…"
+          "카카오페이로 이동하고 있어요…"
         ) : (
           <>
             <KakaoPayMark className="h-[18px] w-auto" />

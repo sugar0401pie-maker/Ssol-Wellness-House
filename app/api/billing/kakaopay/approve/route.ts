@@ -9,7 +9,7 @@ import { PLAN_LABELS, isPlanId } from "@/lib/billing/pricing";
 
 // 2026-11-18: 카카오페이 결제창에서 결제가 끝나면 /pricing/kakaopay/<주문번호>?pg_token=... 으로 돌아오고, 그 화면이 이 API를 부른다.
 // 브라우저가 넘긴 값만 믿지 않고: ① 이 로그인 사용자의 카카오페이 pending 주문인지 ② 카카오페이 서버 승인 ③ 승인 응답의 주문·사용자·거래·금액이
-// 우리 주문과 같은지까지 확인한 뒤에만 이용권을 연다(토스 confirm과 같은 원칙).
+// 우리 주문과 같은지까지 확인한 뒤에만 이용권을 연다.
 export const runtime = "nodejs";
 
 const NOTIFY_EMAIL = process.env.COUNSELOR_NOTIFY_EMAIL ?? "junseok@ssolwellness.com";

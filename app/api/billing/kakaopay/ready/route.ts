@@ -5,7 +5,7 @@ import { checkAccessCode } from "@/lib/security/accessCode";
 import { PLAN_LABELS, currentPrice, isPlanId } from "@/lib/billing/pricing";
 import { kakaopayConfig, kakaopayReady } from "@/lib/billing/kakaopay";
 
-// 2026-11-18: 이용권 버튼 → (주문서 없이) 카카오페이 결제창. 토스 checkout과 같이 먼저 우리 DB에 pending 주문을 만들고,
+// 2026-11-18: 이용권 버튼 → (주문서 없이) 카카오페이 결제창(토스 대신 — 토스 결제 흐름은 제거됨). 먼저 우리 DB에 pending 주문을 만들고,
 // 카카오페이에 결제 준비를 요청해 받은 거래 번호(tid)를 그 행에 저장한 뒤, 브라우저가 열 카카오페이 주소를 돌려준다.
 // 실제 이용권은 approve 단계에서 카카오페이 서버 승인과 금액 확인이 끝나야만 열린다.
 export const runtime = "nodejs";

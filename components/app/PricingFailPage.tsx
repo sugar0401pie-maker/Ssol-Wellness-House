@@ -2,13 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
-// 2026-09-27: 결제창에서 취소하거나 실패하면 토스가 이 주소로 돌려보낸다. 이 신청 건은
-// app/api/billing/toss/confirm이 호출되지 않아 chat_entitlements에 pending 상태로 남는데,
-// 그대로 둬도 무료체험/이용권 판정에 영향을 주지 않는다(활성 상태가 아니므로).
+// 결제창에서 실패하면 카카오페이가 이 주소로 돌려보낸다(2026-11-18부터 카카오페이만 — 토스 제거). 이 신청 건은
+// 승인 API가 호출되지 않아 chat_entitlements에 pending 상태로 남는데, 그대로 둬도 무료체험/이용권 판정에 영향을 주지 않는다(활성 상태가 아니므로).
 export default function PricingFailPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const message = params.get("message") ?? (params.get("provider") === "kakaopay" ? "카카오페이 결제가 완료되지 않았어요. 결제된 금액은 없어요." : "결제가 취소됐거나 실패했어요.");
+  const message = params.get("message") ?? "카카오페이 결제가 완료되지 않았어요. 결제된 금액은 없어요.";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center px-6 py-10 text-center">

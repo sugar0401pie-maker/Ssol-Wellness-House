@@ -16,9 +16,9 @@ const PLAN_EXTEND_LABEL: Record<PlanId, string> = {
   annual: "365일(1년 결제)",
 };
 
-// 2026-09-27: 토스 결제창이 성공적으로 끝나면 이 주소로 돌아온다. 여기 넘어온 파라미터만
-// 믿지 않고, 서버(app/api/billing/toss/confirm)에 다시 한번 실제 승인 여부를 확인시킨다.
-export default function PricingSuccessPage({ provider = "toss", orderId: kakaoOrderId }: { provider?: "toss" | "kakaopay"; orderId?: string } = {}) {
+// 결제가 끝나면 돌아오는 화면. 2026-11-18부터 카카오페이만 쓴다(토스 제거): 돌아온 주소의 pg_token과 경로의 주문 번호로
+// 서버(app/api/billing/kakaopay/approve)에 실제 승인과 금액 확인을 시키고, 그 결과만 보여 준다(브라우저 값만 믿지 않는다).
+export default function PricingSuccessPage({ orderId }: { orderId: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const [status, setStatus] = useState<"checking" | "done" | "error">("checking");
@@ -28,69 +28,25 @@ export default function PricingSuccessPage({ provider = "toss", orderId: kakaoOr
   useEffect(() => {
     let cancelled = false;
     async function confirm() {
-      // 2026-11-18: 카카오페이는 돌아온 주소의 pg_token과 경로의 주문 번호로 승인을 확인한다.
-      if (provider === "kakaopay") {
-        const pgToken = params.get("pg_token");
-        const token = await getAccessToken();
-        if (!pgToken || !kakaoOrderId || !token) {
-          if (!cancelled) {
-            setStatus("error");
-            setError(!token ? "로그인 정보를 확인하지 못했어요." : "결제 정보를 확인하지 못했어요.");
-          }
-          return;
-        }
-        try {
-          const res = await fetch("/api/billing/kakaopay/approve", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ orderId: kakaoOrderId, pgToken }) });
-          const data = await res.json();
-          if (cancelled) return;
-          if (res.ok) {
-            if (isPlanId(data?.plan)) setPlan(data.plan);
-            setStatus("done");
-          } else {
-            setStatus("error");
-            setError(data?.error ?? "결제 확인에 실패했어요.");
-          }
-        } catch {
-          if (!cancelled) {
-            setStatus("error");
-            setError("결제 확인 중 문제가 생겼어요.");
-          }
-        }
-        return;
-      }
-      const paymentKey = params.get("paymentKey");
-      const orderId = params.get("orderId");
-      const amount = params.get("amount");
-      if (!paymentKey || !orderId || !amount) {
-        if (!cancelled) {
-          setStatus("error");
-          setError("결제 정보를 확인하지 못했어요.");
-        }
-        return;
-      }
+      const pgToken = params.get("pg_token");
       const token = await getAccessToken();
-      if (!token) {
+      if (!pgToken || !orderId || !token) {
         if (!cancelled) {
           setStatus("error");
-          setError("로그인 정보를 확인하지 못했어요.");
+          setError(!token ? "로그인 정보를 확인하지 못했어요." : "결제 정보를 확인하지 못했어요.");
         }
         return;
       }
       try {
-        const res = await fetch("/api/billing/toss/confirm", {
-          method: "POST",
-          headers: authHeaders(token),
-          body: JSON.stringify({ paymentKey, orderId, amount: Number(amount) }),
-        });
+        const res = await fetch("/api/billing/kakaopay/approve", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ orderId, pgToken }) });
         const data = await res.json();
-        if (!cancelled) {
-          if (res.ok) {
-            if (isPlanId(data?.plan)) setPlan(data.plan);
-            setStatus("done");
-          } else {
-            setStatus("error");
-            setError(data?.error ?? "결제 확인에 실패했어요.");
-          }
+        if (cancelled) return;
+        if (res.ok) {
+          if (isPlanId(data?.plan)) setPlan(data.plan);
+          setStatus("done");
+        } else {
+          setStatus("error");
+          setError(data?.error ?? "결제 확인에 실패했어요.");
         }
       } catch {
         if (!cancelled) {

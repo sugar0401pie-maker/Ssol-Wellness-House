@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { adminEmails, isAdminUser, DEFAULT_ADMIN_EMAIL } from "./config.ts";
 import { deriveAdminSecret, issueAdminToken, passwordMatches, verifyAdminToken } from "./token.ts";
 import { kstDateTime, parseRange } from "./range.ts";
-import { maskContacts, pseudonymCode } from "./privacy.ts";
+import { maskContacts, normalizeUserCode, pseudonymCode } from "./privacy.ts";
 
 describe("관리자 판별", () => {
   const kakao = { email: DEFAULT_ADMIN_EMAIL, app_metadata: { provider: "kakao", providers: ["kakao"] } };
@@ -108,5 +108,21 @@ describe("종합 내보내기용 식별 줄이기", () => {
     assert.ok(t.includes("[전화번호]") && t.includes("[이메일]") && t.includes("[주민번호]"));
     assert.equal(/010-1234|gmail|1234567/.test(t), false);
     assert.ok(t.includes("1234 5678"));
+  });
+});
+
+describe("이용자 코드 검색", () => {
+  test("코드 모양을 정리한다(대소문자·공백·U- 생략 허용)", () => {
+    assert.equal(normalizeUserCode("U-1A2B3C4D"), "U-1A2B3C4D");
+    assert.equal(normalizeUserCode("  u-1a2b3c4d "), "U-1A2B3C4D");
+    assert.equal(normalizeUserCode("u1a2b3c4d"), "U-1A2B3C4D");
+    assert.equal(normalizeUserCode("1A2B3C4D"), "U-1A2B3C4D");
+  });
+  test("코드가 아니면 null — 이메일·이름 검색으로 넘어간다", () => {
+    for (const q of ["홍길동", "abc@gmail.com", "U-1A2B3C4", "U-1A2B3C4D5", "U-ZZZZZZZZ", ""]) assert.equal(normalizeUserCode(q), null, q);
+  });
+  test("종합 내보내기에서 만든 코드를 그대로 넣으면 같은 코드로 정리된다", () => {
+    const c = pseudonymCode("11111111-aaaa", "s1");
+    assert.equal(normalizeUserCode(c.toLowerCase()), c);
   });
 });

@@ -4,6 +4,7 @@ import { annotateExplicit, assessRootStates, assessSession, maxLevel, type Alert
 import { getSafetyData } from "@/lib/safety/rules";
 import { findKeywordHits } from "@/lib/safety/keywordCheck";
 import { type Range } from "./range.ts";
+import { normalizeUserCode, pseudonymCode } from "./privacy.ts";
 import { summarizeDashboard, type AuthRow, type Ent, type Msg, type Order, type ProfileRow, type Root, type Ses } from "./dashboard.ts";
 
 export type { AuthRow, ProfileRow };
@@ -61,18 +62,20 @@ export async function loadAccount(userId: string): Promise<AccountInfo | null> {
   return toInfo({ id: u.id, email: u.email ?? "", createdAt: u.created_at, lastSignInAt: u.last_sign_in_at ?? null, anonymous: u.is_anonymous === true, provider: (u.app_metadata?.provider as string | undefined) ?? "email", metaNames: names }, (p as ProfileRow | null) ?? undefined);
 }
 
-export type AccountHit = AccountInfo & { sessions: number; messages: number; lastMessageAt: string | null; alert: AlertLevel | null };
+export type AccountHit = AccountInfo & { code: string; sessions: number; messages: number; lastMessageAt: string | null; alert: AlertLevel | null };
 
-// 이메일·이름·닉네임의 일부를 넣으면 일치하는 계정을 최대 20개 찾는다(대소문자·공백 무시).
-export async function searchAccounts(q: string): Promise<AccountHit[]> {
+// 이메일·이름·닉네임의 일부, 또는 이용자 코드(U-XXXXXXXX — 종합 내보내기·검토 엑셀에 나오는 코드)로 계정을 최대 20개 찾는다(대소문자·공백 무시).
+// 코드는 계정 id에서 되돌려 만들 수 없어서, 계정마다 코드를 다시 계산해 같은 것을 찾는다(codeSecret은 종합 내보내기와 같은 값).
+export async function searchAccounts(q: string, codeSecret: string): Promise<AccountHit[]> {
   const needle = q.trim().toLowerCase();
   if (needle.length < 2) return [];
+  const code = codeSecret ? normalizeUserCode(q) : null;
   const [users, profiles] = await Promise.all([listAuthUsers(), loadProfiles()]);
   const pMap = new Map(profiles.map((p) => [p.user_id, p]));
   const hits = users
     .filter((u) => !u.anonymous)
     .map((u) => ({ u, p: pMap.get(u.id) }))
-    .filter(({ u, p }) => [u.email, p?.display_name, p?.nickname, ...u.metaNames].some((s) => (s ?? "").toLowerCase().includes(needle)))
+    .filter(({ u, p }) => (code ? pseudonymCode(u.id, codeSecret) === code : [u.email, p?.display_name, p?.nickname, ...u.metaNames].some((s) => (s ?? "").toLowerCase().includes(needle))))
     .sort((a, b) => Number((b.u.email.toLowerCase() === needle)) - Number(a.u.email.toLowerCase() === needle))
     .slice(0, 20);
   const out: AccountHit[] = [];
@@ -81,7 +84,7 @@ export async function searchAccounts(q: string): Promise<AccountHit[]> {
     const roots = await loadRootStates(u.id);
     let level: AlertLevel | null = assessRootStates(roots).level;
     for (const s of sessions) level = maxLevel(level, assessSession({ safety_flag: s.safety_flag, messages: messages.filter((m) => m.session_id === s.session_id) }).level);
-    out.push({ ...toInfo(u, p), sessions: sessions.length, messages: messages.length, lastMessageAt: messages.at(-1)?.created_at ?? null, alert: level });
+    out.push({ ...toInfo(u, p), code: codeSecret ? pseudonymCode(u.id, codeSecret) : "", sessions: sessions.length, messages: messages.length, lastMessageAt: messages.at(-1)?.created_at ?? null, alert: level });
   }
   return out;
 }

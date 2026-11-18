@@ -365,9 +365,9 @@ function Downloads({ onNeedPassword }: { onNeedPassword: () => void }) {
 
       <section className="rounded-2xl border border-line bg-white p-5">
         <h2 className="mb-1 text-[15px] font-medium text-slate-800">계정별 대화·보고서</h2>
-        <p className="mb-3 text-[12px] leading-5 text-slate-500">이메일, 이름, 닉네임의 일부를 입력하면 계정을 찾아요(두 글자 이상).</p>
+        <p className="mb-3 text-[12px] leading-5 text-slate-500">이메일, 이름, 닉네임의 일부나 이용자 코드(U-XXXXXXXX — 전체 종합·검토 엑셀에 나오는 코드)를 입력하면 계정을 찾아요.</p>
         <div className="flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) void search(); }} placeholder="이메일 / 이름 / 닉네임" className={`${input} flex-1`} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) void search(); }} placeholder="이메일 / 이름 / 닉네임 / U-코드" className={`${input} flex-1`} />
           <button type="button" onClick={() => void search()} disabled={busy === "search" || q.trim().length < 2} className="rounded-[10px] bg-navy px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50">{busy === "search" ? "찾는 중…" : "검색"}</button>
         </div>
 
@@ -382,7 +382,7 @@ function Downloads({ onNeedPassword }: { onNeedPassword: () => void }) {
                     <span className="font-medium text-slate-800">{r.name || "(이름 없음)"}{r.nickname ? ` · ${r.nickname}` : ""}</span>
                     {r.alert && <span className={`ml-2 rounded px-1.5 py-0.5 text-[11px] font-medium ${r.alert === "urgent" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{r.alert === "urgent" ? "URGENT" : "WATCH"}</span>}
                     <br />
-                    <span className="text-slate-500">{r.email} · {r.provider}</span>
+                    <span className="text-slate-500">{r.email} · {r.provider}{r.code ? ` · ${r.code}` : ""}</span>
                     <br />
                     <span className="text-slate-400">가입 {r.createdAt.slice(0, 10)} · 대화 {r.sessions}개 · 메시지 {r.messages}개{r.lastMessageAt ? ` · 마지막 ${r.lastMessageAt.slice(0, 10)}` : ""}</span>
                   </span>

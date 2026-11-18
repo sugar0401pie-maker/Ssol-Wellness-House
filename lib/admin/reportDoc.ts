@@ -12,7 +12,7 @@ const NAVY = "033667";
 
 export type AiResult = { overall: string | null; perSession: Map<string, string>; error: string | null; evaluatedSessions: number };
 export type ReportInput = {
-  account: { email: string; name: string; nickname: string; provider: string; createdAt: string };
+  account: { email: string; name: string; nickname: string; provider: string; createdAt: string; code?: string };
   range: Range; adminEmail: string; now: Date; facts: ReportFacts; ai: AiResult;
 };
 
@@ -47,6 +47,7 @@ export async function buildReportDocx(i: ReportInput): Promise<Buffer> {
   body.push(heading("1. 계정과 기간", HeadingLevel.HEADING_1));
   body.push(table(null, [
     ["이름 / 닉네임", `${account.name || "-"} / ${account.nickname || "-"}`],
+    ["이용자 코드", account.code || "-"],
     ["이메일 · 가입 방식", `${account.email} · ${account.provider}`],
     ["가입일(KST)", kstDateTime(account.createdAt)],
     ["보고서 기간(KST)", i.range.label],

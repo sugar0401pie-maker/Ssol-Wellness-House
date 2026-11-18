@@ -114,3 +114,14 @@ describe("명시성 표시 매기기(annotateExplicit)", () => {
     assert.ok(rows.every((m) => !("explicit" in m)));
   });
 });
+
+describe("새 안전 응답 표시(2026-11-18)", () => {
+  test("듣기 단계 응답(sw-safe:safety:listen)은 WATCH, 평소 응답 표시는 없음", () => {
+    assert.equal(assessMessage({ role: "assistant", route: "clinical_distress", reflection_signal_id: "sw-safe:safety:listen" }), "watch");
+    assert.equal(assessSession({ safety_flag: "elevated", messages: [{ role: "assistant", route: "clinical_distress", reflection_signal_id: "sw-safe:safety:listen" }] }).level, "watch");
+    assert.equal(assessMessage({ role: "assistant", route: "wellness", reflection_signal_id: "sw-safe:follow:direct" }), null);
+  });
+  test("직접 위기 표현 응답은 경로(crisis)로 URGENT 그대로", () => {
+    assert.equal(assessMessage({ role: "assistant", route: "crisis", reflection_signal_id: "sw-safe:safety:direct" }), "urgent");
+  });
+});

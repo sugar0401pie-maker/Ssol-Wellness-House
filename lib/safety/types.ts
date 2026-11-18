@@ -36,4 +36,10 @@ export type RouteDecision = {
   reasoning?: string;
   // 분류기 호출의 토큰 사용량 (비용 시뮬레이션용). 즉시 판정(키워드)이거나 호출 실패 시에는 없다.
   classifierUsage?: { inputTokens: number; outputTokens: number };
+  // 2026-11-18(CSO 안전 응답 변경): 안전 응답 문장을 고르는 신호 코드(sw_ob_safety_reply_tiers의 signal_id — S1-a 듣기 · S1-b 직접 · S7-a 응급 · V1 폭력 · V3 통제).
+  // 이용자 글에 직접 표현이 있을 때만 붙는다(lib/safety/explicit.ts). 없으면 빈 배열/없음.
+  safetyCodes?: string[];
+  // AI 분류기만 위기·폭력으로 본 경우(직접 표현 없음). 위기 경로로 보내지 않고 평소 대화로 가되, "힘든 메시지"로 세어
+  // 4번째에 마이페이지 안내를 붙이는 데 쓴다(lib/safety/safetyReply.ts).
+  aiHeavy?: boolean;
 };

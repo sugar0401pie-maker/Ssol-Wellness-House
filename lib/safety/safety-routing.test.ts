@@ -10,6 +10,7 @@ import {
   decisionFromInstantHit,
   decisionOnClassifierFailure,
   combineWithClassifier,
+  explicitDecision,
 } from "./combine.ts";
 import { moreSevere, routeOrder } from "./types.ts";
 import type { SafetyRule, ResponseRoute } from "./rules.ts";
@@ -121,13 +122,25 @@ describe("분류기 결과 결합", () => {
     assert.equal(decision.source, "keyword+classifier");
   });
 
-  test("분류기가 possible_crisis를 표시하면 주된 route와 무관하게 crisis로 올라간다", () => {
+  // 2026-11-18 CSO 결정(개발 요청 v1.3 §2-1)으로 바뀐 방침: AI 분류만으로 올린 판단은 위기 안내 대상이 아니다.
+  // 예전 시험("possible_crisis면 crisis로 올라간다")은 이 결정으로 뒤집혔다 — 대신 아래처럼 평소 대화 + 힘든 메시지 표시를 확인한다.
+  test("분류기만 possible_crisis를 표시하면 위기 경로로 가지 않고, 마음이 힘든 대화(clinical_distress)로 가며 힘든 메시지로 표시된다", () => {
     const decision = combineWithClassifier(
       [],
       classifierSays({ route: "wellness", possibleCrisis: true }),
       ROUTES_TABLE,
     );
-    assert.equal(decision.route, "crisis");
+    assert.equal(decision.route, "clinical_distress");
+    assert.equal(decision.aiHeavy, true);
+  });
+
+  test("분류기만 crisis·violence로 판단해도 위기·폭력 경로로 가지 않는다(직접 표현이 없으면)", () => {
+    for (const route of ["crisis", "violence"] as const) {
+      const d = combineWithClassifier([], classifierSays({ route }), ROUTES_TABLE);
+      assert.equal(d.route, "clinical_distress", route);
+      assert.equal(d.aiHeavy, true);
+    }
+    assert.equal(combineWithClassifier([], classifierSays({ route: "wellness", possibleViolence: true }), ROUTES_TABLE).route, "clinical_distress");
   });
 
   test("확신도가 낮으면 한 단계 더 위험한 쪽으로 올라간다", () => {
@@ -135,9 +148,10 @@ describe("분류기 결과 결합", () => {
     assert.equal(decision.route, "life_decision"); // wellness(6) → life_decision(5)
   });
 
-  test("확신도가 낮아도 이미 crisis면 더 올라갈 곳이 없다 (안전하게 유지)", () => {
-    const decision = combineWithClassifier([], classifierSays({ route: "crisis", confidence: "low" }), ROUTES_TABLE);
-    assert.equal(decision.route, "crisis");
+  // 2026-11-18: 확신도 낮음으로 위기·폭력까지 올라가던 경로(예: 폭력 + 확신 낮음 → 위기 안내)를 막는다(CSO가 지적한 오탐 경로).
+  test("확신도가 낮아도 위기·폭력으로는 올리지 않는다", () => {
+    assert.equal(combineWithClassifier([], classifierSays({ route: "clinical_diagnosis", confidence: "low" }), ROUTES_TABLE).route, "clinical_diagnosis");
+    assert.equal(combineWithClassifier([], classifierSays({ route: "crisis", confidence: "low" }), ROUTES_TABLE).route, "clinical_diagnosis");
   });
 
   test("route에 해당하는 required_policy(SAFE 규칙 id)가 matchedRuleIds에 포함된다", () => {
@@ -167,5 +181,45 @@ describe("분류기 호출 실패 시 fail-safe", () => {
     const decision = decisionOnClassifierFailure(hits, "timeout");
     assert.equal(decision.classifierUnavailable, true);
     assert.equal(decision.route, "clinical_distress");
+  });
+});
+
+// 2026-11-18 CSO 결정(개발 요청 v1.3 §2): 위기·폭력 경로는 이용자 글에 직접 쓰인 표현이 있을 때만. 분류기를 부르지 않고 바로 결정한다.
+describe("직접 표현 판정 — 위기·폭력 경로의 유일한 입구", () => {
+  const decide = (m: string) => explicitDecision(m, findKeywordHits(m, RULES));
+  test("죽음·자해를 직접 말하면 위기(신호 S1-b), 분류기 호출 없이", () => {
+    for (const m of ["자살하고 싶어요", "죽고 싶다", "나 그냥 죽을 거야"]) {
+      const d = decide(m);
+      assert.equal(d?.route, "crisis", m);
+      assert.equal(d?.source, "keyword");
+      assert.ok(d?.safetyCodes?.includes("S1-b"), m);
+    }
+  });
+  test("약을 한꺼번에 먹었다는 말은 위기 + 응급 신호(S7-a)", () => {
+    const d = decide("방금 수면제를 한 통 다 먹었어요");
+    assert.equal(d?.route, "crisis");
+    assert.ok(d?.safetyCodes?.includes("S7-a"));
+  });
+  test("구체적인 폭력은 폭력(V1), 통제·스토킹은 V3", () => {
+    assert.deepEqual([decide("남자친구한테 거의 매일 맞고 있어요")?.route, decide("남자친구한테 거의 매일 맞고 있어요")?.safetyCodes], ["violence", ["V1"]]);
+    assert.equal(decide("헤어지자고 했더니 계속 스토킹을 해요")?.route, "violence");
+    assert.deepEqual(decide("헤어지자고 했더니 계속 스토킹을 해요")?.safetyCodes, ["V3"]);
+  });
+  test("직장 괴롭힘·낱말 하나·정신적 폭력은 위기·폭력이 아님 → 분류기로(평소 대화)", () => {
+    for (const m of ["팀장이 자꾸 괴롭혀서 힘들어요", "회사에서 괴롭힘을 당해요", "폭력", "남편이 정신적으로 저를 폭력적으로 대해요"]) assert.equal(decide(m), null, m);
+  });
+  test("'살 이유가 없다'·사라지고 싶다는 듣기(S1-a) — 위기 경로 아님", () => {
+    for (const m of ["살 이유가 없다", "요즘 그냥 사라지고 싶어요"]) {
+      const d = decide(m);
+      assert.equal(d?.route, "clinical_distress", m);
+      assert.deepEqual(d?.safetyCodes, ["S1-a"]);
+    }
+  });
+  test("짧은 뒷말·일상 말은 아무것도 아님(앞 메시지 판단을 잇지 않음)", () => {
+    for (const m of ["둘 다요", "마지막일지도... 모르겠오", "배고파 죽겠어요", "오늘 프로젝트 마감 계획을 구체적 계획까지 다 세웠어요"]) assert.equal(decide(m), null, m);
+  });
+  test("분류기 장애 때도 위기·폭력 낱말만으로는 위기 경로로 가지 않는다(직접 표현은 이미 위에서 처리)", () => {
+    const hits = findKeywordHits("살 이유가 없다", RULES);
+    assert.notEqual(decisionOnClassifierFailure(hits, "timeout").route, "crisis");
   });
 });

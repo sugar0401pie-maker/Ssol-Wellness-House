@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import HelpResources from "@/components/help/HelpResources";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import CustomerFeedbackModal from "./CustomerFeedbackModal";
@@ -82,6 +84,14 @@ export default function MyPageTab() {
 
   // 고객의 의견 — 2026-10-01 신설: 건의/제안을 받아 접수만 해둔다(owner가 수동 확인).
   const [showFeedback, setShowFeedback] = useState(false);
+
+  // 2026-11-18: 채팅의 "마이페이지로 가기" 버튼(/mypage#help)으로 들어오면 '도움받을 곳'으로 바로 이동한다.
+  // 위쪽 내용이 데이터를 불러온 뒤 늘어나므로, 데이터가 바뀐 뒤에도 한 번 더 맞춘다.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.hash !== "#help") return;
+    const t = setTimeout(() => document.getElementById("help")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    return () => clearTimeout(t);
+  }, [data, testGroups, billing]);
 
   // 2026-09-26: 다른 창(심리테스트 사이트)에서 테스트를 마치고 이 앱으로 돌아오면 자동으로 다시
   // 불러온다 — 탭은 계속 마운트돼 있어서 마운트 시 1회 조회만으로는 새 결과가 반영되지 않았다.
@@ -377,6 +387,17 @@ export default function MyPageTab() {
           </SectionRow>
         </div>
       )}
+
+      {/* 2026-11-18 CSO 결정: '도움받을 곳'은 마이페이지에 늘 보이게 둔다(접지 않음). 대화에는 전화번호를 넣지 않고
+          "마이페이지로 가기" 버튼이 이곳(#help)을 가리킨다. 마들랜 카카오톡·109·1577-0199·1366·112·119. */}
+      <section id="help" className="scroll-mt-4 border-t border-line px-4 py-5">
+        <h2 className="text-[15px] font-medium text-foreground">도움받을 곳</h2>
+        <p className="mt-1 mb-3 text-[13px] leading-5 text-slate-500">혼자 감당하기 벅찬 순간에 바로 이야기할 수 있는 곳이에요. 언제든 여기서 찾을 수 있어요.</p>
+        <HelpResources compact />
+        <Link href="/help" className="mt-3 inline-block text-[13px] text-navy underline underline-offset-2">
+          도움받을 곳 자세히 보기
+        </Link>
+      </section>
 
       {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신판매업신고번호 포함). */}
       <div className="px-4 pb-6">

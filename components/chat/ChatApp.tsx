@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
@@ -18,7 +19,8 @@ import type { Choice, ChoiceId } from "@/lib/theory/types";
 
 // choices: 이 말풍선 아래에 보여줄 선택 칩("행동 제안받기"/"내 고민 더 알아보기" — lib/theory).
 // 대화의 맨 마지막 말풍선이고 아직 답하지 않았을 때만 화면에 나온다.
-type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[]; card?: CardPayload };
+// action: 답 아래 버튼(2026-11-18 — 마이페이지 "도움받을 곳"·안내 화면). 서버가 정한 앱 안 주소로만 이동한다.
+type Message = { id: number; role: "user" | "assistant"; content: string; choices?: readonly Choice[]; card?: CardPayload; action?: { label: string; href: string } };
 
 // 저장된 대화를 다시 불러올 때(서버는 role/content만 준다), 마지막 말이 선택 안내/연장 안내이면 칩을 되살린다.
 function withOfferChoices(list: Message[]): Message[] {
@@ -279,6 +281,7 @@ export default function ChatApp() {
         sessionLimitReached?: boolean;
         followUp?: { text: string; choices: Choice[]; card?: CardPayload };
         card?: CardPayload; // 보기를 누른 요청에 대한 다음 카드/확인 카드(AI 없이 바로 옴)
+        action?: { label: string; href: string };
       };
       sessionId.current = data.sessionId;
       saveActiveSessionId(data.sessionId);
@@ -286,13 +289,16 @@ export default function ChatApp() {
       const followUp = data.followUp;
       const limitReached = data.sessionLimitReached === true;
       const replyCard = data.card;
+      // 앱 안 주소(/로 시작, //로 시작하지 않음)만 버튼으로 띄운다.
+      const replyAction = data.action && typeof data.action.href === "string" && /^\/(?!\/)/.test(data.action.href) ? { label: data.action.label, href: data.action.href } : undefined;
       const replyId = revealAssistantMessage(
         data.reply ?? `(개발 중) 안전 판정: ${data.route} — ${data.note ?? ""}`,
         // 답변이 다 보인 다음에 선택 안내 말풍선과 칩이 이어서 나오고(서버에는 이미 저장돼 있다),
         // 대화 상한에 도달했다면 새 대화 안내 팝업이 뜬다.
-        followUp || limitReached || replyCard
+        followUp || limitReached || replyCard || replyAction
           ? () => {
               if (replyCard) setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, card: replyCard } : m)));
+              if (replyAction) setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, action: replyAction } : m)));
               if (followUp) {
                 setMessages((prev) => [
                   ...prev,
@@ -514,6 +520,13 @@ export default function ChatApp() {
         {messages.map((m, i) => (
           <div key={m.id} className="space-y-2">
             <Bubble role={m.role} content={m.content} />
+            {m.action && (
+              <div className="pl-1">
+                <Link href={m.action.href} className="inline-block rounded-full bg-navy px-3 py-1.5 text-[13px] font-medium text-white">
+                  {m.action.label}
+                </Link>
+              </div>
+            )}
             {m.card && i === messages.length - 1 && !sending && (
               <CardChoices
                 card={m.card}

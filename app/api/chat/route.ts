@@ -4,7 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { parseAstroOpening } from "@/lib/persona/astroGreeting";
 import { loadAstroGreeting } from "@/lib/mypage/loadAstroGreeting";
 import { determineRoute } from "@/lib/safety/route";
-import { findKeywordHits, instantHit } from "@/lib/safety/keywordCheck";
+import { findKeywordHits } from "@/lib/safety/keywordCheck";
+import { explicitDecision } from "@/lib/safety/combine";
+import { ACTION_HREF, HELP_POINTER_ACTION, HELP_POINTER_LINE, composeReply, planTurn, safetyMarker, type ReplyAction } from "@/lib/safety/safetyReply";
 import { runScreening, screeningOn } from "@/lib/safety/screeningFlow";
 import { VERDICT_SECOND_REPLY } from "@/lib/safety/screeningTexts";
 import { deepeningAskBlock } from "@/lib/safety/deepening";
@@ -15,7 +17,6 @@ import { isLayer5Signal } from "@/lib/rag/layers";
 import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTopics, guidanceBlock, perceptionRepeated } from "@/lib/safety/supplemental";
 import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
-import { FIXED_RESPONSES, SHORT_HELP_CONTACT } from "@/lib/safety/crisisResponses";
 import { generateAnswer } from "@/lib/rag/generate";
 import { CARD_ROUTES, TAP_MARK, parseCardPick, tapMarker } from "@/lib/cards/flow";
 import { cardMessageMark, endOffer, handlePick } from "@/lib/cards/session";
@@ -46,6 +47,16 @@ function safetyFlagFor(route: RouteId): "crisis" | "elevated" | "none" {
   return "none";
 }
 const FLAG_RANK = { none: 0, elevated: 1, crisis: 2 } as const;
+
+// 2026-11-18: 답 아래에 띄우는 버튼(마이페이지 '도움받을 곳' · 안내 화면). 화면이 바로 이동할 주소를 함께 보낸다.
+const toAction = (a: ReplyAction | null) => (a ? { ...a, href: ACTION_HREF[a.target] ?? "/mypage#help" } : null);
+
+// 대화별 안전 응답 상태(chat_sessions.safety_reply_state — 마이그레이션 20261118000100). 칸이 아직 없으면 저장하지 않고 매번 새 대화처럼 동작한다(응답은 그대로 나감).
+async function loadReplyState(admin: ReturnType<typeof createAdminClient>, sessionId: string): Promise<{ state: unknown; persist: boolean }> {
+  const { data, error } = await admin.from("chat_sessions").select("safety_reply_state").eq("session_id", sessionId).maybeSingle();
+  if (error) return { state: null, persist: false };
+  return { state: (data as { safety_reply_state?: unknown } | null)?.safety_reply_state ?? null, persist: true };
+}
 
 // 2026-10-16: 채팅 응답이 7~12초 걸려서 어느 단계가 오래 걸리는지 숫자로 보려고 단계별 시간을 Server-Timing 헤더에 싣는다
 // (단계 이름과 ms만 들어 있고 대화 내용은 없다). 응답 방식·내용은 그대로다.
@@ -133,7 +144,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 안전 원칙: 위기·폭력이 키워드로 즉시 판정되는 메시지는 AI 호출 없이 끝나야 하므로(CLAUDE.md §5) 그런 메시지에는 시작하지 않는다.
   // 분류기가 위기·폭력으로 판정하면 이 결과는 쓰이지 않고 버려진다(분류기도 같은 메시지를 같은 업체로 보내므로 새로 노출되는 정보는 없다).
   const { rules: earlyRules } = await getSafetyData();
-  const queryEmbedding = instantHit(findKeywordHits(message, earlyRules)) ? undefined : embedQuery(message);
+  const queryEmbedding = explicitDecision(message, findKeywordHits(message, earlyRules)) ? undefined : embedQuery(message);
   queryEmbedding?.catch(() => undefined); // 쓰이지 않고 끝나는 경우에도 "처리되지 않은 오류"가 남지 않게 표시만 해 둔다
 
   let decision = await determineRoute(message, recentMessages);
@@ -202,21 +213,34 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     return NextResponse.json({ sessionId, route: screening.route, reply: screening.reply, done: true, screening: true, ...routingMeta });
   }
 
-  // 분류기를 아예 부르지 못한 경우: 내용을 지어내지 않고 안전한 안내만 준다.
+  // ───── 2026-11-18 CSO 결정(개발 요청 v1.3 §1): 안전 신호 뒤에는 고정 안내문 대신 공감하고 듣기 ─────
+  // 위기·폭력·듣기 신호면 AI 없이 정해진 문장(lib/safety/safetyReply — 엔진 ssol_safety_reply v0.3)으로 답한다. 대화에는 전화번호를 넣지 않는다.
+  // 힘든 메시지 4번째에 한 번만 마이페이지 안내 + 버튼(어떤 신호든 같음 — 응급 포함, 대표님 확인). 하루 사용량·이용권과 무관하게 항상 응답한다.
+  // AI·DB 장애와 무관하게 동작: 문장 기본값이 코드에 있고(safetyReplyData.ts), 직접 위험 표현은 분류기를 부르지 않는다(CLAUDE.md §5).
+  const replyCodes = decision.safetyCodes?.length ? decision.safetyCodes : decision.route === "crisis" ? ["S1-b"] : decision.route === "violence" ? ["V1"] : [];
+  const { state: savedReplyState, persist: replyPersist } = await loadReplyState(admin, sessionId);
+  const { state: replyState, plan: replyPlan } = planTurn(savedReplyState, { codes: replyCodes, heavy: decision.aiHeavy === true, text: message });
+  if (replyPersist) await admin.from("chat_sessions").update({ safety_reply_state: replyState }).eq("session_id", sessionId);
+  const replyComposed = composeReply(replyPlan);
+  // 위기·폭력 경로는 어떤 경우에도 AI 답변을 만들지 않는다(문장 표가 비어 평소 모드가 나와도 안전 쪽 기본 문장).
+  if (replyPlan.mode !== "normal" || decision.route === "crisis" || decision.route === "violence") {
+    const reply = replyComposed.text || "말해 줘서 고마워요. 지금 어떤 마음인지 편한 만큼만 들려줄래요?";
+    await admin.from("chat_messages").insert({
+      session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route, reflection_signal_id: safetyMarker(replyPlan),
+    });
+    const action = toAction(replyComposed.action);
+    return NextResponse.json({ sessionId, route: decision.route, reply, done: true, safetyReply: replyPlan.mode, ...(action ? { action } : {}), ...routingMeta });
+  }
+  // 평소 대화여도 힘든 메시지 4번째면 답 끝에 마이페이지 안내 + 버튼을 붙인다(아래 답변 생성 뒤).
+  const pendingPointer = replyComposed.text && replyComposed.action ? { text: replyComposed.text, action: toAction(replyComposed.action) } : null;
+
+  // 분류기를 아예 부르지 못한 경우: 내용을 지어내지 않고 안전한 안내만 준다. 2026-11-18: 대화에 전화번호를 넣지 않고 마이페이지 안내 + 버튼(CSO 11-18).
   if (decision.classifierUnavailable) {
-    const reply = `지금 답변을 만드는 데 문제가 생겼어요. 잠시 후 다시 시도해주세요. ${SHORT_HELP_CONTACT}`;
+    const reply = `지금 답변을 만드는 데 문제가 생겼어요. 잠시 후 다시 시도해주세요. ${HELP_POINTER_LINE}`;
     await admin
       .from("chat_messages")
       .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route });
-    return NextResponse.json({ sessionId, route: decision.route, reply, done: true, ...routingMeta });
-  }
-
-  const fixed = FIXED_RESPONSES[decision.route];
-  if (fixed) {
-    await admin
-      .from("chat_messages")
-      .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: fixed, route: decision.route });
-    return NextResponse.json({ sessionId, route: decision.route, reply: fixed, done: true, ...routingMeta });
+    return NextResponse.json({ sessionId, route: decision.route, reply, done: true, action: toAction(HELP_POINTER_ACTION), ...routingMeta });
   }
 
   // route 3~7만 무료체험/이용권을 확인한다 (crisis·violence·classifierUnavailable은 이미 위에서
@@ -283,7 +307,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
 
   // route 3~7만 하루 사용량 제한을 적용한다(crisis·violence·classifierUnavailable은 이미 위에서 반환됨).
   if ((todayCount ?? 0) > DAILY_MESSAGE_LIMIT) {
-    const reply = `오늘 나눌 수 있는 대화 횟수를 모두 사용했어요. 내일 다시 이야기해요. ${SHORT_HELP_CONTACT}`;
+    const reply = `오늘 나눌 수 있는 대화 횟수를 모두 사용했어요. 내일 다시 이야기해요. ${HELP_POINTER_LINE}`;
     await admin
       .from("chat_messages")
       .insert({ session_id: sessionId, user_id: userId, role: "assistant", content: reply, route: decision.route });
@@ -292,6 +316,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       route: decision.route,
       reply,
       done: true,
+      action: toAction(HELP_POINTER_ACTION),
       limitReached: true,
       remainingToday: 0,
       ...routingMeta,
@@ -389,7 +414,10 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   if (deepInfo && !result.usedFallback) await deepInfo.markGiven().catch(() => undefined); // 안내를 한 번 했다고 남긴다(실패한 답변이면 다음에 다시)
 
   // 탐색 턴이면 AI가 쓴 앞부분에 DB의 검수된 질문/실천을 붙여 최종 답변을 만든다(그 외에는 그대로).
-  const finalReply = hypothesis ? await hypothesis.compose(result.reply, result.usedFallback) : await dialogue.compose(result.reply, result.usedFallback);
+  const composedReply = hypothesis ? await hypothesis.compose(result.reply, result.usedFallback) : await dialogue.compose(result.reply, result.usedFallback);
+  // 2026-11-18: 힘든 메시지 4번째면 답 끝에 마이페이지 안내 한 줄 + 버튼. 깊어짐(③-7) 안내를 한 턴이면 대화에 기관 정보를 넣지 않고 안내 화면 버튼을 단다(CSO 11-18).
+  const finalReply = pendingPointer ? `${composedReply}\n\n${pendingPointer.text}` : composedReply;
+  const replyAction = pendingPointer?.action ?? (deepInfo && !result.usedFallback ? toAction({ type: "button", label: "도움받을 곳 보기", target: "help_screen" }) : null);
 
   await admin.from("chat_messages").insert({
     session_id: sessionId,
@@ -428,6 +456,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     // 이번이 이 대화의 마지막으로 허용되는 메시지(20번째)면 true — 답변이 다 보인 뒤 새 대화 안내 팝업을 띄운다.
     ...(sessionLimit.reached ? { sessionLimitReached: true } : {}),
     ...(followUp ? { followUp } : {}),
+    ...(replyAction ? { action: replyAction } : {}),
     ...routingMeta,
     // 사용량 정보(민감정보 아님) — 비용 시뮬레이션(scripts/cost-simulation.mjs)이 이 값을 읽는다.
     usage: {

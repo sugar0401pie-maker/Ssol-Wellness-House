@@ -25,9 +25,13 @@ export const maxLevel = (a: AlertLevel | null, b: AlertLevel | null): AlertLevel
 const DANGER = ["crisis", "violence"] as const;
 const isDangerRoute = (r: string | null): r is (typeof DANGER)[number] => r === "crisis" || r === "violence";
 
+// 2026-11-18부터 안전 신호 뒤 응답에는 "sw-safe:<모드>:<단계>" 표시가 남는다(lib/safety/safetyReply.ts). 듣기(listen) 단계는 위기·폭력 경로가 아니어서 WATCH로 본다.
+const SAFE_LISTEN = /^sw-safe:(safety|repair):listen$/;
+
 // 메시지 하나의 표시(대화원문 표에서 줄 색을 칠하는 데 쓴다).
 export function assessMessage(m: MessageForAlert): AlertLevel | null {
   if (isDangerRoute(m.route)) return m.explicit === false ? "watch" : "urgent";
+  if (SAFE_LISTEN.test(m.reflection_signal_id ?? "")) return "watch";
   const marker = parseScreenMarker(m.reflection_signal_id);
   if (marker?.stage === "stop") return "urgent";
   if (marker && isWatchMarker(marker)) return "watch";
@@ -56,6 +60,9 @@ export function assessSession(s: SessionForAlert): Assessment {
   // 세션 안전 상태 crisis는 같은 사건에서 올라간 값이라, 위 판정이 "AI 분류 단독"으로 확인한 경우에는 따로 올리지 않는다(확인 못 한 경우는 안전 쪽으로 URGENT).
   if (s.safety_flag === "crisis" && !crisisClassifierOnly && !s.messages.some((m) => m.route === "crisis")) raise("urgent", "세션 안전 상태: 위기(crisis)");
   else if (s.safety_flag === "elevated") raise("watch", "세션 안전 상태: 주의(elevated)");
+
+  const listen = s.messages.filter((m) => SAFE_LISTEN.test(m.reflection_signal_id ?? "")).length;
+  if (listen) raise("watch", `소극적 표현(사라지고 싶다 등)에 공감·듣기 응답 ${listen}회`);
 
   const markers = s.messages.map((m) => parseScreenMarker(m.reflection_signal_id)).filter((x): x is NonNullable<typeof x> => !!x);
   const stops = markers.filter((m) => m.stage === "stop").length;

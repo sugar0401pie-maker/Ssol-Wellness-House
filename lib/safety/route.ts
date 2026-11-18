@@ -1,8 +1,8 @@
 import "server-only";
 import { getSafetyData } from "./rules.ts";
-import { findKeywordHits, instantHit } from "./keywordCheck.ts";
+import { findKeywordHits } from "./keywordCheck.ts";
 import { classifyMessage, ClassifierUnavailableError } from "./classify.ts";
-import { decisionFromInstantHit, decisionOnClassifierFailure, combineWithClassifier } from "./combine.ts";
+import { decisionOnClassifierFailure, combineWithClassifier, explicitDecision } from "./combine.ts";
 import type { RouteDecision } from "./types.ts";
 
 export { ClassifierUnavailableError };
@@ -11,9 +11,10 @@ export { ClassifierUnavailableError };
  * 사용자 메시지 하나에 대해 안전 route를 정한다.
  *
  * 순서:
- *  1) 키워드 검사 (DB 기반, 네트워크 호출 없음)
- *     - "죽고 싶다/자살/자해" 같은 명백한 표현, "신체적 폭력/협박/스토킹" 같은 명백한 표현이 있으면
- *       분류기를 부르지 않고 즉시 결정한다. → OpenAI가 죽어 있어도 위기 대응은 항상 동작한다.
+ *  1) 직접 표현 판정 (lib/safety/explicit.ts + 키워드, 네트워크 호출 없음)
+ *     - 죽음·자해를 직접 말함 → 위기, 구체적인 폭력·통제 행동 → 폭력, 소극적 표현(사라지고 싶다 등) → 듣기.
+ *       이때는 분류기를 부르지 않고 즉시 결정한다. → OpenAI가 죽어 있어도 위기 대응은 항상 동작한다.
+ *     - 2026-11-18 CSO 결정: 위기·폭력 경로는 이 단계에서만 나온다(AI 분류만으로는 위기 안내를 하지 않음).
  *  2) 그 외에는 AI 분류기(gpt-5.6-luna)를 불러 route를 묻는다.
  *  3) 분류기 결과와 키워드 후보 중 "더 위험한 쪽"을 최종 route로 채택한다.
  *  4) 분류기 확신도가 낮으면 한 단계 더 위험한 쪽으로 올린다. (승인된 원칙: 애매하면 안전한 쪽으로)
@@ -30,8 +31,8 @@ export async function determineRoute(
   const { rules, routes } = await getSafetyData();
   const hits = findKeywordHits(message, rules);
 
-  const strong = instantHit(hits);
-  if (strong) return decisionFromInstantHit(strong, hits);
+  const explicit = explicitDecision(message, hits);
+  if (explicit) return explicit;
 
   let classifier;
   try {

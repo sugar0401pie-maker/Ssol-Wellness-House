@@ -83,3 +83,11 @@ test("3부-4 카드: 질문 보기는 번호 id, 지금 해 보기는 고른 답
   assert.deepEqual(m.options.map((o) => o.id), ["now", "later"]);
   assert.match(miniNowText("숨 고르기", 3, "편하게 앉아요."), /3분만 같이 해 봐요[\s\S]*편하게 앉아요/);
 });
+
+test("지금 같이 해 보기 실천은 검수 대기여도 내보낸다(대표님 2026-11-19) — 다른 초안은 그대로", async () => {
+  const { releaseInSession } = await import("./flow.ts");
+  const d = { review: { "RIN-01": "draft", "RP-037": "approved", "STF-9": "draft" } as Record<string, string | null>, in_session: ["RIN-01", "RP-037"] };
+  assert.equal(releaseInSession(d), 1);
+  assert.equal(d.review["RIN-01"], "approved");
+  assert.equal(d.review["STF-9"], "draft");
+});

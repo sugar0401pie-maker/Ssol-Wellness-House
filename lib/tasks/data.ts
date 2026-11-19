@@ -4,6 +4,7 @@ import * as CS from "@/lib/interp/vendor/case.mjs";
 import * as PS from "@/lib/interp/vendor/personal.mjs";
 import * as RS from "@/lib/interp/vendor/rootState.mjs";
 import { caseDataFromDb, discriminatorsFromDb, personalDataFromDb } from "@/lib/interp/vendor/dbLoader.mjs";
+import { releaseInSession } from "./flow";
 
 // 과제 고르기 엔진 데이터(사례개념화 ssol_case · 개인 맞춤 ssol_personal)를 DB 표(sw_ob_*, CSO DB v5.24)에서 읽어 10분 둔다.
 // 표 목록은 엔진 안내 v3.8~v3.17이 caseDataFromDb · personalDataFromDb에 넘기라고 한 것 그대로다. 여러 요청이 와도 한 번만 읽는다.
@@ -39,7 +40,9 @@ async function load(admin: Admin): Promise<TaskEngineData> {
   const t = Object.fromEntries(names.map((n, i) => [n, got[i]]));
   const caseData = caseDataFromDb(t);
   CS.setCaseData(caseData);
-  const pd = PS.setPersonalData(personalDataFromDb(t), caseData as never) as { titles?: Record<string, string> };
+  const raw = personalDataFromDb(t) as ReturnType<typeof personalDataFromDb> & { review: Record<string, string | null>; in_session: string[] };
+  releaseInSession(raw);
+  const pd = PS.setPersonalData(raw, caseData as never) as { titles?: Record<string, string> };
   PS.setPracticeStages(caseData.practice_tags);
   RS.setData({ discriminators: discriminatorsFromDb(t as never) }); // 가르는 질문 105묶음(다른 RS 데이터는 그대로 둔다)
   const data = { titles: pd.titles ?? {}, caseData };

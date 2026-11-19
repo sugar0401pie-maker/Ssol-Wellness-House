@@ -30,3 +30,13 @@ describe("checkOutput", () => {
     assert.ok(result.violations.some((v) => v.includes("약물")));
   });
 });
+
+test("한자·일본 문자가 섞인 답은 다시 쓰게 한다(2026-11-19) — 한글·영문·숫자·문장부호는 그대로", async () => {
+  const { FOREIGN_SCRIPT_PREFIX, stripForeignScript } = await import("./outputCheck.ts");
+  const bad = checkOutput("忙한 가운데서도 원하는 걸 찾아볼 수 있어요.", { usedClinicalChunk: false });
+  assert.equal(bad.ok, false);
+  assert.ok(bad.violations.some((v) => v.startsWith(FOREIGN_SCRIPT_PREFIX) && v.includes("忙")));
+  assert.equal(checkOutput("ありがとう", { usedClinicalChunk: false }).ok, false);
+  assert.equal(checkOutput("오늘 3분만 OK, 천천히 해 봐요! (메모 앱)", { usedClinicalChunk: false }).ok, true);
+  assert.equal(stripForeignScript("忙한 가운데서도"), "한 가운데서도");
+});

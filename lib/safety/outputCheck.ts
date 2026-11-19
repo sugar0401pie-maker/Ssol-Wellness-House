@@ -24,6 +24,14 @@ const OUTCOME_GUARANTEE = /\d+\s*%|보장(합니다|돼요|해요|해드|된다)
 
 const REFERRAL_PHRASES = ["정신건강의학과", "정신과 의사", "의사", "전문가", "상담을 받", "상담 받"];
 
+// 2026-11-19 대표님 지시: 답에 한자(또는 일본 문자)가 섞이면 다시 쓰게 한다 — 생성 모델이 가끔 "忙한 가운데서도"처럼 섞어 낸다(3부-4 시험 중 발견).
+// 한글 대화라 한자를 쓸 일이 없다. 위반 문구에 그 글자만 보여 준다.
+export const FOREIGN_SCRIPT = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3040-\u30FF]/g;
+export const FOREIGN_SCRIPT_PREFIX = "한자·외국 문자가 섞였습니다";
+export function stripForeignScript(text: string): string {
+  return text.replace(FOREIGN_SCRIPT, "").replace(/ {2,}/g, " ");
+}
+
 function findSentences(text: string): string[] {
   return text.split(/(?<=[.!?요다])\s+|\n+/).filter(Boolean);
 }
@@ -50,6 +58,9 @@ export function checkOutput(
       violations.push(`검증되지 않은 효과·확률 보장: "${sentence.trim().slice(0, 60)}"`);
     }
   }
+
+  const foreign = [...new Set(reply.match(FOREIGN_SCRIPT) ?? [])];
+  if (foreign.length) violations.push(`${FOREIGN_SCRIPT_PREFIX}(한글로만 쓰세요): ${foreign.slice(0, 5).join(" ")}`);
 
   if (opts.usedClinicalChunk && !opts.clinicalBoundaryAlreadyStated && !REFERRAL_PHRASES.some((p) => reply.includes(p))) {
     violations.push("임상 정보를 참고했는데 전문가 상담 안내가 빠졌습니다.");

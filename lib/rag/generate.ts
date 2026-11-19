@@ -13,7 +13,7 @@ import { getSystemPromptSections } from "@/lib/rag/systemPrompt";
 import { buildSystemPrompt, type DialogueMode, type PersonaHint } from "@/lib/rag/prompt.ts";
 import type { TheoryGuide } from "@/lib/theory/types";
 import { generateReply } from "@/lib/ai/chatModel";
-import { checkOutput } from "@/lib/safety/outputCheck";
+import { FOREIGN_SCRIPT_PREFIX, checkOutput, stripForeignScript } from "@/lib/safety/outputCheck";
 import { DOMAIN_LABELS } from "@/lib/wellness/domainLabels";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 import { loadAstroInsight } from "@/lib/mypage/loadAstroInsight";
@@ -264,8 +264,10 @@ export async function generateAnswer(params: {
       params.timer?.lap("g_llm2_retry");
       usage.push({ inputTokens: second.usage.inputTokens, outputTokens: second.usage.outputTokens });
       const check2 = checkOutput(second.text, { usedClinicalChunk, clinicalBoundaryAlreadyStated });
-      reply = check2.ok ? second.text : SAFE_FALLBACK_REPLY;
-      if (!check2.ok) {
+      // 다시 쓴 답에 남은 문제가 한자 섞임뿐이면 그 글자만 지우고 쓴다(안전 규칙 위반이 아니라 표기 문제 — 대체 문구로 바꿀 일은 아니다).
+      const onlyForeign = !check2.ok && check2.violations.every((v) => v.startsWith(FOREIGN_SCRIPT_PREFIX));
+      reply = check2.ok ? second.text : onlyForeign ? stripForeignScript(second.text) : SAFE_FALLBACK_REPLY;
+      if (!check2.ok && !onlyForeign) {
         usedFallback = true;
         console.warn("출력 검사 2회 연속 실패, 안전한 대체 문구 사용:", check2.violations);
       }

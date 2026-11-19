@@ -98,3 +98,10 @@ export function miniNowText(title: string, minutes: number | null, firstStep: st
 }
 export const MINI_LATER_REPLY = "좋아요. 편할 때 해 봐요. 하고 싶은 이야기가 있으면 이어서 들려주세요.";
 
+// 2026-11-19 대표님 결정: "지금 같이 해 보기" 실천(sw_ob_practice_flags in_session, 187개)은 초안이 아니다 — 검수 대기(draft)여도 내보낸다.
+// DB(sw_ob_practice_ref.review_status)는 CSO 원본이라 고치지 않고 여기서 덮는다(다음 CSO 데이터 적재 뒤에도 유지). 다른 초안 실천은 그대로 안 나간다.
+export function releaseInSession(d: { review: Record<string, string | null>; in_session: string[] }): number {
+  let n = 0;
+  for (const id of d.in_session ?? []) if (d.review[id] !== "approved") { d.review[id] = "approved"; n++; }
+  return n;
+}

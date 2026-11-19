@@ -5,6 +5,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { requestEmailChange, verifyEmailChange } from "@/lib/supabase/authClient";
 import { openAddressSearch } from "@/lib/address/daumPostcode";
+import WithdrawModal from "./WithdrawModal";
 
 export type MyInfo = {
   displayName: string | null;
@@ -41,6 +42,7 @@ export default function MyInfoEditModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false); // 2026-11-19 회원 탈퇴 팝업
 
   const [emailStep, setEmailStep] = useState<"idle" | "entering" | "verifying">("idle");
   const [newEmailInput, setNewEmailInput] = useState("");
@@ -300,6 +302,12 @@ export default function MyInfoEditModal({
                   placeholder="상세주소 (동/호수 등)"
                   className="mt-1.5 h-11 w-full rounded-xl border border-line bg-background px-3 outline-none focus:border-navy"
                 />
+                {/* 2026-11-19 대표님 요청: 주소 칸 바로 밑 오른쪽에 회원 탈퇴(쏘웰라 정보만 삭제 — lib/account/withdrawPlan.ts) */}
+                <div className="mt-2 flex justify-end">
+                  <button type="button" onClick={() => setShowWithdraw(true)} className="text-[12px] text-slate-400 underline underline-offset-2">
+                    회원탈퇴하기
+                  </button>
+                </div>
               </div>
 
               <label className="flex items-start gap-2 text-[13px] leading-5 text-slate-600">
@@ -338,6 +346,7 @@ export default function MyInfoEditModal({
           )}
         </div>
       </div>
+      {showWithdraw && <WithdrawModal nickname={nickname.trim() || displayName.trim() || null} onClose={() => setShowWithdraw(false)} />}
     </div>
   );
 }

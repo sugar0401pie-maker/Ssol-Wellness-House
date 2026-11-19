@@ -1,12 +1,15 @@
-// 관리자 판별(순수 함수 — 네트워크 없이 시험한다). 2026-11-17 대표님 지시: 관리자는 seotaiji0124@naver.com 카카오 계정 한 곳.
+// 관리자 판별(순수 함수 — 네트워크 없이 시험한다). 2026-11-17 대표님 지시: 관리자는 seotaiji0124@naver.com 카카오 계정(2026-11-19 sneaker112@naver.com 추가).
 // 판별은 이메일만 보지 않고 "카카오로 가입한 계정"인지까지 본다 — 다른 방식(이메일·비밀번호 등)으로 같은 이메일을 만들어도 통과하지 못하게.
 // 이 판별을 통과해도 관리자 암호를 한 번 더 입력해야 화면·자료가 열린다(lib/admin/session.ts).
 export const DEFAULT_ADMIN_EMAIL = "seotaiji0124@naver.com";
+// 2026-11-19 대표님 지시: sneaker112@naver.com(카카오 가입 계정 — DB에서 확인)에게도 관리자 권한. 카카오 계정·관리자 암호 조건은 똑같이 적용된다.
+export const DEFAULT_ADMIN_EMAILS: readonly string[] = [DEFAULT_ADMIN_EMAIL, "sneaker112@naver.com"];
 
-// 환경변수 ADMIN_EMAILS(쉼표로 구분)가 있으면 그 목록을, 없으면 기본 한 곳만 쓴다. 비어 있는 값은 무시한다.
+// 기본 목록 + 환경변수 ADMIN_EMAILS(쉼표로 구분, 있으면 더함). 2026-11-19부터 환경변수가 기본 목록을 대신하지 않고 더하기만 한다 —
+// Vercel에 예전 값이 남아 있어도 코드의 관리자 목록이 빠지지 않게. 비어 있는 값은 무시한다.
 export function adminEmails(env: Record<string, string | undefined> = process.env): string[] {
-  const raw = env.ADMIN_EMAILS?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  return raw && raw.length ? raw : [DEFAULT_ADMIN_EMAIL];
+  const raw = env.ADMIN_EMAILS?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) ?? [];
+  return [...new Set([...DEFAULT_ADMIN_EMAILS, ...raw])];
 }
 
 export type AuthUserLike = {

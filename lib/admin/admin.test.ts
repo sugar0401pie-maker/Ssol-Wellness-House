@@ -23,8 +23,10 @@ describe("관리자 판별", () => {
   });
   test("identities에 kakao가 있어도 인정, ADMIN_EMAILS로 목록을 바꿀 수 있다", () => {
     assert.equal(isAdminUser({ email: DEFAULT_ADMIN_EMAIL, identities: [{ provider: "kakao" }] }), true);
-    assert.deepEqual(adminEmails({}), [DEFAULT_ADMIN_EMAIL]);
-    assert.deepEqual(adminEmails({ ADMIN_EMAILS: " A@x.com , ,b@x.com" }), ["a@x.com", "b@x.com"]);
+    assert.deepEqual(adminEmails({}), [DEFAULT_ADMIN_EMAIL, "sneaker112@naver.com"]);
+    assert.deepEqual(adminEmails({ ADMIN_EMAILS: " A@x.com , ,b@x.com" }), [DEFAULT_ADMIN_EMAIL, "sneaker112@naver.com", "a@x.com", "b@x.com"]); // 환경변수는 더하기만
+    assert.equal(isAdminUser({ email: "Sneaker112@naver.com", app_metadata: { provider: "kakao", providers: ["kakao"] } }), true); // 2026-11-19 추가
+    assert.equal(isAdminUser({ email: "sneaker112@naver.com", app_metadata: { provider: "email", providers: ["email"] } }), false); // 카카오 아니면 안 됨
     assert.equal(isAdminUser({ email: "a@x.com", app_metadata: { provider: "kakao" } }, adminEmails({ ADMIN_EMAILS: "a@x.com" })), true);
   });
 });

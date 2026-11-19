@@ -35,9 +35,13 @@ try {
   const sid = a.sessionId;
   log(`첫 말 → ${a.route}\n 답: ${a.reply?.slice(0, 120)}…`);
   let card = a.followUp?.card ?? a.card;
-  for (let i = 0; i < 8 && card; i++) {
+  for (let i = 0; i < 12 && card; i++) {
     let pick, label;
-    if (card.kind === "card") { const o = card.options[0]; pick = { cardId: card.cardId, optionId: o.id }; label = o.label; }
+    if (card.kind === "task_ask") { // 3부-4: 연습 전 질문 — 보기 마지막에서 두 번째(보통 "되풀이"·"둘 다" 쪽)가 아니라 첫 보기
+      const o = card.options[0]; log(` [task_ask] ${card.text} → “${o.label}”  (보기: ${card.options.map((x) => x.label).join(" / ")})`);
+      a = await send(o.label, sid, { taskAsk: { row: card.row, option: Number(o.id) } }); card = a.card ?? a.followUp?.card; continue;
+    }
+    if (card.kind === "card") { const o = card.options[Math.min(Number(process.env.TASKS_E2E_PICK ?? 0), card.options.length - 1)]; pick = { cardId: card.cardId, optionId: o.id }; label = o.label; }
     else if (card.kind === "confirm") { const o = card.options.find((x) => x.id === "CF-A") ?? card.options[0]; pick = { confirm: o.id }; label = o.label; }
     else if (card.kind === "scope") { const o = card.options.find((x) => x.id === "CS-2") ?? card.options[0]; pick = { scope: o.id }; label = o.label; }
     else break;
@@ -52,6 +56,11 @@ try {
     const t = card.options[0];
     a = await send(t.label, sid, { task: { row: card.row, practice: t.id } });
     log(` 고름 → ${a.reply}`);
+    if (a.card?.kind === "task_mini") {
+      const m = await send("지금 해 볼게요", sid, { taskMini: { row: a.card.row, choice: "now" } });
+      log(` 지금 해 볼게요 → ${m.reply}`);
+      if (m.card?.kind === "task_check") { const c = await send("조금 나아졌어요", sid, { taskCheck: { row: m.card.row, answer: "조금 나아졌어요" } }); log(` (바로) 조금 나아졌어요 → ${c.reply}`); }
+    }
     if (KEEP) { writeFileSync(KEEP, JSON.stringify({ email, password, userId })); log(`화면 확인용으로 계정을 남김(user ${userId})`); process.exit(0); }
     // 새 대화 첫머리
     const op = await (await fetch(`${BASE_URL}/api/tasks/opening`, { headers })).json();
@@ -67,7 +76,20 @@ try {
       log(` 새 대화 저장 순서: ${msgs?.map((m) => `${m.role}:${m.content.slice(0, 14)}`).join(" | ")}`);
     }
   }
-  const { data: rows } = await admin.from("sw_user_tasks").select("id, concern_id, offered, practice_id, result, check_root, check_direct, check_answer, task_stage, format").eq("user_id", userId);
+  // "지금 같이 해 보기" 분기(맛보기가 고른 연습과 다를 때): 검수된 1~3분 실천을 맛보기로 단 고른 행을 하나 넣고 진짜 API로 누른다(검수된 맛보기 실천이 아직 적어 카드 길에서는 잘 안 나옴).
+  if (sid) {
+    const { data: mrow } = await admin.from("sw_user_tasks").insert({ user_id: userId, chat_id: sid, concern_id: "job_change", offered: ["RPD-3010"], practice_id: "RPD-3010", at: new Date().toISOString(),
+      plan: { title: "예전에 들은 말과 지금의 나 두 칸에 적기", mini: { practice_id: "RP-037", title: "'늘·전부'를 '이번에·이 부분'으로 바꿔 말하기", minutes: 3, invite: "지금 3분만 같이 해 볼까요?", first_step: null,
+        check: { question: "해 보니, 조금 덜 단정하게 느껴졌나요?", options: ["조금 나아졌어요", "그대로예요", "더 버거웠어요", "잘 모르겠어요"] }, row: { in_session: true, check_root: "ROOT-56" } } } }).select("id").single();
+    const m = await send("지금 해 볼게요", sid, { taskMini: { row: mrow.id, choice: "now" } });
+    log(`\n[맛보기] 지금 해 볼게요 → ${m.reply}\n 카드: ${m.card?.kind} ${m.card?.options?.map((o) => o.label).join(" / ")}`);
+    if (m.card?.kind === "task_check") { const c = await send("조금 나아졌어요", sid, { taskCheck: { row: m.card.row, answer: "조금 나아졌어요" } }); log(` 조금 나아졌어요 → ${c.reply}`); }
+    const again = await send("지금 해 볼게요", sid, { taskMini: { row: mrow.id, choice: "now" } });
+    log(` 같은 버튼 다시 → ${again.card ? "카드가 또 나옴(문제)" : "평소 대화로 넘어감(정상)"}`);
+  }
+  const { data: rows } = await admin.from("sw_user_tasks").select("id, concern_id, offered, practice_id, result, check_root, check_direct, check_answer, task_stage, format, in_session").eq("user_id", userId);
+  const { data: asked } = await admin.from("sw_user_disc_asked").select("group_id, roots, answer, answer_root, source").eq("user_id", userId);
+  log(`sw_user_disc_asked: ${JSON.stringify(asked)}`);
   log(`\nsw_user_tasks: ${JSON.stringify(rows)}`);
   const { data: cs } = await admin.from("sw_user_concern_state").select("concern_id, theory, stage, coping, layers_filled, stage_signals").eq("user_id", userId);
   log(`sw_user_concern_state: ${JSON.stringify(cs)}`);

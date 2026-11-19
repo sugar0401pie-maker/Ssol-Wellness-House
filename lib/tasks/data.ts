@@ -2,7 +2,8 @@ import "server-only";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import * as CS from "@/lib/interp/vendor/case.mjs";
 import * as PS from "@/lib/interp/vendor/personal.mjs";
-import { caseDataFromDb, personalDataFromDb } from "@/lib/interp/vendor/dbLoader.mjs";
+import * as RS from "@/lib/interp/vendor/rootState.mjs";
+import { caseDataFromDb, discriminatorsFromDb, personalDataFromDb } from "@/lib/interp/vendor/dbLoader.mjs";
 
 // 과제 고르기 엔진 데이터(사례개념화 ssol_case · 개인 맞춤 ssol_personal)를 DB 표(sw_ob_*, CSO DB v5.24)에서 읽어 10분 둔다.
 // 표 목록은 엔진 안내 v3.8~v3.17이 caseDataFromDb · personalDataFromDb에 넘기라고 한 것 그대로다. 여러 요청이 와도 한 번만 읽는다.
@@ -15,6 +16,7 @@ const PERSONAL_TABLES = [
   "sw_ob_practice_size", "sw_ob_scene_context", "sw_ob_root_practice_avoid", "sw_ob_roots", "sw_ob_practice_ref", "sw_ob_coping_questions", "sw_ob_practice_codes",
   "sw_ob_practice_ladder", "sw_ob_practice_alt", "sw_ob_plan_lexicon", "sw_ob_ctx_options", "sw_ob_root_predictions", "sw_ob_end_conditions",
   "sw_ob_condition_questions", "sw_ob_first_step_rules",
+  "sw_ob_root_discriminators", // 3부-4: 겨루는 가설의 가르는 질문(RS.discriminatorFor)
 ] as const;
 
 async function rows(admin: Admin, table: string): Promise<Record<string, unknown>[]> {
@@ -27,7 +29,7 @@ async function rows(admin: Admin, table: string): Promise<Record<string, unknown
   }
 }
 
-export type TaskEngineData = { titles: Record<string, string> };
+export type TaskEngineData = { titles: Record<string, string>; caseData: ReturnType<typeof caseDataFromDb> };
 let cache: { at: number; data: TaskEngineData } | null = null;
 let loading: Promise<TaskEngineData> | null = null;
 
@@ -39,7 +41,8 @@ async function load(admin: Admin): Promise<TaskEngineData> {
   CS.setCaseData(caseData);
   const pd = PS.setPersonalData(personalDataFromDb(t), caseData as never) as { titles?: Record<string, string> };
   PS.setPracticeStages(caseData.practice_tags);
-  const data = { titles: pd.titles ?? {} };
+  RS.setData({ discriminators: discriminatorsFromDb(t as never) }); // 가르는 질문 105묶음(다른 RS 데이터는 그대로 둔다)
+  const data = { titles: pd.titles ?? {}, caseData };
   cache = { at: Date.now(), data };
   return data;
 }

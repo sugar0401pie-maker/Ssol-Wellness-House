@@ -24,7 +24,8 @@ test("과제 누름은 탭 표시가 붙어 하루·대화당 메시지 수에�
 
 test("연습은 확인으로 끝난 카드에서만 — 아니라고 했거나 멈춘 자리에서는 건네지 않는다", () => {
   for (const r of ["confirmed", "confirm_partial", "confirm_weak", "deficit_hypothesis"]) assert.ok(TASK_OFFER_ENDINGS.has(r));
-  for (const r of ["confirm_rejected", "user_stop", "dont_know", "free_text", "expired"]) assert.equal(TASK_OFFER_ENDINGS.has(r), false);
+  for (const r of ["no_root", "no_root_confirm_skipped", "already_confirmed", "max_cards"]) assert.ok(TASK_OFFER_ENDINGS.has(r)); // 3부-4: 끝까지 답한 길
+  for (const r of ["confirm_rejected", "user_stop", "dont_know", "free_text", "expired", "choice_unmatched", "corrected"]) assert.equal(TASK_OFFER_ENDINGS.has(r), false);
 });
 
 test("카드 길 → 고른 보기 id(고정 버튼·건너뛰기 빼고, 두 개 고른 건 둘 다)", () => {
@@ -60,4 +61,25 @@ test("다음 대화 첫머리·확인 카드·마무리", () => {
   assert.match(c.text, /한 걸음/);
   assert.match(taskCheckReply("더 버거웠어요"), /더 가벼운/);
   assert.doesNotMatch(RESULT_ACK.no_blame, /왜|해야/);
+});
+
+test("3부-4 누름 파싱: 질문 답은 0~9 번호, 지금 해 보기는 now/later만", async () => {
+  const { parseCardPick: parse } = await import("../cards/flow.ts");
+  assert.deepEqual(parse({ taskAsk: { row: 4, option: 1 } }), { taskAsk: { row: 4, option: 1 } });
+  assert.equal(parse({ taskAsk: { row: 4, option: 12 } }), null);
+  assert.equal(parse({ taskAsk: { row: 4, option: "1" } }), null);
+  assert.deepEqual(parse({ taskMini: { row: 4, choice: "now" } }), { taskMini: { row: 4, choice: "now" } });
+  assert.equal(parse({ taskMini: { row: 4, choice: "maybe" } }), null);
+  assert.match(tapMarker(parse({ taskAsk: { row: 4, option: 0 } })!), /task-ask$/);
+});
+
+test("3부-4 카드: 질문 보기는 번호 id, 지금 해 보기는 고른 답 + 초대 문장", async () => {
+  const { taskAskPayload, taskMiniPayload, miniNowText } = await import("./flow.ts");
+  const a = taskAskPayload(5, "요즘만 그런가요?", [{ text: "요즘만 그래요" }, { text: "오래됐어요" }]);
+  assert.deepEqual(a.options.map((o) => o.id), ["0", "1"]);
+  assert.equal(a.kind, "task_ask");
+  const m = taskMiniPayload(5, "좋아요, ‘산책’ 해 보기로 해요.", "지금 3분만 같이 해 볼까요?", "숨 고르기", false);
+  assert.match(m.text, /해 보기로 해요[\s\S]*3분만 같이[\s\S]*‘숨 고르기’를 짧게 맛보는/);
+  assert.deepEqual(m.options.map((o) => o.id), ["now", "later"]);
+  assert.match(miniNowText("숨 고르기", 3, "편하게 앉아요."), /3분만 같이 해 봐요[\s\S]*편하게 앉아요/);
 });

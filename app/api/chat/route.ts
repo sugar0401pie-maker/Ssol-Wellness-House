@@ -20,7 +20,7 @@ import { getSafetyData } from "@/lib/safety/rules";
 import { generateAnswer } from "@/lib/rag/generate";
 import { CARD_ROUTES, TAP_MARK, isTaskPick, parseCardPick, tapMarker } from "@/lib/cards/flow";
 import { cardMessageMark, endOffer, handlePick, noteScene, type CardEnded } from "@/lib/cards/session";
-import { chooseTask, planTaskOffer, recordTaskCheck, recordTaskResult, taskOpening } from "@/lib/tasks/server";
+import { answerTaskAsk, answerTaskMini, chooseTask, planTaskOffer, recordTaskCheck, recordTaskResult, taskOpening } from "@/lib/tasks/server";
 import { cardsOnFor, planCardOffer } from "@/lib/cards/offer";
 import { matchFirstWorry, worrySignals } from "@/lib/worry/match";
 import { isHeavyText, worryGuidanceBlock } from "@/lib/worry/guidance";
@@ -315,7 +315,9 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     try {
       const r = cardPick.task ? await chooseTask(admin, userId, cardPick.task)
         : cardPick.taskResult ? await recordTaskResult(admin, userId, sessionId, cardPick.taskResult)
-        : cardPick.taskCheck ? await recordTaskCheck(admin, userId, sessionId, cardPick.taskCheck) : null;
+        : cardPick.taskCheck ? await recordTaskCheck(admin, userId, sessionId, cardPick.taskCheck)
+        : cardPick.taskAsk ? await answerTaskAsk(admin, userId, sessionId, cardPick.taskAsk)
+        : cardPick.taskMini ? await answerTaskMini(admin, userId, sessionId, cardPick.taskMini) : null;
       if (r) {
         const reply = r.card?.text ?? r.text;
         await admin.from("chat_messages").insert({

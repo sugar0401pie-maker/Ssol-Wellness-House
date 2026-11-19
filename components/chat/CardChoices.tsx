@@ -17,11 +17,16 @@ export default function CardChoices({ card, disabled, onPick, onOther }: {
   const [sel, setSel] = useState<string[]>([]);
 
   // 2026-11-18(3부-3): 작은 연습 고르기(task) · 해 보니 어땠는지(task_result) · 확인 질문(task_check). 연습 이름은 길어서 한 줄씩 버튼으로 보인다.
-  if (card.kind === "task" || card.kind === "task_result" || card.kind === "task_check") {
+  // 2026-11-19(3부-4): 연습 전 짧은 질문(task_ask — 보기 번호) · "지금 같이 해 볼까요?"(task_mini).
+  if (card.kind === "task" || card.kind === "task_result" || card.kind === "task_check" || card.kind === "task_ask" || card.kind === "task_mini") {
     const row = card.row ?? 0;
     const pickOf = (id: string): CardPick =>
-      card.kind === "task" ? { task: { row, practice: id } } : card.kind === "task_result" ? { taskResult: { row, result: id as TaskResult } } : { taskCheck: { row, answer: id as TaskCheckAnswer } };
-    if (card.kind === "task") {
+      card.kind === "task" ? { task: { row, practice: id } }
+      : card.kind === "task_result" ? { taskResult: { row, result: id as TaskResult } }
+      : card.kind === "task_ask" ? { taskAsk: { row, option: Number(id) } }
+      : card.kind === "task_mini" ? { taskMini: { row, choice: id === "now" ? "now" : "later" } }
+      : { taskCheck: { row, answer: id as TaskCheckAnswer } };
+    if (card.kind === "task" || card.kind === "task_ask") {
       return (
         <div className="space-y-1.5 pl-1">
           {card.options.map((o) => (

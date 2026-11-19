@@ -6,7 +6,9 @@ import type { CardPayload, TaskResult } from "../cards/flow.ts";
 
 // 연습을 건네는 카드 끝(엔진 _end reason). "별로 아니에요"(confirm_rejected) · "그만할래요"(user_stop) · 모름으로 멈춤(dont_know)에는 건네지 않는다 —
 // 이유를 함께 찾지 못했거나 본인이 멈춘 자리에서 연습부터 내밀지 않는다(권하지 않고 고르게 — CLAUDE.md §2).
-export const TASK_OFFER_ENDINGS: ReadonlySet<string> = new Set(["confirmed", "confirm_partial", "confirm_weak", "deficit_hypothesis"]);
+// 2026-11-19(3부-4): 카드를 끝까지 답해 자연스럽게 끝난 길도 더함 — 상태·여건·선호로 끝난 길(no_root · no_root_confirm_skipped)은 엔진이 "지나가는 일인지 되풀이되는 일인지"를 먼저 판단하거나 묻고 그에 맞는 연습을 고른다(엔진 안내 v3.13~v3.17),
+// 이미 확인된 뿌리(already_confirmed) · 카드 수 끝(max_cards)도 같다.
+export const TASK_OFFER_ENDINGS: ReadonlySet<string> = new Set(["confirmed", "confirm_partial", "confirm_weak", "deficit_hypothesis", "no_root", "no_root_confirm_skipped", "already_confirmed", "max_cards"]);
 
 // 카드 세션 길(sess.path: {card, pick}) → 고른 보기 id 목록(엔진 taskCandidates의 pathOptionIds). 고정 버튼·건너뛰기는 뺀다. 두 개 고른 것("A+B")은 둘 다.
 export function pathOptionIds(path: unknown): string[] {
@@ -76,3 +78,23 @@ export function taskCheckReply(answer: string): string {
   if (answer === "더 버거웠어요") return `버거웠다고 말해 줘서 고마워요. 다음엔 더 가벼운 걸로 골라 볼게요.\n\n${AFTER_TASK_PROMPT}`;
   return `알려 줘서 고마워요.\n\n${AFTER_TASK_PROMPT}`;
 }
+
+// ───── 2026-11-19(3부-4): 연습을 건네기 전 질문 · 지금 같이 해 보기 ─────
+// 질문 문장과 보기는 엔진·DB 원문(겨루는 가설 sw_ob_root_discriminators · 뿌리 예측 sw_ob_root_predictions.probe_question · 여건 sw_ob_condition_questions · 대처 방식 sw_ob_coping_questions).
+// 보기 id는 번호("0","1",…) — 서버가 저장해 둔 질문에서 다시 찾는다(요청 값을 믿지 않음).
+export function taskAskPayload(row: number, ask: string, options: { text: string }[]): CardPayload {
+  return { kind: "task_ask", cardId: "CC-TASK-ASK", row, text: ask, options: options.map((o, i) => ({ id: String(i), label: o.text })), fixed: [] };
+}
+export const MINI_OPTIONS = [{ id: "now", label: "지금 해 볼게요" }, { id: "later", label: "나중에 할게요" }] as const;
+export function taskMiniPayload(row: number, chosenReply: string, invite: string, miniTitle: string, sameAsChosen: boolean): CardPayload {
+  const lead = sameAsChosen ? invite : `${invite} ‘${miniTitle}’를 짧게 맛보는 거예요.`;
+  return { kind: "task_mini", cardId: "CC-TASK-MINI", row, text: `${chosenReply}\n\n${lead}`, options: MINI_OPTIONS.map((o) => ({ ...o })), fixed: [] };
+}
+export function miniNowText(title: string, minutes: number | null, firstStep: string | null): string {
+  const lines = [`좋아요. ‘${title}’${minutes ? `, ${minutes}분만` : ""} 같이 해 봐요.`];
+  if (firstStep?.trim()) lines.push(firstStep.trim());
+  lines.push("해 보고 나서 아래에서 골라 주세요.");
+  return lines.join("\n\n");
+}
+export const MINI_LATER_REPLY = "좋아요. 편할 때 해 봐요. 하고 싶은 이야기가 있으면 이어서 들려주세요.";
+

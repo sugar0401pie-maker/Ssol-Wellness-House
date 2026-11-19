@@ -28,6 +28,9 @@ export type CardPick = {
   task?: { row: number; practice: string }; // practice = 실천 id 또는 "later"(지금은 괜찮아요)
   taskResult?: { row: number; result: TaskResult };
   taskCheck?: { row: number; answer: TaskCheckAnswer };
+  // 2026-11-19(3부-4): 연습을 건네기 전 질문 답(보기 번호) · 고른 뒤 "지금 같이 해 볼까요?" 답
+  taskAsk?: { row: number; option: number };
+  taskMini?: { row: number; choice: "now" | "later" };
 };
 export type TaskResult = "다 함" | "조금" | "못 함";
 export type TaskCheckAnswer = "조금 나아졌어요" | "그대로예요" | "더 버거웠어요" | "잘 모르겠어요";
@@ -53,6 +56,14 @@ export function parseCardPick(v: unknown): CardPick | null {
     const t = o.taskResult as Record<string, unknown> | null, row = rowOf(t?.row);
     return row && TASK_RESULTS.includes(t?.result as TaskResult) ? { taskResult: { row, result: t!.result as TaskResult } } : null;
   }
+  if (o.taskAsk !== undefined) {
+    const t = o.taskAsk as Record<string, unknown> | null, row = rowOf(t?.row), opt = t?.option;
+    return row && typeof opt === "number" && Number.isInteger(opt) && opt >= 0 && opt < 10 ? { taskAsk: { row, option: opt } } : null;
+  }
+  if (o.taskMini !== undefined) {
+    const t = o.taskMini as Record<string, unknown> | null, row = rowOf(t?.row);
+    return row && (t?.choice === "now" || t?.choice === "later") ? { taskMini: { row, choice: t.choice } } : null;
+  }
   if (o.taskCheck !== undefined) {
     const t = o.taskCheck as Record<string, unknown> | null, row = rowOf(t?.row);
     return row && TASK_CHECK_ANSWERS.includes(t?.answer as TaskCheckAnswer) ? { taskCheck: { row, answer: t!.answer as TaskCheckAnswer } } : null;
@@ -72,8 +83,8 @@ export function parseCardPick(v: unknown): CardPick | null {
 }
 
 export const tapMarker = (p: CardPick): string =>
-  `${TAP_MARK}:${p.confirm ?? p.scope ?? p.cardId ?? (p.task ? "task" : p.taskResult ? "task-result" : p.taskCheck ? "task-check" : "x")}`;
-export const isTaskPick = (p: CardPick | null): boolean => !!(p && (p.task || p.taskResult || p.taskCheck));
+  `${TAP_MARK}:${p.confirm ?? p.scope ?? p.cardId ?? (p.task ? "task" : p.taskResult ? "task-result" : p.taskCheck ? "task-check" : p.taskAsk ? "task-ask" : p.taskMini ? "task-mini" : "x")}`;
+export const isTaskPick = (p: CardPick | null): boolean => !!(p && (p.task || p.taskResult || p.taskCheck || p.taskAsk || p.taskMini));
 
 // 엔진 입력으로 바꾼다. other는 사용자가 쓴 글을 함께 넘긴다.
 export function toEnginePick(p: CardPick, text: string): Record<string, unknown> {
@@ -87,7 +98,7 @@ export function toEnginePick(p: CardPick, text: string): Record<string, unknown>
 }
 
 export type CardPayload = {
-  kind: "card" | "confirm" | "scope" | "task" | "task_result" | "task_check";
+  kind: "card" | "confirm" | "scope" | "task" | "task_result" | "task_check" | "task_ask" | "task_mini";
   row?: number; // 과제 카드(task*)일 때 sw_user_tasks 행 id
   cardId: string; // kind=confirm이면 "CC-CONFIRM", scope면 "CC-CONFIRM-SCOPE"
   text: string; // 말풍선에 보이는 문장(카드 안내문 · 확인 문장 · 범위 질문)

@@ -311,7 +311,9 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   let cardTapStopped = false;
   let cardEnded: CardEnded | undefined;
   // 2026-11-18(3부-3): 과제 카드 누름(연습 고르기 · 해 보니 어땠는지 · 확인 답). AI 없이 정해진 문장으로 답하고 장부·과제 기록에 남긴다.
-  if (cardPick && isTaskPick(cardPick) && CARD_ROUTES.has(decision.route) && (await cardsOnFor(admin, userId))) {
+  // 2026-11-20: 과제 버튼은 우리가 보여 준 버튼에 대한 답이라, 라우터가 버튼 글자를 일상 경로가 아닌 쪽(임상 등)으로 읽어도 그대로 처리한다.
+  // 위기·폭력은 이 앞에서 이미 끝났다(안전 응답) — 그 판단은 바뀌지 않는다.
+  if (cardPick && isTaskPick(cardPick) && (await cardsOnFor(admin, userId))) {
     try {
       const r = cardPick.task ? await chooseTask(admin, userId, cardPick.task)
         : cardPick.taskResult ? await recordTaskResult(admin, userId, sessionId, cardPick.taskResult)

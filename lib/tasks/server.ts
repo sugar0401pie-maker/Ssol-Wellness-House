@@ -3,6 +3,8 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import * as RS from "@/lib/interp/vendor/rootState.mjs";
 import * as CS from "@/lib/interp/vendor/case.mjs";
 import * as PS from "@/lib/interp/vendor/personal.mjs";
+import * as M from "@/lib/interp/vendor/motive.mjs";
+import { growthReport } from "@/lib/interp/growth";
 import { loadCardData } from "@/lib/cards/session";
 import type { CardEnded } from "@/lib/cards/session";
 import type { CardPayload, TaskCheckAnswer, TaskResult } from "@/lib/cards/flow";
@@ -71,10 +73,17 @@ async function recentUserTexts(admin: Admin, userId: string, chatId: string): Pr
 }
 
 // 개인 맞춤에 쓰는 사람 정보 — 온보딩 답(개인화 동의 + 끝낸 사용자만) · 쌓인 뿌리 상태 · 과제 기록 · 다른 고민.
-async function personOf(admin: Admin, userId: string, states: States, tasks: TaskRow[], concerns: Record<string, unknown>[]): Promise<Person> {
-  const { data: ob } = await admin.from("user_onboarding").select("*").eq("user_id", userId).maybeSingle();
+// 3부-5(2026-11-20): + 그 장면 영역의 지금 동기 위치(MV-03 — 맞는 실천 +0.5) · 나를 넘어서는 신호 · 심리테스트 대처 방식(이탈형이면 대처 방식 짐작 '회피' — 짐작일 뿐 본인 답이 앞섬).
+async function personOf(admin: Admin, userId: string, states: States, tasks: TaskRow[], concerns: Record<string, unknown>[], sceneKey: string | null = null): Promise<Person> {
+  const [{ data: ob }, growth, { data: quiz }] = await Promise.all([
+    admin.from("user_onboarding").select("*").eq("user_id", userId).maybeSingle(),
+    growthReport(admin, userId).catch(() => null),
+    admin.from("ssol_quiz_results").select("type_key").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(), // 다른 사이트 표 — 읽기만
+  ]);
   const answers = onboardingEligible(ob) ? mapOnboardingAnswers(ob) : {};
-  const base = { rootStates: states, tasks, concerns: concerns.map((r) => CS.concernStateFromRow(r)) };
+  const motivePosition = sceneKey && growth ? (growth.motive[M.domainOf(sceneKey) as string] ?? null) : null;
+  const testCoping = String(quiz?.type_key ?? "").split("-")[1] === "disengage" ? "disengage" : null;
+  const base = { rootStates: states, tasks, concerns: concerns.map((r) => CS.concernStateFromRow(r)), motivePosition, beyondSignal: growth?.beyond ?? false, testCoping };
   return PS.withTaskTheory(PS.personFromOnboarding(answers, base), tasks) as Person;
 }
 
@@ -84,7 +93,7 @@ async function buildCtx(admin: Admin, userId: string, chatId: string, pend: Pend
     loadTaskEngine(admin), loadCardData(admin), loadStates(admin, userId), userTasks(admin, userId), concernRows(admin, userId), askedGroups(admin, userId),
     admin.from("chat_sessions").select("worry_pick").eq("session_id", chatId).maybeSingle(),
   ]);
-  const person = await personOf(admin, userId, states, tasks, concerns);
+  const person = await personOf(admin, userId, states, tasks, concerns, pend.sceneKey);
   const prev = concerns.find((r) => r.concern_id === pend.sceneKey);
   const cs = prev ? CS.concernStateFromRow(prev) : CS.newConcernState(userId, pend.sceneKey);
   const worry = (sess?.worry_pick ?? null) as { intent_id?: string | null; secondary?: string | null } | null;
@@ -268,7 +277,7 @@ export async function chooseTask(admin: Admin, userId: string, pick: { row: numb
   let mini: Record<string, unknown> | null = null;
   try {
     const [states, tasks, concerns] = await Promise.all([loadStates(admin, userId), userTasks(admin, userId), concernRows(admin, userId)]);
-    const person = await personOf(admin, userId, states, tasks, concerns);
+    const person = await personOf(admin, userId, states, tasks, concerns, row.concern_id);
     const prev = concerns.find((r) => r.concern_id === row.concern_id);
     const cs = prev ? CS.concernStateFromRow(prev) : null;
     mini = PS.miniExperiment([t], cs, roots, person) as Record<string, unknown> | null;

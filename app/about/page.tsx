@@ -161,10 +161,9 @@ export default function AboutPage() {
 
         <H2>만든 사람들</H2>
         <div className="mt-3 space-y-3">
-          {C.MAKERS.map((m) => (
-            <div key={m.name} className="rounded-xl border border-line bg-white p-4">
-              <p className="text-[15px] font-semibold text-foreground">{m.name}</p>
-              <p className="text-[13px] text-slate-500">{m.title}</p>
+          {C.MAKERS.map((m, i) => (
+            <div key={i} className="rounded-xl border border-line bg-white p-4">
+              <p className="text-[15px] font-semibold text-foreground">{m.title}</p>
               <dl className="mt-2 space-y-1 text-[13px] leading-5 text-slate-600">
                 {m.items.map(([k, v]) => (
                   <div key={k} className="flex gap-2">

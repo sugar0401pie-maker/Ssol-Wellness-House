@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { randomSeed, variantFor } from "@/lib/characters/variants";
 import { bootstrap } from "@/lib/app/bootstrapClient";
 import SiteFooter from "@/components/SiteFooter";
+import SeaFriendCard from "@/components/app/SeaFriendCard";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -27,22 +26,9 @@ function formatDateKey(dateKey: string): string {
   return `${m}월 ${d}일 ${WEEKDAY[dt.getDay()]}요일`;
 }
 
-// 2026-09-27 owner 피드백: 유형 한 줄 설명(tagline)이 화면 너비에서 애매한 지점에 자동 줄바꿈돼
-// 어색하게 잘렸다. 모든 tagline이 "은유 부분, 실제 의미" 형태로 쉼표 하나만 갖고 있어서
-// (persona_profiles 15행 전수 확인함), 그 쉼표에서 직접 줄을 나누면 항상 자연스럽게 끊긴다.
-function splitAtFirstComma(text: string): [string, string | null] {
-  const idx = text.indexOf(",");
-  if (idx === -1) return [text, null];
-  return [text.slice(0, idx + 1), text.slice(idx + 1).trim()];
-}
-
 export default function HomeTab() {
   const [data, setData] = useState<DailyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // 2026-10-01: 탭이 마운트될 때 한 번만 뽑는다 — 화면을 다시 불러올 때마다(새로고침, 재방문)
-  // 바뀌지만, 같은 화면을 보는 동안에는 바뀌지 않는다("로딩할 때마다 랜덤").
-  const [variantSeed] = useState(randomSeed);
-
   // 2026-09-26: 테스트를 새로 마치고 돌아오면 캐릭터도 바로 바뀌도록 창이 다시 보일 때 재조회한다.
   useEffect(() => {
     let cancelled = false;
@@ -106,59 +92,15 @@ export default function HomeTab() {
         </p>
         <p className="mt-1 text-[14px] leading-5 text-slate-500">{data?.greeting ?? " "}</p>
 
-        {data?.character && (
-          <div className="mt-4 flex flex-col items-center">
-            {/* 2026-10-01 owner 요청: 유형별 5가지 변형 이미지 중 하나를 랜덤으로 보여준다
-                (결과가 있는 사용자만 — 결과 없는 사용자의 placeholder는 seed로 고정된 단일
-                이미지를 그대로 쓴다). 정사각형 원본(1080×1080)에 맞춰 컨테이너도
-                aspect-[4/3]에서 aspect-square로 바꿔 레터박스 없이 꽉 차게, 더 크게 보이도록 함. */}
-            <div className="relative aspect-square w-full">
-              <Image
-                src={
-                  data.character.hasResult
-                    ? `/characters/${data.character.code}/${variantFor(data.character.code, variantSeed)}.png`
-                    : `/characters/${data.character.code}.png`
-                }
-                alt={data.character.name ?? "웰니스 캐릭터"}
-                fill
-                className={`object-contain ${data.character.hasResult ? "" : "opacity-40"}`}
-                priority={false}
-              />
-            </div>
-            {data.character.hasResult && data.character.name ? (
-              <p className="mt-2 px-2 text-center text-[14px] leading-6 text-foreground">
-                당신은 <span className="font-medium text-navy">{data.character.name}</span> 유형이에요.
-                {data.character.tagline &&
-                  (() => {
-                    const [firstLine, secondLine] = splitAtFirstComma(data.character.tagline);
-                    return (
-                      <span className="mt-0.5 block text-slate-500">
-                        {firstLine}
-                        {secondLine && (
-                          <>
-                            <br />
-                            {secondLine}
-                          </>
-                        )}
-                      </span>
-                    );
-                  })()}
-              </p>
-            ) : (
-              <p className="mt-2 text-center text-[12px] leading-4 text-slate-400">
-                아직 심리테스트 결과가 없어서 랜덤 캐릭터예요.
-                <br />
-                테스트하면 내 캐릭터를 만날 수 있어요.
-              </p>
-            )}
-          </div>
-        )}
+        {/* 2026-11-23 대표님 요청: 디저트 유형 그림·문구("당신은 ○○ 유형이에요") 대신 "오늘의 바다 친구"(그림 + 이야기, 열 때마다 무작위).
+            홈 데이터를 기다리지 않고 바로 보인다(서버 데이터가 필요 없음). */}
+        <SeaFriendCard />
 
         {/* 2026-10-15 owner 요청: 홈 데이터(캐릭터·오늘의 제안)를 불러오는 동안 빈 칸 대신 안내를 보여준다. */}
         {!data && !error && (
           <div role="status" aria-live="polite" className="mt-10 flex flex-col items-center text-center">
             <p className="text-[14px] leading-6 text-slate-600">
-              <span className="ssol-pulse-text">오늘의 캐릭터와 제안을 불러오고 있어요</span>
+              <span className="ssol-pulse-text">오늘의 제안을 불러오고 있어요</span>
             </p>
             <p className="mt-1 text-[12px] leading-5 text-slate-400">
               <span className="ssol-pulse-text" style={{ animationDelay: "200ms" }}>

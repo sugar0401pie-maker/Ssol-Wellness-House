@@ -1,6 +1,6 @@
 // 홈 첫 화면 "오늘의 바다 친구" 고르기 — 순수 함수(2026-11-23 문안 문서 0장 "보여 주는 방식").
 // 20마리가 같은 확률로 나오도록 동물을 먼저 뽑고, 그 동물의 이야기(3~4개) 중 하나를 뽑는다. 바로 전에 본 이야기는 다시 나오지 않는다.
-// 그림은 그 동물이 나오는 정사각 그림(혼자·함께) 중에서 무작위. 클라이언트에서 쓰므로 "server-only"를 넣지 않는다.
+// 그림은 그 동물이 나오는 정사각 그림(혼자·함께) 중에서 무작위 — 함께 나오는 그림은 그림 속 동물 모두의 목록에 있어 어느 동물의 이야기와도 짝지어질 수 있다. 클라이언트에서 쓰므로 "server-only"를 넣지 않는다.
 import { SEA_FRIENDS, type SeaFriend, type SeaFriendItem } from "./data.ts";
 
 // 문안 문서 3장 "게시 전 확인할 것" 항목을 숨기려면 true(그 동물에 남는 이야기가 없으면 동물째 빠진다).
@@ -21,5 +21,5 @@ export function pickSeaFriend(lastItemId: string | null, rand: () => number = Ma
     const rest = deck.flatMap((f) => f.items.filter((i) => i.id !== lastItemId).map((i) => ({ f, i })));
     if (rest.length) ({ f: friend, i: item } = rest[0]);
   }
-  return { friend, item, image: `/sea-friends/${friend.key}/${at(friend.images)}` };
+  return { friend, item, image: `/sea-friends/${at(friend.images)}.webp` };
 }

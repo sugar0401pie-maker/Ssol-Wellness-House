@@ -8,7 +8,7 @@ test("문안: 20마리 · 66개 · 동물마다 3~4개 · 그림이 있고 두 �
   assert.equal(SEA_FRIENDS.reduce((n, f) => n + f.items.length, 0), 66);
   for (const f of SEA_FRIENDS) {
     assert.ok(f.items.length >= 3 && f.items.length <= 4, f.name);
-    assert.ok(f.images.length > 0 && f.images.every((x) => x.endsWith(".webp")), f.name);
+    assert.ok(f.images.length > 0 && f.images.every((x) => /^[0-9a-f]{12}$/.test(x)), f.name);
     for (const i of f.items) {
       assert.ok(i.id.startsWith(`${f.name}-`));
       assert.ok(i.title && i.body);
@@ -25,7 +25,7 @@ test("동물을 먼저 뽑아 20마리가 고르게 나온다(4,000번에 동물
   for (let k = 0; k < 4000; k++) {
     const p = pickSeaFriend(last, rand);
     assert.notEqual(p.item.id, last); // 바로 전 이야기는 다시 안 나옴
-    assert.ok(p.image.startsWith(`/sea-friends/${p.friend.key}/`));
+    assert.ok(p.friend.images.some((x) => p.image === `/sea-friends/${x}.webp`)); // 그 동물이 나오는 그림만
     cnt[p.friend.name] = (cnt[p.friend.name] ?? 0) + 1;
     last = p.item.id;
   }
@@ -44,4 +44,12 @@ test("확인 전 항목 숨기기 스위치: 숨기면 check 항목이 빠지고
   assert.ok(d.every((f) => f.items.every((i) => !i.check)));
   assert.ok(!d.some((f) => f.name === "거북" || f.name === "물개")); // 세 이야기 모두 확인 대상
   assert.equal(seaFriendDeck(false).length, 20);
+});
+
+test("여러 친구가 함께 나오는 그림은 나오는 동물 모두의 목록에 있다(그림 한 장 · 이야기는 그중 누구든)", () => {
+  const owners = new Map<string, string[]>();
+  for (const f of SEA_FRIENDS) for (const img of f.images) owners.set(img, [...(owners.get(img) ?? []), f.name]);
+  const shared = [...owners.values()].filter((names) => names.length > 1);
+  assert.ok(shared.length > 0);
+  assert.ok(shared.some((n) => n.includes("수달") && n.includes("해달")));
 });

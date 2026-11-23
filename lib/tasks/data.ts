@@ -7,12 +7,13 @@ import { caseDataFromDb, discriminatorsFromDb, personalDataFromDb } from "@/lib/
 import { releaseInSession } from "./flow";
 import { loadOutcomeStats, refreshStatsIfStale } from "./stats";
 
-// 과제 고르기 엔진 데이터(사례개념화 ssol_case · 개인 맞춤 ssol_personal)를 DB 표(sw_ob_*, CSO DB v5.24)에서 읽어 10분 둔다.
+// 과제 고르기 엔진 데이터(사례개념화 ssol_case · 개인 맞춤 ssol_personal)를 DB 표(sw_ob_*, CSO DB v5.32)에서 읽어 10분 둔다.
 // 표 목록은 엔진 안내 v3.8~v3.17이 caseDataFromDb · personalDataFromDb에 넘기라고 한 것 그대로다. 여러 요청이 와도 한 번만 읽는다.
 type Admin = ReturnType<typeof createAdminClient>;
 const CASE_TABLES = [
   "sw_ob_scene_lens", "sw_ob_root_layers", "sw_ob_option_tags", "sw_ob_practice_flags", "sw_ob_stage_signals", "sw_ob_root_theory", "sw_ob_root_practices",
   "sw_ob_practice_area", "sw_ob_redirect_lines", "sw_ob_practice_theory", "sw_ob_scene_practices", "sw_ob_worry_practices",
+  "sw_ob_root_causes", "sw_ob_sub_branches", "sw_ob_sub_branch_roots", // v2.32(DB v5.32 · 엔진 v3.31): 결과형 → 원인 뿌리 · 갈래 → 뿌리(과제가 갈래를 봄)
 ] as const;
 const PERSONAL_TABLES = [
   "sw_ob_practice_size", "sw_ob_scene_context", "sw_ob_root_practice_avoid", "sw_ob_roots", "sw_ob_practice_ref", "sw_ob_coping_questions", "sw_ob_practice_codes",

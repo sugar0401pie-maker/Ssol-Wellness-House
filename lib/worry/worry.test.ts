@@ -52,6 +52,14 @@ test("첫 답변 지침: 받아 주는 한 줄 → 기저 생각 → 질문(최�
   assert.equal(worryGuidanceBlock(null), null);
 });
 
+test("첫 답변 지침: 바로 뒤에 카드가 붙으면 마지막 질문 재료를 넣지 않는다(두 번 묻지 않게)", () => {
+  const withQ = worryGuidanceBlock(baseRoute)!;
+  const noQ = worryGuidanceBlock(baseRoute, { cardFollows: true })!;
+  assert.match(withQ, /가장 지치게 하는 건/);
+  assert.doesNotMatch(noQ, /가장 지치게 하는 건|한 번만 묻는다/);
+  assert.match(noQ, /쉬고 싶은 마음/); // 기저 생각 한 줄은 그대로
+});
+
 test("첫 답변 지침: 강도가 보통이면 받아 주는 한 줄을 넣지 않는다, 부 고민 한 줄은 있을 때만", () => {
   const b = worryGuidanceBlock({ ...baseRoute, tone: null, ack: null }, { secondaryLine: "겉으로는 퇴사할지를 묻고 있지만, 연애도 함께 걸려 있는 것 같아요." })!;
   assert.doesNotMatch(b, /맨 앞에서 힘듦/);

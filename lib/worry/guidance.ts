@@ -32,7 +32,8 @@ export function isHeavyText(sig: WorrySignals | null | undefined): boolean {
 const quote = (s: string) => `“${s.trim()}”`;
 
 // 첫 답변 지침 블록(없으면 null). 순서는 엔진 안내대로: 받아 주는 한 줄 → 기저 생각 한 줄 → (주·부가 다르면) 부 고민 한 줄.
-export function worryGuidanceBlock(route: WorryRoute | null, opts: { secondaryLine?: string | null } = {}): string | null {
+// opts.cardFollows(2026-11-23): 이 답변 바로 뒤에 카드(갈래 카드·장면 카드)가 붙으면 마지막 질문 재료를 넣지 않는다 — 카드가 곧 질문이라 두 번 묻게 되기 때문.
+export function worryGuidanceBlock(route: WorryRoute | null, opts: { secondaryLine?: string | null; cardFollows?: boolean } = {}): string | null {
   if (!route) return null;
   const lines: string[] = [];
   if (route.name) lines.push(`- 이용자의 첫 말은 '${route.name}' 고민에 가장 가까워 보인다(참고용 추정 — 이용자의 말이 늘 우선이고, 이 이름을 답에 쓰거나 단정하지 않는다).`);
@@ -44,7 +45,7 @@ export function worryGuidanceBlock(route: WorryRoute | null, opts: { secondaryLi
   }
   if (opts.secondaryLine?.trim()) lines.push(`- 두 고민이 함께 걸려 있어 보이면 이 한 줄을 덧붙일 수 있다: ${quote(opts.secondaryLine)}`);
   const qs = (route.questions ?? []).filter((q) => typeof q === "string" && q.trim()).slice(0, 2);
-  if (qs.length) lines.push(`- 마지막에 질문이 필요하면 이 중 하나를 골라 한 번만 묻는다: ${qs.map(quote).join(" / ")}`);
+  if (qs.length && !opts.cardFollows) lines.push(`- 마지막에 질문이 필요하면 이 중 하나를 골라 한 번만 묻는다: ${qs.map(quote).join(" / ")}`);
   return lines.length ? lines.join("\n") : null;
 }
 
@@ -55,6 +56,7 @@ export function worryRecord(p: {
   pickedBy: "model" | "top_candidate" | "none";
   candidates: { intent_id: string; score: number }[];
   reason?: string | null;
+  branch?: { branch_id: string; known: boolean; by: string } | null;
   at?: string;
 }): Record<string, unknown> {
   return {
@@ -71,6 +73,10 @@ export function worryRecord(p: {
     areas: p.sig?.areas ?? [],
     level: p.sig?.intensity?.level ?? null,
     signals: p.sig?.intensity?.signals ?? [],
+    // 2026-11-23(v2.32): 갈래(까닭) — 과제 후보가 이 갈래의 뿌리를 본다(규칙 WT-06). 모르면 세부 코드-0.
+    branch_id: p.branch?.branch_id ?? null,
+    branch_known: p.branch?.known ?? false,
+    branch_by: p.branch?.by ?? null,
     at: p.at ?? new Date().toISOString(),
   };
 }

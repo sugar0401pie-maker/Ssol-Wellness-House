@@ -31,6 +31,8 @@ export type CardPick = {
   // 2026-11-19(3부-4): 연습을 건네기 전 질문 답(보기 번호) · 고른 뒤 "지금 같이 해 볼까요?" 답
   taskAsk?: { row: number; option: number };
   taskMini?: { row: number; choice: "now" | "later" };
+  // 2026-11-23(CSO 묶음 v2.32 · 규칙 WT-07): 첫 말의 세부 고민이 정해졌는데 까닭(갈래)을 모를 때 보여 준 갈래 카드의 답 — 갈래 코드 · "other"(다른 까닭이에요) · "unknown"(잘 모르겠어요)
+  branch?: { option: string };
 };
 export type TaskResult = "다 함" | "조금" | "못 함";
 export type TaskCheckAnswer = "조금 나아졌어요" | "그대로예요" | "더 버거웠어요" | "잘 모르겠어요";
@@ -64,6 +66,10 @@ export function parseCardPick(v: unknown): CardPick | null {
     const t = o.taskMini as Record<string, unknown> | null, row = rowOf(t?.row);
     return row && (t?.choice === "now" || t?.choice === "later") ? { taskMini: { row, choice: t.choice } } : null;
   }
+  if (o.branch !== undefined) {
+    const t = o.branch as Record<string, unknown> | null, opt = t?.option;
+    return opt === "other" || opt === "unknown" || id(opt) ? { branch: { option: opt as string } } : null;
+  }
   if (o.taskCheck !== undefined) {
     const t = o.taskCheck as Record<string, unknown> | null, row = rowOf(t?.row);
     return row && TASK_CHECK_ANSWERS.includes(t?.answer as TaskCheckAnswer) ? { taskCheck: { row, answer: t!.answer as TaskCheckAnswer } } : null;
@@ -83,8 +89,9 @@ export function parseCardPick(v: unknown): CardPick | null {
 }
 
 export const tapMarker = (p: CardPick): string =>
-  `${TAP_MARK}:${p.confirm ?? p.scope ?? p.cardId ?? (p.task ? "task" : p.taskResult ? "task-result" : p.taskCheck ? "task-check" : p.taskAsk ? "task-ask" : p.taskMini ? "task-mini" : "x")}`;
+  `${TAP_MARK}:${p.confirm ?? p.scope ?? p.cardId ?? (p.task ? "task" : p.taskResult ? "task-result" : p.taskCheck ? "task-check" : p.taskAsk ? "task-ask" : p.taskMini ? "task-mini" : p.branch ? "branch" : "x")}`;
 export const isTaskPick = (p: CardPick | null): boolean => !!(p && (p.task || p.taskResult || p.taskCheck || p.taskAsk || p.taskMini));
+export const isBranchPick = (p: CardPick | null): boolean => !!p?.branch;
 
 // 엔진 입력으로 바꾼다. other는 사용자가 쓴 글을 함께 넘긴다.
 export function toEnginePick(p: CardPick, text: string): Record<string, unknown> {
@@ -98,7 +105,7 @@ export function toEnginePick(p: CardPick, text: string): Record<string, unknown>
 }
 
 export type CardPayload = {
-  kind: "card" | "confirm" | "scope" | "task" | "task_result" | "task_check" | "task_ask" | "task_mini";
+  kind: "card" | "confirm" | "scope" | "task" | "task_result" | "task_check" | "task_ask" | "task_mini" | "branch";
   row?: number; // 과제 카드(task*)일 때 sw_user_tasks 행 id
   cardId: string; // kind=confirm이면 "CC-CONFIRM", scope면 "CC-CONFIRM-SCOPE"
   text: string; // 말풍선에 보이는 문장(카드 안내문 · 확인 문장 · 범위 질문)

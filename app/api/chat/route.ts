@@ -18,12 +18,14 @@ import { SUPPRESS_OFFERS, WATCH_TOPICS, canSoftenDrunkDriving, detectGuidanceTop
 import { embedQuery } from "@/lib/rag/retrieve";
 import { getSafetyData } from "@/lib/safety/rules";
 import { generateAnswer } from "@/lib/rag/generate";
-import { CARD_ROUTES, TAP_MARK, isTaskPick, parseCardPick, tapMarker } from "@/lib/cards/flow";
+import { CARD_ROUTES, TAP_MARK, isBranchPick, isTaskPick, parseCardPick, tapMarker } from "@/lib/cards/flow";
 import { cardMessageMark, endOffer, handlePick, noteScene, type CardEnded } from "@/lib/cards/session";
 import { answerTaskAsk, answerTaskMini, chooseTask, planTaskOffer, recordTaskCheck, recordTaskResult, taskOpening } from "@/lib/tasks/server";
 import { cardsOnFor, planCardOffer } from "@/lib/cards/offer";
 import { matchFirstWorry, worrySignals } from "@/lib/worry/match";
 import { isHeavyText, worryGuidanceBlock } from "@/lib/worry/guidance";
+import { handleBranchPick } from "@/lib/worry/branchFlow";
+import { isKnownBranch } from "@/lib/worry/branch";
 import { planHypothesis } from "@/lib/interp/hypothesis";
 import { runInterpretation } from "@/lib/interp/run";
 import { DAILY_MESSAGE_LIMIT, startOfTodayKST } from "@/lib/safety/dailyLimit";
@@ -316,7 +318,22 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 2026-11-18(3부-3): 과제 카드 누름(연습 고르기 · 해 보니 어땠는지 · 확인 답). AI 없이 정해진 문장으로 답하고 장부·과제 기록에 남긴다.
   // 2026-11-20: 과제 버튼은 우리가 보여 준 버튼에 대한 답이라, 라우터가 버튼 글자를 일상 경로가 아닌 쪽(임상 등)으로 읽어도 그대로 처리한다.
   // 위기·폭력은 이 앞에서 이미 끝났다(안전 응답) — 그 판단은 바뀌지 않는다.
-  if (cardPick && isTaskPick(cardPick) && (await cardsOnFor(admin, userId))) {
+  // 2026-11-23(CSO 묶음 v2.32 · 규칙 WT-07): 갈래 카드(그렇게 느끼는 까닭) 답 — AI 없이 다음 갈래 카드 · 장면 카드 · 과제 질문/연습 카드 중 하나로 바로 답한다.
+  // 과제 버튼과 같이, 우리가 보여 준 버튼에 대한 답이라 라우터가 버튼 글자를 다른 일반 경로로 읽어도 그대로 처리한다(위기·폭력은 이 앞에서 이미 끝났다).
+  if (cardPick && isBranchPick(cardPick) && cardPick.branch && (await cardsOnFor(admin, userId))) {
+    try {
+      const r = await handleBranchPick(admin, { userId, sessionId, option: cardPick.branch.option, route: decision.route });
+      if (r) {
+        await admin.from("chat_messages").insert({
+          session_id: sessionId, user_id: userId, role: "assistant", content: r.text, route: decision.route, reflection_signal_id: r.mark,
+        });
+        return NextResponse.json({ sessionId, route: decision.route, reply: r.text, ...(r.card ? { card: r.card } : {}), done: true, ...routingMeta });
+      }
+    } catch (e) {
+      console.warn("갈래 카드 처리 실패, 평소 대화로 진행:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
+    }
+    cardTapStopped = true;
+  } else if (cardPick && isTaskPick(cardPick) && (await cardsOnFor(admin, userId))) {
     try {
       const r = cardPick.task ? await chooseTask(admin, userId, cardPick.task)
         : cardPick.taskResult ? await recordTaskResult(admin, userId, sessionId, cardPick.taskResult)
@@ -419,11 +436,19 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
   // 실패하거나 고를 것이 없으면 아무것도 바뀌지 않는다(평소 대화).
   const worry = await worryPromise;
   timer.lap("worry_match");
+  // 2026-11-23(v2.32 · 규칙 WT-07): 세부 고민은 정해졌는데 까닭(갈래)이 글에 없으면 장면 카드 대신 갈래 카드를 이번 답변 뒤에 붙인다.
+  // 까닭이 글에 있으면(모델·낱말 맞춤으로 갈래가 정해짐) 묻지 않고 예전처럼 장면 카드(있으면) — 과제는 그 갈래의 뿌리를 본다.
+  let branchRecord: Record<string, unknown> | null = null;
   if (worry) {
-    void admin.from("chat_sessions").update({ worry_pick: worry.record }).eq("session_id", sessionId).then(({ error }) => {
+    const cardsOn = dialogue.generationExtras.dialogueMode === undefined && (await cardsOnFor(admin, userId));
+    const askBranch = cardsOn && !!worry.branch && !isKnownBranch(worry.branch);
+    const saved = admin.from("chat_sessions").update({ worry_pick: worry.record }).eq("session_id", sessionId).then(({ error }) => {
       if (error) console.warn("세부 고민 기록 실패(채팅에는 영향 없음):", error.code); // 마이그레이션 20261118000200 전이면 칸이 없다
     });
-    if (worry.route.mode === "cards" && worry.route.scene_key && dialogue.generationExtras.dialogueMode === undefined && (await cardsOnFor(admin, userId))) {
+    if (askBranch) {
+      await saved; // 갈래 카드 상태를 같은 칸에 이어서 저장하므로 먼저 끝낸다
+      branchRecord = worry.record;
+    } else if (worry.route.mode === "cards" && worry.route.scene_key && cardsOn) {
       await noteScene(admin, userId, sessionId, worry.route.scene_key).catch((e) => console.warn("세부 고민 장면 기록 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown"));
     }
   }
@@ -432,6 +457,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     admin, userId, sessionId, route: suppressOffers ? "clinical_distress" : decision.route, message, recentUserMessages: recentUserTexts,
     otherFlowActive: dialogue.generationExtras.dialogueMode !== undefined, tapped: cardPick !== null || cardTapStopped,
     preferOptions: worry?.route.preferOptions,
+    branchRecord,
   });
   // 2026-11-18(3부-3): 카드가 확인으로 끝났으면 엔진이 고른 작은 연습 두 가지를 이번 답변 뒤에 건넨다(이론 탐색 흐름이 이번 턴을 쓰면 겹치지 않음).
   const taskPlan = cardEnded && dialogue.generationExtras.dialogueMode === undefined
@@ -467,7 +493,7 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     ...cardPlan?.generationExtras,
     ...(taskPlan ? { dialogueMode: "task_follows" as const } : {}),
     ...hypothesis?.generationExtras,
-    worryGuidance: worryGuidanceBlock(worry?.route ?? null, { secondaryLine: worry?.secondaryLine }),
+    worryGuidance: worryGuidanceBlock(worry?.route ?? null, { secondaryLine: worry?.secondaryLine, cardFollows: cardPlan !== null }),
     // SAFE-018~021 지침 + 사별·질병 지침(R3) + 점수·진단 확정 요청 첫 번째/되풀이 지침(S5)을 한 블록으로 합친다.
     safetyGuidance:
       [

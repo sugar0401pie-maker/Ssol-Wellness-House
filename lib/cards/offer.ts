@@ -6,6 +6,7 @@ import { detectTraumaStage } from "@/lib/safety/traumaStage";
 import { hasCrisisHistory } from "@/lib/safety/crisisHistory";
 import { CARD_ROUTES, cardsEnabled, type CardPayload } from "./flow";
 import { abandonPending, cardMessageMark, endOffer, findOffer, presentFirstCard } from "./session";
+import { presentBranchCard } from "@/lib/worry/branchFlow";
 
 // 채팅 API가 쓰는 카드 진입점(2026-10-20, 로드맵 3·4번). 기능이 꺼져 있으면 DB 조회 없이 즉시 돌아간다.
 type Admin = ReturnType<typeof createAdminClient>;
@@ -25,6 +26,8 @@ export type CardOfferPlan = {
 export async function planCardOffer(p: {
   admin: Admin; userId: string; sessionId: string; route: string; message: string; recentUserMessages: string[]; otherFlowActive: boolean; tapped: boolean;
   preferOptions?: string[]; // 첫 말의 세부 고민에 맞는 첫 카드 보기(lib/worry — 2026-11-18)
+  // 2026-11-23(v2.32 · 규칙 WT-07): 세부 고민은 정해졌는데 까닭(갈래)이 글에 없으면 장면 카드 대신 갈래 카드를 붙인다(이번 첫 말의 worry_pick 기록을 같이 넘김).
+  branchRecord?: Record<string, unknown> | null;
 }): Promise<CardOfferPlan | null> {
   try {
     if (!(await cardsOnFor(p.admin, p.userId))) return null;
@@ -32,12 +35,28 @@ export async function planCardOffer(p: {
     // 사용자가 카드 보기를 누르지 않고 글을 썼다면 보여 줬던 카드는 접는다(보기 밖 이야기로 이어간 것).
     await abandonPending(p.admin, p.userId, p.sessionId);
     if (!CARD_ROUTES.has(p.route) || p.otherFlowActive) return null;
-    const offer = await findOffer(p.admin, p.userId, p.sessionId);
-    if (!offer) return null;
-    // 더 조심스러운 쪽: 사별·질병 등 이론 탐색을 닫는 상황, 트라우마 단계 신호, 위기 이력이 있는 계정에서는 카드를 열지 않는다.
+    const branchRecord = p.branchRecord ?? null;
+    const offer = branchRecord ? null : await findOffer(p.admin, p.userId, p.sessionId);
+    if (!offer && !branchRecord) return null;
+    // 더 조심스러운 쪽: 사별·질병 등 이론 탐색을 닫는 상황, 트라우마 단계 신호, 위기 이력이 있는 계정에서는 카드를 열지 않는다(갈래 카드도 같다).
     if (detectTheoryExclusion(p.message, p.recentUserMessages) || detectTraumaStage(p.message, p.recentUserMessages) || (await hasCrisisHistory(p.admin, p.userId))) {
-      await endOffer(p.admin, p.userId, p.sessionId, "not_allowed");
+      if (offer) await endOffer(p.admin, p.userId, p.sessionId, "not_allowed");
       return null;
+    }
+    if (branchRecord) {
+      return {
+        generationExtras: { dialogueMode: "card_follows" },
+        finalize: async (usedFallback) => {
+          if (usedFallback) return undefined;
+          const payload = await presentBranchCard(p.admin, p.sessionId, branchRecord).catch(() => null);
+          if (!payload) return undefined;
+          const { error } = await p.admin.from("chat_messages").insert({
+            session_id: p.sessionId, user_id: p.userId, role: "assistant", content: payload.text, route: p.route, reflection_signal_id: cardMessageMark(payload),
+          });
+          if (error) return undefined;
+          return { text: payload.text, choices: [], card: payload };
+        },
+      };
     }
     return {
       generationExtras: { dialogueMode: "card_follows" },

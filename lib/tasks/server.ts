@@ -25,7 +25,7 @@ import {
 type Admin = ReturnType<typeof createAdminClient>;
 type States = Record<string, ReturnType<typeof RS.newRootState>>;
 type TaskRow = Record<string, unknown> & { id: number; user_id: string; chat_id: string | null; concern_id: string | null; practice_id: string | null; result: string | null; plan: Record<string, unknown> | null; at: string };
-type AskKind = "rival" | "condition" | "coping";
+type AskKind = "rival" | "cause" | "condition" | "coping";
 type PendingAsk = { kind: AskKind; group: string; ask: string; options: { text: string; value: string | null }[]; q: Record<string, unknown> };
 type Pending = { path: string[]; sceneKey: string; route: string | null; reason: string; done: AskKind[]; cond: Record<string, unknown> | null; ask: PendingAsk | null };
 type Person = Record<string, unknown> & { hasChild?: boolean };
@@ -96,10 +96,12 @@ async function buildCtx(admin: Admin, userId: string, chatId: string, pend: Pend
   const person = await personOf(admin, userId, states, tasks, concerns, pend.sceneKey);
   const prev = concerns.find((r) => r.concern_id === pend.sceneKey);
   const cs = prev ? CS.concernStateFromRow(prev) : CS.newConcernState(userId, pend.sceneKey);
-  const worry = (sess?.worry_pick ?? null) as { intent_id?: string | null; secondary?: string | null } | null;
+  const worry = (sess?.worry_pick ?? null) as { intent_id?: string | null; secondary?: string | null; branch_id?: string | null } | null;
   const rejected = Object.values(states).filter((s) => s?.status === "rejected").map((s) => s.root_id);
+  // 2026-11-23(v2.32 · 규칙 WT-06): 세부 고민이 정해졌으면 갈래(까닭)를 함께 넘긴다 — 아는 갈래는 그 갈래의 뿌리 실천을 앞에, 모르면(세부 코드-0) 기본 갈래 1~3위를 가설로.
   const tc = CS.taskCandidates(pend.path, cardData.options, {
-    intentId: worry?.intent_id ?? undefined, secondaryId: worry?.secondary ?? undefined, hasChild: person.hasChild, rejected, ruledOut: cs.ruled_out,
+    intentId: worry?.intent_id ?? undefined, branchId: worry?.intent_id ? (worry.branch_id ?? undefined) : undefined,
+    secondaryId: worry?.secondary ?? undefined, hasChild: person.hasChild, rejected, ruledOut: cs.ruled_out,
   }) as ReturnType<typeof CS.taskCandidates> & { route?: string; conditionRoot?: string | null };
   PS.addLadderCandidates(tc, person);
   if (pend.cond) conditionToCandidates(tc, pend.cond as never, engine.caseData as never); // 여건 질문 답(또는 엔진 판단)을 후보에 반영
@@ -118,6 +120,17 @@ async function nextAsk(admin: Admin, userId: string, chatId: string, ctx: Ctx, p
     if (q) {
       const opts = (q.options as { text: string; root?: string | null; answer?: string | null }[]).map((o) => ({ text: o.text, value: (q.type === "discriminator" ? o.root : o.answer) ?? null }));
       return { kind: "rival", group: String(q.group), ask: String(q.ask), options: opts, q };
+    }
+  }
+  // 2026-11-23(v2.32 · 엔진 v3.31 · 규칙 ROOT-CAUSE-1123): 쓰는 첫 뿌리가 결과형(행동·상태)이면 앞서는 원인 뿌리를 한 번 묻는다(예·아니요·모름 — 답은 applyRival).
+  // 원인 뿌리는 결과형 뿌리를 대신하지 않는다(둘 다 맞을 수 있음). 예 → 원인 뿌리 +0.5 · 아니요 → 이번 고민에서 뺌. 물은 것은 sw_user_disc_asked에 남겨 다시 묻지 않는다.
+  if (!pend.done.includes("cause")) {
+    pend.done.push("cause");
+    const r1 = tc.roots?.[0];
+    const q = r1 ? (PS.causeQuestion(r1, asked, [...rejected, ...(cs.ruled_out ?? [])]) as Record<string, unknown> | null) : null;
+    if (q) {
+      const opts = (q.options as { text: string; answer?: string | null }[]).map((o) => ({ text: o.text, value: o.answer ?? null }));
+      return { kind: "cause", group: String(q.group), ask: String(q.ask), options: opts, q };
     }
   }
   if (!pend.done.includes("condition")) {
@@ -146,18 +159,22 @@ async function nextAsk(admin: Admin, userId: string, chatId: string, ctx: Ctx, p
 }
 
 // 질문이 끝나면 연습 두 개(엔진 pickTasks · 사람 점수 · 계획). 제목이 없는(검수 표에 없는) 실천은 뺀다.
-async function pickPlanned(admin: Admin, userId: string, chatId: string, ctx: Ctx, pend: Pending): Promise<{ planned: PlannedTask[]; roots: string[] }> {
+async function pickPlanned(admin: Admin, userId: string, chatId: string, ctx: Ctx, pend: Pending): Promise<{ planned: PlannedTask[]; roots: string[]; actions: string[] }> {
   const { engine, cs, tc, person } = ctx;
   const words = PS.wordsFrom(await recentUserTexts(admin, userId, chatId));
   const picked = CS.pickTasks(cs, tc.candidates, {
     fallback: tc.fallback, route: tc.route ?? pend.route ?? undefined, conditionRoot: tc.conditionRoot ?? undefined, relRoots: tc.relRoots, hasChild: person.hasChild,
     personal: PS.scorer(cs, person), formatOf: PS.sizeOf,
+    causeRoots: (tc.cause_roots ?? []).map((x: { root_id: string }) => x.root_id), // v2.32: 같은 단계 과제가 모자랄 때 갈래 뿌리 다음으로 원인 뿌리 실천을 먼저
   });
   const planned = (PS.withPlans(picked, cs, tc.roots, words) as PlannedTask[])
     .filter((t) => engine.titles[t.practice_id])
     .map((t) => ({ ...t, plan: { ...(t.plan ?? {}), title: engine.titles[t.practice_id] } }));
   await saveConcern(admin, cs);
-  return { planned, roots: tc.roots };
+  // v2.32(규칙 WT-08): 아는 갈래에 "오늘 할 수 있는 행동" 두 가지가 있으면 과제와 함께 보여 준다(개념으로 가른 갈래 40개).
+  const actions = ((tc.branch as { known?: boolean; actions?: unknown[] } | null)?.known ? ((tc.branch as { actions?: unknown[] }).actions ?? []) : [])
+    .filter((a): a is string => typeof a === "string" && a.trim().length > 0).slice(0, 2);
+  return { planned, roots: tc.roots, actions };
 }
 
 // 질문 또는 연습 카드를 이 행 기준으로 만든다(행의 plan을 함께 갱신).
@@ -171,14 +188,24 @@ async function advance(admin: Admin, userId: string, chatId: string, rowId: numb
     if (error) throw new Error(`sw_user_tasks 질문 저장 ${error.code}`);
     return taskAskPayload(rowId, ask.ask, ask.options);
   }
-  const { planned, roots } = await pickPlanned(admin, userId, chatId, ctx, pend);
+  const { planned, roots, actions } = await pickPlanned(admin, userId, chatId, ctx, pend);
   if (!planned.length) {
     await admin.from("sw_user_tasks").update({ plan: null, hidden_at: new Date().toISOString() }).eq("id", rowId).eq("user_id", userId); // 건넬 게 없음 — 기록에서 숨김
     return null;
   }
-  const { error } = await admin.from("sw_user_tasks").update({ offered: planned.map((t) => t.practice_id), stage_at: ctx.cs.stage, coping_at: ctx.cs.coping, plan: { offered: planned, roots, scene: pend.sceneKey } }).eq("id", rowId).eq("user_id", userId);
+  const { error } = await admin.from("sw_user_tasks").update({ offered: planned.map((t) => t.practice_id), stage_at: ctx.cs.stage, coping_at: ctx.cs.coping, plan: { offered: planned, roots, scene: pend.sceneKey, ...(actions.length ? { actions } : {}) } }).eq("id", rowId).eq("user_id", userId);
   if (error) throw new Error(`sw_user_tasks 건넴 저장 ${error.code}`);
-  return taskOfferPayload(rowId, planned);
+  return taskOfferPayload(rowId, planned, actions);
+}
+
+// 과제 행을 만들고 첫 질문 또는 연습 카드를 돌려준다(건넬 게 없으면 null — 행은 숨김). 카드 끝(planTaskOffer)과 갈래 카드 답(lib/worry/branchFlow — 길 없이 갈래만)이 같이 쓴다.
+export async function startTasks(p: { admin: Admin; userId: string; sessionId: string; path: string[]; sceneKey: string; route: string | null; reason: string }): Promise<CardPayload | null> {
+  if (!tasksOn()) return null;
+  const pend: Pending = { path: p.path, sceneKey: p.sceneKey, route: p.route, reason: p.reason, done: [], cond: null, ask: null };
+  const base = { user_id: p.userId, chat_id: p.sessionId, concern_id: p.sceneKey, offered: [], practice_id: null, path: null, result: null, at: new Date().toISOString() };
+  const { data: ins, error } = await p.admin.from("sw_user_tasks").insert({ ...base, plan: { pending: pend } }).select("id").single();
+  if (error || !ins) { console.warn("과제 행 만들기 실패:", error?.code); return null; }
+  return advance(p.admin, p.userId, p.sessionId, Number(ins.id), pend);
 }
 
 export type TaskOfferPlan = { finalize: (usedFallback: boolean) => Promise<{ text: string; choices: []; card: CardPayload } | undefined> };
@@ -193,14 +220,10 @@ export async function planTaskOffer(p: { admin: Admin; userId: string; sessionId
     finalize: async (usedFallback) => {
       if (usedFallback) return undefined;
       try {
-        const pend: Pending = { path, sceneKey, route: p.ended.route, reason: p.ended.reason, done: [], cond: null, ask: null };
-        const base = { user_id: p.userId, chat_id: p.sessionId, concern_id: sceneKey, offered: [], practice_id: null, path: null, result: null, at: new Date().toISOString() };
-        const { data: ins, error } = await p.admin.from("sw_user_tasks").insert({ ...base, plan: { pending: pend } }).select("id").single();
-        if (error || !ins) { console.warn("과제 행 만들기 실패:", error?.code); return undefined; }
-        const card = await advance(p.admin, p.userId, p.sessionId, Number(ins.id), pend);
+        const card = await startTasks({ admin: p.admin, userId: p.userId, sessionId: p.sessionId, path, sceneKey, route: p.ended.route, reason: p.ended.reason });
         if (!card) return undefined;
         const { error: me } = await p.admin.from("chat_messages").insert({
-          session_id: p.sessionId, user_id: p.userId, role: "assistant", content: card.text, route: p.route, reflection_signal_id: `sw-task:${card.kind}:${ins.id}`,
+          session_id: p.sessionId, user_id: p.userId, role: "assistant", content: card.text, route: p.route, reflection_signal_id: `sw-task:${card.kind}:${card.row ?? ""}`,
         });
         if (me) return undefined;
         return { text: card.text, choices: [], card };
@@ -239,7 +262,7 @@ export async function answerTaskAsk(admin: Admin, userId: string, chatId: string
   } else {
     const states = await loadStates(admin, userId);
     const sink: unknown[] = [];
-    if (ask.kind === "rival") {
+    if (ask.kind === "rival" || ask.kind === "cause") {
       const res = PS.applyRival(states, userId, ask.q as never, opt.value as never, sink, chatId as never) as { ruled_out?: string | null };
       await applySink(admin, userId, sink);
       if (res?.ruled_out) {

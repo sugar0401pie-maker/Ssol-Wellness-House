@@ -35,9 +35,16 @@ export const TASK_OFFER_TEXT = "오늘 이야기에 맞춰 해 볼 만한 작은
 
 const titleOf = (t: PlannedTask) => (t.plan?.title || t.practice_id).trim();
 
-export function taskOfferPayload(row: number, tasks: PlannedTask[]): CardPayload {
+// 2026-11-23(v2.32 · 규칙 WT-08): 아는 갈래에 "오늘 할 수 있는 행동"(엔진 branch.actions, 두 가지)이 있으면 연습 안내 앞에 함께 적는다. 평문(마크다운 없음).
+export function taskOfferText(actions: readonly string[] = []): string {
+  const acts = actions.map((a) => a.trim()).filter(Boolean).slice(0, 2);
+  if (!acts.length) return TASK_OFFER_TEXT;
+  return [`오늘 바로 해 볼 만한 행동부터 적어 둘게요.\n${acts.map((a, i) => `${"①②"[i]} ${a}`).join("\n")}`, TASK_OFFER_TEXT].join("\n\n");
+}
+
+export function taskOfferPayload(row: number, tasks: PlannedTask[], actions: readonly string[] = []): CardPayload {
   return {
-    kind: "task", cardId: "CC-TASK", row, text: TASK_OFFER_TEXT,
+    kind: "task", cardId: "CC-TASK", row, text: taskOfferText(actions),
     options: tasks.map((t) => ({ id: t.practice_id, label: t.plan?.minutes ? `${titleOf(t)} (${t.plan.minutes})` : titleOf(t) })),
     fixed: [TASK_LATER],
   };

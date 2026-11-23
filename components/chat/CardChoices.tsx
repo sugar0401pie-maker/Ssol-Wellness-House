@@ -16,6 +16,23 @@ export default function CardChoices({ card, disabled, onPick, onOther }: {
   const [multi, setMulti] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
 
+  // 2026-11-23(CSO 묶음 v2.32 · 규칙 WT-07): 갈래 카드 — "이 중에 지금 마음에 가까운 까닭이 있어요?" 갈래 문장이 길어 한 줄씩 버튼으로 보인다.
+  // "다른 까닭이에요"·"잘 모르겠어요"도 같은 목록의 보기다(서버가 보여 준 보기만 받는다).
+  if (card.kind === "branch") {
+    return (
+      <div className="space-y-1.5 pl-1">
+        {card.options.map((o) => (
+          <button key={o.id} type="button" disabled={disabled} onClick={() => onPick({ branch: { option: o.id } }, o.label)}
+            className={o.id === "other" || o.id === "unknown"
+              ? "rounded-full border border-line bg-white px-3.5 py-2 text-[13px] text-slate-600 active:bg-background disabled:opacity-50 mr-1.5"
+              : "block w-full max-w-[85%] rounded-xl border border-navy bg-white px-3.5 py-2.5 text-left text-[13.5px] font-medium leading-5 text-navy active:bg-navy-soft disabled:opacity-50"}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   // 2026-11-18(3부-3): 작은 연습 고르기(task) · 해 보니 어땠는지(task_result) · 확인 질문(task_check). 연습 이름은 길어서 한 줄씩 버튼으로 보인다.
   // 2026-11-19(3부-4): 연습 전 짧은 질문(task_ask — 보기 번호) · "지금 같이 해 볼까요?"(task_mini).
   if (card.kind === "task" || card.kind === "task_result" || card.kind === "task_check" || card.kind === "task_ask" || card.kind === "task_mini") {

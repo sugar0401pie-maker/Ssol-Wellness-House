@@ -5,6 +5,7 @@ import { callClassifierModel } from "@/lib/ai/classifierModel";
 import { ensureWorryData, worryIndex } from "./store";
 import { scoreAgainst } from "./textIndex";
 import { worryRecord, type WorryRoute, type WorrySignals } from "./guidance";
+import { decideBranch, type BranchPick } from "./branch";
 
 // 첫 말 → 세부 고민 → 장면·대화(CSO 해석 엔진 v3.18~v3.19 서버 흐름, 2026-11-18 3부-2).
 // ① 강도 재기(signalsOf — 위험 판단 아님) ② 후보 찾기(임베딩 점수 → rankIntents → prioritize) ③ 고르기(pickPrompt → 분류 모델 → parsePick)
@@ -31,7 +32,18 @@ export async function worrySignals(admin: Admin, text: string): Promise<WorrySig
   }
 }
 
-export type WorryMatch = { route: WorryRoute; secondaryLine: string | null; record: Record<string, unknown> };
+export type WorryMatch = { route: WorryRoute; secondaryLine: string | null; branch: BranchPick | null; record: Record<string, unknown> };
+
+// 2026-11-23(CSO 묶음 v2.32 · 엔진 안내 v3.29 · 규칙 WT-06): 세부 고민의 갈래(까닭)를 정한다 — subBranchPrompt → 분류 모델 → parseSubBranch.
+// 모델이 늦거나 실패하면 낱말 맞춤(subBranchGuess, 예비)으로. 대화의 첫 말에서 한 번만(약 1,500토큰 · 약 0.5원).
+async function pickBranch(intentId: string, text: string): Promise<BranchPick | null> {
+  const prompt = WM.subBranchPrompt(intentId, text) as string | null;
+  if (!prompt) return null; // 갈래가 없는 세부 고민
+  const raw = await within(callClassifierModel({ system: "너는 고민의 까닭(갈래)을 고르는 분류기다. 반드시 JSON 한 개만 출력한다.", user: prompt }), 6000).catch(() => null);
+  const model = raw ? (WM.parseSubBranch(raw, intentId) as { branch_id: string; known: boolean; also?: string[]; fallback?: string | null }) : null;
+  const guess = model && !model.fallback ? null : (WM.subBranchGuess(intentId, text) as { branch_id: string; known: boolean } | null);
+  return decideBranch(intentId, model, guess);
+}
 
 // 대화의 첫 사용자 말에서만 부른다. 고른 세부 고민이 없으면(모델이 "어느 것도 아님") null.
 export async function matchFirstWorry(p: { admin: Admin; text: string; queryEmbedding?: Promise<number[]> }): Promise<WorryMatch | null> {
@@ -58,10 +70,11 @@ export async function matchFirstWorry(p: { admin: Admin; text: string; queryEmbe
     if (!raw) { pick = { intent_id: cands[0].intent_id, secondary: null }; pickedBy = "top_candidate"; } // 모델이 늦거나 실패하면 1위 후보
     if (!pick?.intent_id) return null;
     const secondary = pick.secondary ?? pr.secondary ?? null;
-    const route = WM.routeFor(pick.intent_id, null, { secondary, intensity: sig.intensity }) as WorryRoute | null;
+    const branch = await pickBranch(pick.intent_id, p.text).catch(() => null);
+    const route = WM.routeFor(pick.intent_id, null, { secondary, intensity: sig.intensity, ...(branch ? { branchId: branch.branch_id } : {}) }) as WorryRoute | null;
     if (!route) return null;
     const secondaryLine = route.secondary ? (WM.secondaryLine(route.intent_id, route.secondary) as string | null) : null;
-    return { route, secondaryLine, record: worryRecord({ route, sig, pickedBy, candidates: cands, reason: pr.reason }) };
+    return { route, secondaryLine, branch, record: worryRecord({ route, sig, pickedBy, candidates: cands, reason: pr.reason, branch }) };
   } catch (e) {
     console.warn("세부 고민 고르기 실패, 평소 대화로 진행:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return null;

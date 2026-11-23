@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "./admin";
 import { extractBearer, userIdFromClaims } from "./bearer";
+import { setUsageUser } from "@/lib/ai/usage";
 
 // 요청의 "Authorization: Bearer <토큰>" 헤더로 로그인한 사용자를 확인합니다.
 // 토큰이 없거나 유효하지 않으면 null. 채팅 API는 null이면 요청을 거부해야 합니다.
@@ -12,6 +13,7 @@ export async function getUserIdFromAuthHeader(header: string | null): Promise<st
   if (!match) return null;
   const { data, error } = await createAdminClient().auth.getUser(match[1]);
   if (error || !data.user || data.user.is_anonymous === true) return null;
+  setUsageUser(data.user.id); // AI 사용량 기록에 누구의 사용인지 남긴다(사용량 범위가 있을 때만)
   return data.user.id;
 }
 
@@ -28,7 +30,10 @@ export async function getUserIdFast(header: string | null): Promise<string | nul
     const { data, error } = await createAdminClient().auth.getClaims(token);
     if (!error) {
       const id = userIdFromClaims(data?.claims);
-      if (id) return id;
+      if (id) {
+        setUsageUser(id);
+        return id;
+      }
     }
   } catch {
     // 아래 기존 방식으로 확인한다.

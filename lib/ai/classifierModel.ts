@@ -1,5 +1,6 @@
 import "server-only";
 import OpenAI from "openai";
+import { recordUsage } from "./usage";
 
 // 발화 의미 분류기(lib/interp) 전용 AI 호출 — 답변 뒤에 백그라운드로 도는 작업이라 시간 여유를 조금 더 둔다.
 // 모든 AI 호출은 lib/ai/ 안에서만 한다(제공사 교체를 쉽게). 모델은 SW_CLASSIFIER_MODEL → THEORY_SELECT_MODEL → CHAT_MODEL → gpt-5.6-luna 순.
@@ -17,5 +18,6 @@ export async function callClassifierModel(p: { system: string; user: string }): 
     text: { format: { type: "json_object" } },
     ...(REASONING !== "default" ? { reasoning: { effort: REASONING as "minimal" | "low" | "medium" | "high" } } : {}),
   });
+  recordUsage({ feature: "meaning_classifier", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
   return (response.output_text ?? "").trim();
 }

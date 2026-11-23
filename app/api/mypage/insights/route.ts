@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { isInsightAction, isRootId } from "@/lib/interp/insights";
 import { applyInsightAction, clearInsights, loadGrowthLines, loadInsights } from "@/lib/interp/insightsStore";
+import { withUsageScope } from "@/lib/ai/usage";
 
 // 마이페이지 "쏘웰라가 파악한 내용"(2026-10-18, 로드맵 10번). 본인 것만: 보기(GET) · 맞아요/아니에요/지우기(PATCH) · 전부 지우기(DELETE).
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ async function authed(req: NextRequest): Promise<string | NextResponse> {
   return userId ?? NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 }
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const u = await authed(req);
   if (typeof u !== "string") return u;
   try {
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+async function handlePATCH(req: NextRequest) {
   const u = await authed(req);
   if (typeof u !== "string") return u;
   const body = (await req.json().catch(() => null)) as { rootId?: unknown; action?: unknown } | null;
@@ -52,4 +53,12 @@ export async function DELETE(req: NextRequest) {
     console.error("파악한 내용 전체 삭제 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return NextResponse.json({ error: "지우지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
+}
+
+// AI 사용량 기록(ai_usage_log)에 이 요청의 기능 이름·사용자를 붙이려고 요청 전체를 사용량 범위로 감싼다(lib/ai/usage.ts).
+export function GET(req: NextRequest) {
+  return withUsageScope("mypage_insights", () => handleGET(req));
+}
+export function PATCH(req: NextRequest) {
+  return withUsageScope("mypage_insights", () => handlePATCH(req));
 }

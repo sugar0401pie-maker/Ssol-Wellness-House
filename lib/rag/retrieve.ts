@@ -1,5 +1,6 @@
 import "server-only";
 import OpenAI from "openai";
+import { recordUsage } from "@/lib/ai/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findKeywordHits } from "@/lib/safety/keywordCheck.ts";
 import type { SafetyRule } from "@/lib/safety/rules.ts";
@@ -83,6 +84,7 @@ export async function embedQuery(message: string): Promise<number[]> {
     input: message,
     encoding_format: "float",
   });
+  recordUsage({ feature: "embedding_query", model: EMBEDDING_MODEL, inputTokens: embedding.usage?.prompt_tokens ?? 0, outputTokens: 0 });
   return embedding.data[0].embedding;
 }
 

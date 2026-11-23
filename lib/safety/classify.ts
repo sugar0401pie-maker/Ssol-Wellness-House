@@ -1,5 +1,6 @@
 import "server-only";
 import OpenAI from "openai";
+import { recordUsage } from "@/lib/ai/usage";
 import { ROUTES, type Confidence, type RouteId } from "./types.ts";
 import type { SafetyRule } from "./rules.ts";
 import { WEAK_TRIGGERS } from "./keywordCheck.ts";
@@ -101,6 +102,7 @@ export async function classifyMessage(
       },
     });
 
+    recordUsage({ feature: "safety_classify", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
     const text = response.output_text;
     if (!text) throw new Error("분류기가 빈 응답을 반환함");
     const parsed = JSON.parse(text) as {

@@ -35,6 +35,7 @@ import { loadAccessStatus } from "@/lib/billing/loadAccess";
 import { planDialogue } from "@/lib/theory/orchestrate";
 import { isChoiceId } from "@/lib/theory/dialogueState";
 import { createTimer, type Timer } from "@/lib/perf/serverTiming";
+import { withUsageScope, setUsageSession } from "@/lib/ai/usage";
 
 // C5: 안전 라우팅 + 위기/폭력 고정 응답(C4) + route 3~7의 실제 검색·답변 생성 + 하루 사용량 제한.
 // 위기(route 1)·폭력(route 2)은 아래에서 이 제한 검사보다 먼저 처리되어, 제한과 무관하게 항상 응답한다.
@@ -63,7 +64,7 @@ async function loadReplyState(admin: ReturnType<typeof createAdminClient>, sessi
 
 // 2026-10-16: 채팅 응답이 7~12초 걸려서 어느 단계가 오래 걸리는지 숫자로 보려고 단계별 시간을 Server-Timing 헤더에 싣는다
 // (단계 이름과 ms만 들어 있고 대화 내용은 없다). 응답 방식·내용은 그대로다.
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const timer = createTimer();
   const res = await handle(req, timer);
   res.headers.set("Server-Timing", timer.header());
@@ -123,10 +124,12 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
     if (!data) sessionId = null; // 남의 세션이거나 존재하지 않음 → 새로 만든다(위에서 읽은 대화는 쓰지 않는다)
     else recentMessages = ((rows ?? []).reverse()) as { role: "user" | "assistant"; content: string }[];
   }
+  setUsageSession(sessionId); // AI 사용량 기록에 어느 대화인지 남긴다(새 대화면 아래에서 만든 뒤)
   if (!sessionId) {
     const { data, error } = await admin.from("chat_sessions").insert({ user_id: userId }).select("session_id").single();
     if (error || !data) return NextResponse.json({ error: "대화를 시작할 수 없습니다." }, { status: 500 });
     sessionId = data.session_id;
+    setUsageSession(sessionId);
     // 2026-10-26: 점성술 [쏘웰라와 대화 시작하기]로 들어와 맞춤 첫 인사를 본 뒤의 첫 메시지면, 그 인사를 대화의 첫 답변으로 저장하고
     // 이번 답변 문맥에도 넣는다(사용자가 인사에 답하는 것이므로 AI가 자기가 한 인사를 알아야 함). 문장은 브라우저가 보낸 글자가 아니라
     // 서버가 그 사용자의 점성술 결과에서 다시 읽는다. 새 대화를 만들 때만이고, 읽지 못하면 그냥 넘어간다(채팅은 그대로).
@@ -533,4 +536,9 @@ async function handle(req: NextRequest, timer: Timer): Promise<NextResponse> {
       regenerated: result.regenerated,
     },
   });
+}
+
+// AI 사용량 기록(ai_usage_log)에 이 요청의 기능 이름·사용자를 붙이려고 요청 전체를 사용량 범위로 감싼다(lib/ai/usage.ts).
+export function POST(req: NextRequest) {
+  return withUsageScope("chat", () => handlePOST(req));
 }

@@ -4,12 +4,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { cardsOnFor } from "@/lib/cards/offer";
 import { taskOpening } from "@/lib/tasks/server";
+import { withUsageScope } from "@/lib/ai/usage";
 
 // 새 대화 첫머리: 지난번에 고른 작은 연습이 있으면 "해 보니 어땠어요?" 카드(2026-11-18 3부-3, 엔진 openingFor).
 // 읽기 전용이라 AI 호출·사용량 제한이 없다. 없거나 꺼져 있으면 { opening: null } — 화면은 평소 첫 인사만 보여 준다.
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!checkAccessCode(req.headers.get("x-access-code"))) {
     return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
   }
@@ -22,4 +23,9 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ opening: null });
   }
+}
+
+// AI 사용량 기록(ai_usage_log)에 이 요청의 기능 이름·사용자를 붙이려고 요청 전체를 사용량 범위로 감싼다(lib/ai/usage.ts).
+export function GET(req: NextRequest) {
+  return withUsageScope("tasks_opening", () => handleGET(req));
 }

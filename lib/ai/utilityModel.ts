@@ -1,5 +1,6 @@
 import "server-only";
 import OpenAI from "openai";
+import { recordUsage } from "./usage";
 
 // 짧은 분류·판단용 AI 호출(이론 고르기 등). 답변 생성 모델(chatModel.ts)과 별개로 THEORY_SELECT_MODEL로 바꿀 수 있고,
 // 없으면 같은 모델(CHAT_MODEL, 기본 gpt-5.6-luna)을 쓴다. 모든 AI 호출은 lib/ai/ 안에서만 한다(제공사 교체를 쉽게).
@@ -21,6 +22,7 @@ export async function generateShort(system: string, user: string, maxOutputToken
     max_output_tokens: maxOutputTokens,
     ...(REASONING !== "default" ? { reasoning: { effort: REASONING as "minimal" | "low" | "medium" | "high" } } : {}),
   });
+  recordUsage({ feature: "short_judgement", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
   return {
     text: (response.output_text ?? "").trim(),
     usage: { inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, model: MODEL },

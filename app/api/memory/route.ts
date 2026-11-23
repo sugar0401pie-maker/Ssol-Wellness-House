@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { summarizeSessionIntoMemory } from "@/lib/memory/summarize";
 import { checkAccessCode } from "@/lib/security/accessCode";
+import { withUsageScope } from "@/lib/ai/usage";
 
 // 사용자가 "이 대화를 기억하기"를 선택했을 때만 프런트에서 호출한다 (동의 기반).
 // 선택하지 않은 대화는 이 엔드포인트가 아예 호출되지 않으므로 요약되지 않는다.
 export const runtime = "nodejs";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   if (!checkAccessCode(req.headers.get("x-access-code"))) {
     return NextResponse.json({ error: "접속 코드가 올바르지 않습니다." }, { status: 403 });
   }
@@ -27,4 +28,9 @@ export async function POST(req: NextRequest) {
   const result = await summarizeSessionIntoMemory(userId, sessionId);
   if (!result.ok) return NextResponse.json({ error: result.reason }, { status: 404 });
   return NextResponse.json({ ok: true });
+}
+
+// AI 사용량 기록(ai_usage_log)에 이 요청의 기능 이름·사용자를 붙이려고 요청 전체를 사용량 범위로 감싼다(lib/ai/usage.ts).
+export function POST(req: NextRequest) {
+  return withUsageScope("memory", () => handlePOST(req));
 }

@@ -8,6 +8,7 @@ export const WITHDRAW_DELETE_TABLES = [
   "sw_hypothesis_log", // sw_user_last_activity는 뷰라 위 기록이 지워지면 함께 비워진다
   "chat_messages", "chat_sessions",
   "user_memory", "user_onboarding", "wellness_profiles", "counselor_inquiries", "customer_feedback",
+  "ai_usage_log", // 2026-11-23: AI 토큰 수 기록(내용 없음)도 그 사람 몫은 지운다
 ] as const;
 
 // 남기는 표(지우지 않음 — 시험이 이 목록이 위 목록과 겹치지 않는지 본다).

@@ -15,10 +15,10 @@ export default function SiteFooter() {
         ·{" "}
         <a href="/legal#terms" className="text-navy underline">
           이용약관
-        </a>
-      </p>
-      {/* 2026-11-05: 검색·AI 크롤러가 소개 페이지를 찾을 수 있게 하는 링크. /legal은 서버가 이 푸터를 글자로 내려보내므로 여기서 /about으로 이어진다(소개 페이지는 사이트맵에 없다). */}
-      <p className="mt-1">
+        </a>{" "}
+        ·{" "}
+        {/* 2026-11-05: 검색·AI 크롤러가 소개 페이지를 찾을 수 있게 하는 링크. /legal은 서버가 이 푸터를 글자로 내려보내므로 여기서 /about으로 이어진다(소개 페이지는 사이트맵에 없다).
+            2026-11-23 대표님 요청으로 약관 링크와 같은 줄에 둔다. */}
         <a href="/about" className="text-navy underline">
           쏘웰라 소개
         </a>

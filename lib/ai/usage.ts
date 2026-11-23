@@ -25,13 +25,20 @@ export function setUsageSession(sessionId: string | null | undefined): void {
 }
 
 let warned = false; // 표가 아직 없을 때(마이그레이션 전) 로그가 쌓이지 않게 인스턴스당 한 번만 알린다
+let noCachedCol = false; // cached_input_tokens 칸 마이그레이션(20261123000100) 전이면 그 칸 없이 기록한다
 export function recordUsage(e: UsageEvent): void {
   if (process.env.SW_USAGE_LOG === "0") return;
   const row = usageRow(scopeStore.getStore(), e);
   if (row.input_tokens === 0 && row.output_tokens === 0) return;
   const write = async () => {
     try {
-      const { error } = await createAdminClient().from("ai_usage_log").insert(row);
+      const admin = createAdminClient();
+      const { cached_input_tokens: _cached, ...base } = row; // eslint-disable-line @typescript-eslint/no-unused-vars
+      let { error } = await admin.from("ai_usage_log").insert(noCachedCol ? base : row);
+      if (error?.code === "PGRST204" && !noCachedCol) { // 칸이 아직 없음 → 그 칸 없이 다시
+        noCachedCol = true;
+        ({ error } = await admin.from("ai_usage_log").insert(base));
+      }
       if (error && !warned) {
         warned = true;
         console.warn("AI 사용량 기록 실패:", error.code);

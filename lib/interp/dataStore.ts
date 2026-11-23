@@ -3,7 +3,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import * as K from "./vendor/claimClassifier.mjs";
 import { buildClaims, buildScenes, type Claim, type Scene } from "./claims";
 import { buildClaimIndex, claimTexts, type ClaimIndex } from "./search";
-import { embedTexts } from "./embed";
+import { embedTextsCached } from "@/lib/ai/embedCache";
 
 // 분류기가 쓰는 데이터(의미 사전·장면)를 DB(sw_ob_*)에서 읽어 서버 메모리에 둔다(10분). 원본은 DB 표이고 JSON은 시험용이다.
 // 후보 검색용 임베딩 색인은 처음 쓸 때 한 번 만든다(claim 문장 약 천여 개 → 임베딩 호출 몇 번). 인스턴스가 새로 뜰 때마다 다시 만든다.
@@ -45,7 +45,8 @@ async function load(admin: Admin): Promise<{ claims: Claim[]; scenes: Scene[]; i
   const c = buildClaims(claims, claimRoots, options, roots), s = buildScenes(scenes);
   K.setData({ claims: c, scenes: s });
   const sig = signature(c);
-  const index = cache && cache.sig === sig ? cache.index : buildClaimIndex(c, embedTexts);
+  // 2026-11-23(AI 비용 줄이기 1번): 임베딩은 DB 저장소를 먼저 보고 없는 문장만 OpenAI로(lib/ai/embedCache.ts). 나누어 보내기는 저장소 쪽이 한다.
+  const index = cache && cache.sig === sig ? cache.index : buildClaimIndex(c, embedTextsCached, Number.MAX_SAFE_INTEGER);
   const entry = { at: Date.now(), claims: c, scenes: s, index, sig };
   cache = entry;
   index.catch(() => { if (cache === entry) cache = null; }); // 임베딩이 실패하면 다음 요청에서 다시 시도

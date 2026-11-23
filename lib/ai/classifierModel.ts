@@ -18,6 +18,6 @@ export async function callClassifierModel(p: { system: string; user: string }): 
     text: { format: { type: "json_object" } },
     ...(REASONING !== "default" ? { reasoning: { effort: REASONING as "minimal" | "low" | "medium" | "high" } } : {}),
   });
-  recordUsage({ feature: "meaning_classifier", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
+  recordUsage({ feature: "meaning_classifier", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens ?? 0 });
   return (response.output_text ?? "").trim();
 }

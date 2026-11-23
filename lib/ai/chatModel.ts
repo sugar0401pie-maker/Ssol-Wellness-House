@@ -25,7 +25,7 @@ export async function generateReply(
     ...(REASONING ? { reasoning: { effort: REASONING as "minimal" | "low" | "medium" | "high" } } : {}),
   });
 
-  recordUsage({ feature: "chat_reply", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
+  recordUsage({ feature: "chat_reply", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens ?? 0 });
   const text = response.output_text?.trim();
   if (!text) throw new Error("답변 생성 모델이 빈 응답을 반환함");
 

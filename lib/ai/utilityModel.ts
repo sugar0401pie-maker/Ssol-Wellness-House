@@ -22,7 +22,7 @@ export async function generateShort(system: string, user: string, maxOutputToken
     max_output_tokens: maxOutputTokens,
     ...(REASONING !== "default" ? { reasoning: { effort: REASONING as "minimal" | "low" | "medium" | "high" } } : {}),
   });
-  recordUsage({ feature: "short_judgement", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
+  recordUsage({ feature: "short_judgement", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens ?? 0 });
   return {
     text: (response.output_text ?? "").trim(),
     usage: { inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, model: MODEL },

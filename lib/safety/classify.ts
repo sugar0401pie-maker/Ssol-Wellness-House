@@ -102,7 +102,7 @@ export async function classifyMessage(
       },
     });
 
-    recordUsage({ feature: "safety_classify", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
+    recordUsage({ feature: "safety_classify", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens ?? 0 });
     const text = response.output_text;
     if (!text) throw new Error("분류기가 빈 응답을 반환함");
     const parsed = JSON.parse(text) as {

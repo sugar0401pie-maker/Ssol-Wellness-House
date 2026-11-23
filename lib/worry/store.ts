@@ -3,11 +3,11 @@ import { createHash } from "node:crypto";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import * as WM from "@/lib/interp/vendor/worryMatch.mjs";
 import { worryDataFromDb } from "@/lib/interp/vendor/dbLoader.mjs";
-import { embedTexts } from "@/lib/interp/embed";
+import { embedTextsCached } from "@/lib/ai/embedCache";
 import { buildTextIndex, type TextIndex } from "./textIndex";
 
 // 고민 문장 DB(sw_ob_worry_* · 갈래 마스터 sw_ob_sub_*, CSO 묶음 v2.32 · DB v5.32)를 서버 메모리에 둔다(10분). 원본은 DB 표다.
-// 예시 문장·헷갈리는 말(약 2,500개) 임베딩 색인은 처음 쓸 때 한 번 만든다(호출 10번 남짓) — 문장이 그대로면 10분마다 다시 만들지 않는다.
+// 예시 문장·헷갈리는 말(약 2,700개) 임베딩 색인은 처음 쓸 때 한 번 만든다 — 벡터는 DB 저장소(ai_embedding_cache)에서 읽고 없는 것만 OpenAI로. 문장이 그대로면 10분마다 다시 만들지 않는다.
 // 같은 시간에 여러 요청이 와도 읽기·색인 만들기는 한 번만 한다(lib/interp/dataStore.ts와 같은 방식).
 type Admin = ReturnType<typeof createAdminClient>;
 const TTL_MS = 10 * 60 * 1000;
@@ -56,7 +56,8 @@ export function ensureWorryData(admin: Admin): Promise<Loaded> {
 export async function worryIndex(admin: Admin): Promise<TextIndex> {
   const entry = await ensureWorryData(admin);
   if (!entry.index) {
-    entry.index = buildTextIndex(entry.items, embedTexts);
+    // 2026-11-23(AI 비용 줄이기 1번): DB 저장소에 있는 문장은 다시 바꾸지 않는다(새로 생긴·바뀐 문장만 OpenAI로). 나누어 보내기는 저장소 쪽이 한다.
+    entry.index = buildTextIndex(entry.items, embedTextsCached, Number.MAX_SAFE_INTEGER);
     entry.index.catch(() => { entry.index = null; });
   }
   return entry.index;

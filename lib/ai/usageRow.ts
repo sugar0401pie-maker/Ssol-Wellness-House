@@ -3,7 +3,8 @@
 // "server-only"를 넣지 않는다(테스트가 바로 읽는다).
 
 export type UsageScope = { route: string; userId?: string | null; sessionId?: string | null };
-export type UsageEvent = { feature: string; model: string; inputTokens: number; outputTokens: number };
+// cachedInputTokens(2026-11-23): 입력 중 OpenAI가 앞부분을 기억해 싸게 계산한 토큰 수(입력 토큰에 포함됨 · 없으면 0).
+export type UsageEvent = { feature: string; model: string; inputTokens: number; outputTokens: number; cachedInputTokens?: number };
 
 export type UsageRow = {
   user_id: string | null;
@@ -13,6 +14,7 @@ export type UsageRow = {
   model: string;
   input_tokens: number;
   output_tokens: number;
+  cached_input_tokens: number;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,5 +31,6 @@ export function usageRow(scope: UsageScope | undefined, e: UsageEvent): UsageRow
     model: label(e.model, "unknown"),
     input_tokens: tokens(e.inputTokens),
     output_tokens: tokens(e.outputTokens),
+    cached_input_tokens: Math.min(tokens(e.cachedInputTokens), tokens(e.inputTokens)), // 입력보다 클 수 없다
   };
 }

@@ -7,8 +7,8 @@ const S = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
 test("사용량 한 줄: 범위의 사용자·대화·기능 이름과 토큰 수만 담는다(내용 칸 없음)", () => {
   const r = usageRow({ route: "chat", userId: U, sessionId: S }, { feature: "chat_reply", model: "gpt-5.6-luna", inputTokens: 1819, outputTokens: 271 });
-  assert.deepEqual(r, { user_id: U, session_id: S, route: "chat", feature: "chat_reply", model: "gpt-5.6-luna", input_tokens: 1819, output_tokens: 271 });
-  assert.deepEqual(Object.keys(r).sort(), ["feature", "input_tokens", "model", "output_tokens", "route", "session_id", "user_id"]);
+  assert.deepEqual(r, { user_id: U, session_id: S, route: "chat", feature: "chat_reply", model: "gpt-5.6-luna", input_tokens: 1819, output_tokens: 271, cached_input_tokens: 0 });
+  assert.deepEqual(Object.keys(r).sort(), ["cached_input_tokens", "feature", "input_tokens", "model", "output_tokens", "route", "session_id", "user_id"]);
 });
 
 test("요청 밖에서 부르면 route는 background, 사용자 없음", () => {
@@ -28,4 +28,10 @@ test("이상한 값은 걸러낸다: id가 uuid가 아니면 비우고, 토큰�
   assert.equal(r.input_tokens, 0);
   assert.equal(r.output_tokens, 0);
   assert.equal(usageRow(undefined, { feature: "f", model: "m", inputTokens: 12.6, outputTokens: 3 }).input_tokens, 13);
+});
+
+test("캐시 할인 받은 입력 토큰(2026-11-23): 입력 토큰보다 클 수 없고, 없으면 0", () => {
+  assert.equal(usageRow(undefined, { feature: "chat_reply", model: "m", inputTokens: 6900, outputTokens: 250, cachedInputTokens: 1152 }).cached_input_tokens, 1152);
+  assert.equal(usageRow(undefined, { feature: "chat_reply", model: "m", inputTokens: 100, outputTokens: 1, cachedInputTokens: 5000 }).cached_input_tokens, 100);
+  assert.equal(usageRow(undefined, { feature: "chat_reply", model: "m", inputTokens: 100, outputTokens: 1, cachedInputTokens: -3 }).cached_input_tokens, 0);
 });

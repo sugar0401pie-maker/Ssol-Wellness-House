@@ -13,7 +13,7 @@ export async function generateLongText(system: string, user: string, maxOutputTo
     input: [{ role: "system", content: system }, { role: "user", content: user }],
     max_output_tokens: maxOutputTokens,
   });
-  recordUsage({ feature: "admin_report", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });
+  recordUsage({ feature: "admin_report", model: MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0, cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens ?? 0 });
   const text = response.output_text?.trim();
   if (!text) throw new Error("보고서 생성 모델이 빈 응답을 반환함");
   return text;

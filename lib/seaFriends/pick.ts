@@ -13,8 +13,10 @@ export function seaFriendDeck(hideUnchecked = HIDE_UNCHECKED, deck: SeaFriend[] 
   return deck.map((f) => ({ ...f, items: f.items.filter((i) => !i.check) })).filter((f) => f.items.length > 0);
 }
 
-export function pickSeaFriend(lastItemId: string | null, rand: () => number = Math.random, deck: SeaFriend[] = seaFriendDeck()): SeaFriendPick {
+// avoidFriendKey(요청문 v1.9.3 1단계 3번): "다른 친구 보기"는 바로 전과 다른 동물의 항목이 나오게 — 그 동물을 빼고 뽑는다.
+export function pickSeaFriend(lastItemId: string | null, rand: () => number = Math.random, deck: SeaFriend[] = seaFriendDeck(), avoidFriendKey: string | null = null): SeaFriendPick {
   const at = <T,>(xs: T[]) => xs[Math.min(xs.length - 1, Math.floor(rand() * xs.length))];
+  if (avoidFriendKey && deck.length > 1) deck = deck.filter((f) => f.key !== avoidFriendKey);
   let friend = at(deck), item = at(friend.items);
   for (let guard = 0; item.id === lastItemId && guard < 20; guard++) { friend = at(deck); item = at(friend.items); }
   if (item.id === lastItemId) { // 운이 나빠도(난수가 고정된 시험 등) 같은 이야기를 두 번 보이지 않는다

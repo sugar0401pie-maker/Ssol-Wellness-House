@@ -25,8 +25,8 @@ function writeLast(id: string) {
   }
 }
 
-function draw(last: string | null): SeaFriendPick {
-  const p = pickSeaFriend(last);
+function draw(last: string | null, avoidFriendKey: string | null = null): SeaFriendPick {
+  const p = pickSeaFriend(last, Math.random, undefined, avoidFriendKey);
   writeLast(p.item.id);
   return p;
 }
@@ -48,7 +48,7 @@ export default function SeaFriendCard() {
       <p className="text-[12px] text-slate-500">오늘의 바다 친구</p>
       <div className="relative mx-auto mt-2 aspect-square w-full max-w-[320px] overflow-hidden rounded-2xl bg-white">
         {/* 이미 720px webp(한 장 약 60KB)라 Next 이미지 변환을 거치지 않는다(unoptimized — 그림 241장이 Vercel 이미지 변환 한도를 쓰지 않게). */}
-        <Image key={pick.image} src={pick.image} alt={pick.friend.name} fill unoptimized className="object-cover" />
+        <Image key={pick.image} src={pick.image} alt={`${pick.friend.name} 그림`} fill unoptimized className="object-cover" />
       </div>
       <p className="mt-3 text-[13px] font-medium text-navy">{pick.friend.name}</p>
       <p className="mt-0.5 font-serif text-[18px] font-bold leading-7 text-foreground">{pick.item.title}</p>
@@ -59,7 +59,7 @@ export default function SeaFriendCard() {
         </Link>
         <button
           type="button"
-          onClick={() => setPick(draw(pick.item.id))}
+          onClick={() => setPick(draw(pick.item.id, pick.friend.key))}
           className="flex-1 rounded-full border border-navy bg-white px-3 py-2.5 text-[13.5px] font-medium text-navy active:bg-navy-soft"
         >
           다른 친구 보기

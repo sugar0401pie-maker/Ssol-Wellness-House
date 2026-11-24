@@ -53,3 +53,14 @@ test("여러 친구가 함께 나오는 그림은 나오는 동물 모두의 목
   assert.ok(shared.length > 0);
   assert.ok(shared.some((n) => n.includes("수달") && n.includes("해달")));
 });
+
+test("다른 친구 보기: 바로 전과 다른 동물이 나온다(요청문 v1.9.3 1단계)", () => {
+  let s = 7;
+  const rand = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+  let prev = pickSeaFriend(null, rand);
+  for (let k = 0; k < 500; k++) {
+    const next = pickSeaFriend(prev.item.id, rand, undefined, prev.friend.key);
+    assert.notEqual(next.friend.key, prev.friend.key);
+    prev = next;
+  }
+});

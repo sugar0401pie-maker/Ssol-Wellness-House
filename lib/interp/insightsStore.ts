@@ -3,23 +3,31 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import * as RS from "./vendor/rootState.mjs";
 import { loadData, readStates } from "./hypothesis";
 import * as D from "./vendor/direction.mjs";
-import { buildInsights, type Insight, type InsightAction } from "./insights";
+import { buildInsights, latestTalkInsight, type Insight, type InsightAction } from "./insights";
 import { growthReport } from "./growth";
 
 // 마이페이지 "쏘웰라가 파악한 내용"의 읽기·정정·삭제(2026-10-18, 로드맵 10번). 모두 본인 장부(sw_*)에만 적용되고, 장부가 단일 진실 원천이다.
 type Admin = ReturnType<typeof createAdminClient>;
 type State = ReturnType<typeof RS.newRootState>;
+// 엔진 함수 이름(useDirection)이 React 훅 규칙(lint)에 걸려 이름만 바꿔 부른다 — 훅이 아니다.
+const directionOf = D.useDirection;
 
-export async function loadInsights(admin: Admin, userId: string): Promise<Insight[]> {
+// limit(2026-11-24): "당신에 대한 해석" 화면은 쌓인 내용을 더 많이(10개) 보여 준다. latest: 마이페이지 맨 위 "최근 대화 기준" 한 개.
+export async function loadInsights(admin: Admin, userId: string, limit?: number): Promise<Insight[]> {
+  return (await loadInsightsWithLatest(admin, userId, limit)).items;
+}
+export async function loadInsightsWithLatest(admin: Admin, userId: string, limit?: number): Promise<{ items: Insight[]; latest: Insight | null }> {
   const [{ texts }, states, growth] = await Promise.all([loadData(admin), readStates(admin, userId), growthReport(admin, userId)]);
-  const items = buildInsights(states, texts);
-  if (!growth.signals.length) return items;
+  const items = buildInsights(states, texts, limit);
+  const latest = latestTalkInsight(states, texts);
+  if (!growth.signals.length) return { items, latest };
   // 뿌리별 방향 한 줄(CSO DIR-04·05): 같은 메시지에서 그 마음을 알아차리는 말이 있었으면 "쓰는 쪽으로", 서로 다른 대화에서 반복되는데 방향 신호가 없으면 부드러운 한 줄.
   const byRoot = new Map(states.map((s) => [s.root_id, s]));
-  return items.map((it) => {
-    const line = D.rootDirectionLine(it.rootId, D.useDirection(it.rootId, byRoot.get(it.rootId), growth.signals)) as string;
+  const withLine = (it: Insight): Insight => {
+    const line = D.rootDirectionLine(it.rootId, directionOf(it.rootId, byRoot.get(it.rootId), growth.signals)) as string;
     return line ? { ...it, directionLine: line } : it;
-  });
+  };
+  return { items: items.map(withLine), latest: latest ? withLine(latest) : null };
 }
 
 /** 마이페이지에 붙일 변화 한 줄(늘었을 때·처음일 때만 — 줄었다는 말은 하지 않는다). */

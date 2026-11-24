@@ -9,7 +9,7 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import CustomerFeedbackModal from "./CustomerFeedbackModal";
 import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
-import InsightsSection from "./InsightsSection";
+import { LatestInsightCard } from "./InsightsSection";
 import { HELP_RESOURCES } from "@/lib/safety/safetyReplyData";
 
 // 안내 문구의 '마들랜' 링크 — 도움받을 곳 목록과 같은 주소를 쓴다(한 곳만 고치면 되게).
@@ -209,6 +209,8 @@ export default function MyPageTab() {
 
       {data && (
         <div className="flex-1">
+          {/* 2026-11-24 대표님 요청: 내 정보 위에 "가장 최근 대화 기준" 쏘웰라가 알게 된 마음 한 개 → "더 알아보기"(/mypage/insights)에서 쌓인 내용 전체. */}
+          <LatestInsightCard />
           <GroupRow title="내 정보" open={group === "me"} onToggle={() => setGroup(group === "me" ? null : "me")}>
             <SectionRow nested title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
               <dl className="space-y-2">
@@ -381,10 +383,6 @@ export default function MyPageTab() {
             </SectionRow>
           </GroupRow>
 
-          <SectionRow title="쏘웰라가 파악한 내용" open={open === "insights"} onToggle={() => setOpen(open === "insights" ? null : "insights")}>
-            {/* 2026-10-18(로드맵 10번): 열었을 때만 불러온다(열려 있는 동안만 마운트). */}
-            <InsightsSection />
-          </SectionRow>
 
           <SectionRow
             title="웰니스 상담 신청하기"

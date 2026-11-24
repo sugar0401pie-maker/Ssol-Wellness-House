@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildInsights, isInsightAction, isRootId, INSIGHT_MAX_ITEMS } from "./insights.ts";
+import { buildInsights, groupInsights, isInsightAction, isRootId, latestTalkInsight, splitFirstSentence, INSIGHT_MAX_ITEMS } from "./insights.ts";
 import type { RootText, StateLite } from "./speak.ts";
 
 const T = (id: string, over: Partial<RootText> = {}): RootText => ({ root_id: id, name: id, reflect: [], check_q: ["q"], counter: [], strength: "강점", report: `${id} 문장`, sensitive: false, ...over });
@@ -39,4 +39,27 @@ test("대화 근거 없이 고른 답만으로는 점수 2.0 이상일 때만 �
   const texts = { A: T("A"), B: T("B"), C: T("C") };
   const r = buildInsights([S("A", 1.5, "candidate", ["onboarding"]), S("B", 2.0, "candidate", ["onboarding", "test"]), S("C", 1.0, "candidate", ["chat"])], texts);
   assert.deepEqual(r.map((x) => x.rootId).sort(), ["B", "C"]);
+});
+
+const L = (root_id: string, score: number, ledger: { source: string; at: string; points?: number; validity?: string }[], status = "likely") =>
+  ({ root_id, score, status, sources: [...new Set(ledger.map((e) => e.source))], ledger: ledger.map((e) => ({ points: 1, validity: "active", ...e })) }) as unknown as StateLite;
+
+test("가장 최근 대화 기준 한 개: 대화(채팅·과제)에서 마지막으로 비친 마음 · 지운 근거·답만 있는 마음은 아님", () => {
+  const texts = Object.fromEntries(["A", "B", "C", "D"].map((i) => [i, T(i)]));
+  const states = [
+    L("A", 5, [{ source: "chat", at: "2026-11-20T10:00:00Z" }]),
+    L("B", 1.5, [{ source: "chat", at: "2026-11-23T09:00:00Z" }, { source: "test", at: "2026-11-24T00:00:00Z" }]),
+    L("C", 3, [{ source: "chat", at: "2026-11-24T05:00:00Z", validity: "superseded" }]), // 지운 근거
+    L("D", 9, [{ source: "onboarding", at: "2026-11-24T06:00:00Z" }]), // 답만
+  ];
+  assert.equal(latestTalkInsight(states, texts)?.rootId, "B");
+  assert.equal(latestTalkInsight([L("D", 9, [{ source: "onboarding", at: "2026-11-24T06:00:00Z" }])], texts), null);
+});
+
+test("해석 화면 묶음: 맞다고 하신 → 이야기 → 답, 빈 묶음은 뺀다 · 첫 문장 나누기", () => {
+  const items = buildInsights([S("A", 0, "confirmed"), S("B", 2), S("C", 3, "candidate", ["test"])], { A: T("A"), B: T("B"), C: T("C") }, 10);
+  assert.deepEqual(groupInsights(items).map((g) => [g.key, g.items.map((i) => i.rootId)]), [["confirmed", ["A"]], ["chat", ["B"]], ["answers", ["C"]]]);
+  assert.deepEqual(groupInsights([]), []);
+  assert.deepEqual(splitFirstSentence("첫 문장이에요. 둘째 문장이에요."), ["첫 문장이에요.", "둘째 문장이에요."]);
+  assert.deepEqual(splitFirstSentence("한 문장뿐"), ["한 문장뿐", ""]);
 });

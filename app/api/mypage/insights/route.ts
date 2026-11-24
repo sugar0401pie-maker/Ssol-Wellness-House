@@ -3,7 +3,7 @@ import { getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { isInsightAction, isRootId } from "@/lib/interp/insights";
-import { applyInsightAction, clearInsights, loadGrowthLines, loadInsights } from "@/lib/interp/insightsStore";
+import { applyInsightAction, clearInsights, loadGrowthLines, loadInsights, loadInsightsWithLatest } from "@/lib/interp/insightsStore";
 import { withUsageScope } from "@/lib/ai/usage";
 
 // 마이페이지 "쏘웰라가 파악한 내용"(2026-10-18, 로드맵 10번). 본인 것만: 보기(GET) · 맞아요/아니에요/지우기(PATCH) · 전부 지우기(DELETE).
@@ -20,8 +20,9 @@ async function handleGET(req: NextRequest) {
   if (typeof u !== "string") return u;
   try {
     const admin = createAdminClient();
-    const [items, growth] = await Promise.all([loadInsights(admin, u), loadGrowthLines(admin, u).catch(() => [] as string[])]);
-    return NextResponse.json({ items, growth });
+    // 2026-11-24: 마이페이지 맨 위 카드(latest — 최근 대화 기준 한 개) · "당신에 대한 해석" 화면(items — 쌓인 내용 최대 10개).
+    const [{ items, latest }, growth] = await Promise.all([loadInsightsWithLatest(admin, u, 10), loadGrowthLines(admin, u).catch(() => [] as string[])]);
+    return NextResponse.json({ items, latest, growth });
   } catch (e) {
     console.error("파악한 내용 조회 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return NextResponse.json({ error: "불러오지 못했어요." }, { status: 500 });
@@ -36,7 +37,7 @@ async function handlePATCH(req: NextRequest) {
   try {
     const admin = createAdminClient();
     if (!(await applyInsightAction(admin, u, body.rootId, body.action))) return NextResponse.json({ error: "찾을 수 없어요." }, { status: 404 });
-    return NextResponse.json({ items: await loadInsights(admin, u) });
+    return NextResponse.json({ items: await loadInsights(admin, u, 10) });
   } catch (e) {
     console.error("파악한 내용 정정 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return NextResponse.json({ error: "저장하지 못했어요. 잠시 후 다시 시도해주세요." }, { status: 500 });

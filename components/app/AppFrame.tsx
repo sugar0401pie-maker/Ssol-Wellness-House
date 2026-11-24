@@ -229,7 +229,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           <Link
             key={t.href}
             href={t.href}
-            className={`py-1.5 text-center text-[13px] font-medium ${pathname === t.href ? "text-navy" : "text-slate-400"}`}
+            className={`py-1.5 text-center text-[13px] font-medium ${pathname === t.href || pathname.startsWith(`${t.href}/`) ? "text-navy" : "text-slate-400"}`}
           >
             {t.label}
           </Link>

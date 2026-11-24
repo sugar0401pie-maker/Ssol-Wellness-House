@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildInsights, groupInsights, isInsightAction, isRootId, latestTalkInsight, splitFirstSentence, INSIGHT_MAX_ITEMS } from "./insights.ts";
+import { buildInsights, groupInsights, interpretationParagraphs, isInsightAction, isRootId, latestTalkInsight, splitFirstSentence, INSIGHT_MAX_ITEMS } from "./insights.ts";
 import type { RootText, StateLite } from "./speak.ts";
 
 const T = (id: string, over: Partial<RootText> = {}): RootText => ({ root_id: id, name: id, reflect: [], check_q: ["q"], counter: [], strength: "강점", report: `${id} 문장`, sensitive: false, ...over });
@@ -62,4 +62,14 @@ test("해석 화면 묶음: 맞다고 하신 → 이야기 → 답, 빈 묶음�
   assert.deepEqual(groupInsights([]), []);
   assert.deepEqual(splitFirstSentence("첫 문장이에요. 둘째 문장이에요."), ["첫 문장이에요.", "둘째 문장이에요."]);
   assert.deepEqual(splitFirstSentence("한 문장뿐"), ["한 문장뿐", ""]);
+});
+
+test("읽은 것들 화면: 글머리 문단 — 첫 문단 '이런 마음이 보여요', 다음부터 '이런 모습도 있어요', 변화는 마지막", () => {
+  const items = buildInsights([S("A", 0, "confirmed"), S("B", 2)], { A: T("A"), B: T("B", { strength: "" }) }, 10);
+  const p = interpretationParagraphs(items, ["요즘 하고 싶은 쪽으로 움직이고 있어요."], "곽이");
+  assert.deepEqual(p.map((x) => x.lead), ["곽이님은 이런 마음이 보여요.", "곽이님은 이런 모습도 있어요.", "곽이님에게 요즘 이런 변화도 보여요."]);
+  assert.deepEqual(p[0].extras, ["강점"]);
+  assert.deepEqual(p[1].extras, []); // 빈 강점은 뺀다
+  assert.equal(p[2].text, null);
+  assert.equal(interpretationParagraphs(items, [], null)[0].lead, "이런 마음이 보여요.");
 });

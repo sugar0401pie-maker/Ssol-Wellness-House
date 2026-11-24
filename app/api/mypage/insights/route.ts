@@ -5,6 +5,7 @@ import { checkAccessCode } from "@/lib/security/accessCode";
 import { isInsightAction, isRootId } from "@/lib/interp/insights";
 import { applyInsightAction, clearInsights, loadGrowthLines, loadInsights, loadInsightsWithLatest } from "@/lib/interp/insightsStore";
 import { withUsageScope } from "@/lib/ai/usage";
+import { loadGreetingName } from "@/lib/profile/greetingName";
 
 // 마이페이지 "쏘웰라가 파악한 내용"(2026-10-18, 로드맵 10번). 본인 것만: 보기(GET) · 맞아요/아니에요/지우기(PATCH) · 전부 지우기(DELETE).
 export const runtime = "nodejs";
@@ -21,8 +22,10 @@ async function handleGET(req: NextRequest) {
   try {
     const admin = createAdminClient();
     // 2026-11-24: 마이페이지 맨 위 카드(latest — 최근 대화 기준 한 개) · "당신에 대한 해석" 화면(items — 쌓인 내용 최대 10개).
-    const [{ items, latest }, growth] = await Promise.all([loadInsightsWithLatest(admin, u, 10), loadGrowthLines(admin, u).catch(() => [] as string[])]);
-    return NextResponse.json({ items, latest, growth });
+    const [{ items, latest }, growth, name] = await Promise.all([
+      loadInsightsWithLatest(admin, u, 10), loadGrowthLines(admin, u).catch(() => [] as string[]), loadGreetingName(admin, u).catch(() => null),
+    ]);
+    return NextResponse.json({ items, latest, growth, name });
   } catch (e) {
     console.error("파악한 내용 조회 실패:", e instanceof Error ? e.message.slice(0, 120) : "unknown");
     return NextResponse.json({ error: "불러오지 못했어요." }, { status: 500 });

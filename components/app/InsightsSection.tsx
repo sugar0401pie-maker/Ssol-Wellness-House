@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { groupInsights, splitFirstSentence, type Insight } from "@/lib/interp/insights";
+import { interpretationParagraphs, splitFirstSentence, type Insight } from "@/lib/interp/insights";
 
 // 쏘웰라가 파악한 내용(2026-10-18, 로드맵 10번) — 진단·성격 라벨이 아니라 "~일 수 있어요" 제안 문장이다.
 // 2026-11-24 대표님 요청: 맞아요/아니에요·지우기 버튼 없음(보기만 — 지우고 싶으면 '고객의 의견'·탈퇴로 요청, 서버 PATCH·DELETE는 남겨 둠) · 첫 문장 굵게 ·
-//   마이페이지 맨 위에는 "가장 최근 대화 기준" 한 개(LatestInsightCard) → "더 알아보기"로 들어오면 "당신에 대한 해석입니다"와 쌓인 내용을 묶어서(InsightsPage).
+//   마이페이지 맨 위에는 "가장 최근 대화 기준" 한 개(LatestInsightCard) → "더 알아보기"로 들어오면 "○○님과의 대화에서 읽은 것들"(InsightsSection).
 // 서버의 맞아요/아니에요(confirm/reject) 처리는 그대로 둔다(예전 답은 그대로 반영).
 
-type Payload = { items: Insight[]; latest?: Insight | null; growth?: string[] };
+type Payload = { items: Insight[]; latest?: Insight | null; growth?: string[]; name?: string | null };
 
 async function call(method: "GET"): Promise<Payload> {
   const token = await getAccessToken();
@@ -62,51 +62,59 @@ export function LatestInsightCard({ name }: { name?: string | null }) {
   );
 }
 
-// "당신에 대한 해석" 화면 — 쌓인 내용을 묶음별로(맞다고 하신 마음 → 이야기 속에서 자주 비친 마음 → 고르신 답에서 보인 마음) + 요즘의 변화.
+// "○○님과의 대화에서 읽은 것들" 화면(2026-11-24 대표님 요청) — 이야기·테스트로 나누지 않고, 글머리표 문단을 줄글로 이어 한 줄씩 띄운다.
+// 첫 문단 "○○님은 이런 마음이 보여요." · 다음부터 "○○님은 이런 모습도 있어요." + 그 마음의 문장(첫 문장 굵게)·강점·방향 한 줄. 맨 아래 채팅으로 가는 버튼.
 export default function InsightsSection() {
-  const [items, setItems] = useState<Insight[] | null>(null);
-  const [growth, setGrowth] = useState<string[]>([]); // 요즘의 변화 한 줄(성장 방향·동기 위치 — 늘었을 때·처음일 때만 있고 줄었다는 말은 없음)
+  const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     call("GET")
-      .then((v) => { if (!cancelled) { setItems(v.items); setGrowth(v.growth ?? []); } })
+      .then((v) => { if (!cancelled) setData(v); })
       .catch(() => { if (!cancelled) setError("불러오지 못했어요. 잠시 후 다시 확인해주세요."); });
     return () => { cancelled = true; };
   }, []);
 
+  const name = data?.name?.trim() || null;
+  const paragraphs = data ? interpretationParagraphs(data.items, data.growth ?? [], name) : [];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h1 className="font-serif text-[20px] font-bold leading-7 text-foreground">당신에 대한 해석입니다</h1>
-        <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
-          쏘웰라와의 이야기와 고르신 답(심리테스트·온보딩·점성술)을 모아 정리한 마음이에요. 정확하지 않을 수 있어요.
-        </p>
+        <h1 className="font-serif text-[20px] font-bold leading-7 text-foreground">{name ? `${name}님과의 대화에서 읽은 것들` : "대화에서 읽은 것들"}</h1>
+        <p className="mt-1.5 text-[13px] leading-5 text-slate-500">쏘웰라와의 이야기와 고르신 답(심리테스트·온보딩·점성술)을 모아 정리했어요. 정확하지 않을 수 있어요.</p>
       </div>
       {error && <p className="text-[13px] text-red-600">{error}</p>}
-      {items === null && !error && <p className="text-[13px] text-slate-400">불러오는 중…</p>}
-      {growth.length > 0 && (
-        <div className="rounded-xl bg-slate-50 p-3">
-          <p className="mb-1 text-[12px] text-slate-400">요즘의 변화</p>
-          {growth.map((g) => <p key={g} className="text-[14px] leading-6 text-foreground">{g}</p>)}
+      {!data && !error && <p className="text-[13px] text-slate-400">불러오는 중…</p>}
+      {data && paragraphs.length === 0 && <p className="text-[13px]">아직 정리된 내용이 없어요. 쏘웰라와 더 이야기를 나누면 여기에 쌓여요.</p>}
+      {paragraphs.length > 0 && (
+        <ul className="list-disc space-y-6 pl-5 marker:text-navy">
+          {paragraphs.map((p, i) => {
+            const [first, rest] = p.text ? splitFirstSentence(p.text) : ["", ""];
+            return (
+              <li key={i} className="text-[14.5px] leading-7 text-foreground">
+                {p.lead}{" "}
+                {p.text && (
+                  <>
+                    <strong className="font-bold">{first}</strong>
+                    {rest && ` ${rest}`}{" "}
+                  </>
+                )}
+                {p.extras.join(" ")}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {data && (
+        <div className="rounded-2xl bg-navy-soft p-4 text-center">
+          <p className="text-[14.5px] leading-6 text-foreground">쏘웰라 AI와 이야기해주셔서 감사해요! 더 얘기해보시겠어요?</p>
+          <Link href="/chat" className="mt-3 inline-block rounded-full bg-navy px-4 py-2 text-[14px] font-medium text-white">
+            채팅하러 가기
+          </Link>
         </div>
       )}
-      {items?.length === 0 && <p className="text-[13px]">아직 정리된 내용이 없어요. 쏘웰라와 더 이야기를 나누면 여기에 쌓여요.</p>}
-      {items && groupInsights(items).map((g) => (
-        <section key={g.key}>
-          <p className="mb-2 text-[15px] font-bold text-foreground">{g.title}</p>
-          <div className="space-y-2.5">
-            {g.items.map((it) => (
-              <div key={it.rootId} className="rounded-xl border border-line p-3">
-                <InsightText text={it.text} />
-                {it.strength && <p className="mt-1.5 text-[13px] leading-5 text-slate-500">{it.strength}</p>}
-                {it.directionLine && <p className="mt-1.5 text-[13px] leading-5 text-slate-500">{it.directionLine}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
     </div>
   );
 }

@@ -35,7 +35,7 @@ function InsightText({ text, size = "text-[14px]" }: { text: string; size?: stri
 // 2026-11-24 대표님: 문장이 "~하는 분들이 있어요"처럼 일반론이라 뜬금없게 느껴질 수 있어, 앞에 "{닉네임}님과 나눈 최근 대화를 보면" 한 줄로 그 사람 이야기임을 먼저 알려 준다.
 export function insightLeadIn(name: string | null | undefined): string {
   const n = name?.trim();
-  return n ? `${n}님과 나눈 최근 대화를 보면, 이런 마음이 있을 수 있어요.` : "최근 나눈 대화를 보면, 이런 마음이 있을 수 있어요.";
+  return n ? `${n}님과 나눈 최근 대화를 보면, 이런 마음이 보여요.` : "최근 나눈 대화를 보면, 이런 마음이 보여요.";
 }
 
 export function LatestInsightCard({ name }: { name?: string | null }) {

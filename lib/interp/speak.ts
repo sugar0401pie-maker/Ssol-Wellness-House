@@ -28,6 +28,14 @@ export function rankRoots(states: StateLite[], exclude: Set<string>, minScore = 
     .sort((a, b) => b.score - a.score || (b.sources?.length ?? 0) - (a.sources?.length ?? 0) || a.root_id.localeCompare(b.root_id));
 }
 
+// 2026-11-24 버그 수정(사용자 제보: 두 번째 답변 끝에 고민과 상관없는 문장 — 다른 대화(성취감 이야기)에서 나왔던 짐작이 그대로 붙음).
+// 원인: 위 "대화 근거"를 사람 전체 장부에서 봐서, 예전 대화에서 비친 마음을 지금 대화와 상관없이 꺼냈다.
+// 이제 지금 이 대화(chatId)에서 실제로 비친(유효한 채팅 근거가 있는) 마음만 말한다. 다른 대화·답의 근거는 점수·순위에만 쓴다.
+type LedgerLite = { source?: string; chat_id?: string | null; validity?: string; points?: number };
+export function onlyThisChat<T extends StateLite & { ledger?: LedgerLite[] }>(states: T[], chatId: string): T[] {
+  return states.filter((s) => (s.ledger ?? []).some((e) => e.source === "chat" && e.chat_id === chatId && (!e.validity || e.validity === "active") && !!e.points));
+}
+
 export type SpeakChoice =
   | { kind: "hypothesis"; root: string; score: number }
   | { kind: "discriminator"; group: DiscGroup; roots: [string, string] };

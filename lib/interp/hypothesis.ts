@@ -8,7 +8,7 @@ import { interpRoutes } from "./gate";
 import { interpListed } from "./listed";
 import { SPEC_VERSION } from "./version";
 import {
-  buildDiscGroups, buildRootTexts, chooseSpeak, classifyReplyRules, discPrompt, hypothesisBlock, inSpeakWindow, makeMarker,
+  buildDiscGroups, buildRootTexts, chooseSpeak, onlyThisChat, classifyReplyRules, discPrompt, hypothesisBlock, inSpeakWindow, makeMarker,
   parseDiscChoice, parseMarker, parseReplyLabel, replyPrompt, type DiscGroup, type ReplyLabel, type RootText, type StateLite,
 } from "./speak";
 
@@ -79,7 +79,8 @@ export async function planHypothesis(p: {
     for (const m of markers) if (m.marker!.kind === "hyp") exclude.add(m.marker!.id);
     const asked = new Set(markers.filter((m) => m.marker!.kind === "disc").map((m) => m.marker!.id));
 
-    const choice = chooseSpeak(await readStates(p.admin, p.userId), exclude, groups, asked);
+    // 지금 이 대화에서 비친 마음만(2026-11-24 버그 수정 — speak.ts onlyThisChat).
+    const choice = chooseSpeak(onlyThisChat(await readStates(p.admin, p.userId), p.sessionId), exclude, groups, asked);
     if (!choice) return null;
 
     let marker: string | null = null;

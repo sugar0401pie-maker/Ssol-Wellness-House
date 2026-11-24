@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   HYPOTHESIS_MAX_TURN, buildDiscGroups, buildRootTexts, chooseSpeak, classifyReplyRules, discPrompt, hypothesisBlock, inSpeakWindow,
-  makeMarker, parseDiscChoice, parseMarker, parseReplyLabel, rankRoots, type DiscGroup, type StateLite,
+  makeMarker, onlyThisChat, parseDiscChoice, parseMarker, parseReplyLabel, rankRoots, type DiscGroup, type StateLite,
 } from "./speak.ts";
 
 const S = (root_id: string, score: number, status = "candidate", sources: string[] = ["chat"]): StateLite => ({ root_id, score, status, sources });
@@ -106,4 +106,18 @@ test("DB 행 → 데이터 변환: 빈 문장은 건너뛰고, 형식이 이상�
 
 test("대화에서 비친 적 없는 뿌리(테스트 근거만)는 말하지 않지만, 대화 근거가 섞이면 말한다", () => {
   assert.deepEqual(rankRoots([S("T", 2, "candidate", ["test"]), S("C", 1, "candidate", ["chat"]), S("M", 3, "likely", ["test", "chat"])], new Set()).map((x) => x.root_id), ["M", "C"]);
+});
+
+test("짐작은 지금 이 대화에서 비친 마음만(2026-11-24 버그: 예전 대화의 짐작이 상관없는 대화에 붙음)", () => {
+  const st = (root_id: string, ledger: { source: string; chat_id?: string | null; validity?: string; points?: number }[]) =>
+    ({ root_id, score: 2, status: "likely", sources: ledger.map((e) => e.source), ledger: ledger.map((e) => ({ points: 1, validity: "active", ...e })) }) as unknown as StateLite;
+  const states = [
+    st("ROOT-OLD", [{ source: "chat", chat_id: "chat-1" }]), // 예전 대화(성취감)
+    st("ROOT-NOW", [{ source: "chat", chat_id: "chat-2" }, { source: "test" }]),
+    st("ROOT-GONE", [{ source: "chat", chat_id: "chat-2", validity: "superseded" }]), // 지운 근거
+    st("ROOT-ZERO", [{ source: "chat", chat_id: "chat-2", points: 0 }]),
+    st("ROOT-ANS", [{ source: "onboarding" }]),
+  ];
+  assert.deepEqual(onlyThisChat(states, "chat-2").map((s) => s.root_id), ["ROOT-NOW"]);
+  assert.equal(chooseSpeak(onlyThisChat(states, "chat-3"), new Set(), [], new Set()), null);
 });

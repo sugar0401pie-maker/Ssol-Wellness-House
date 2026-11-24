@@ -7,16 +7,16 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import { groupInsights, splitFirstSentence, type Insight } from "@/lib/interp/insights";
 
 // 쏘웰라가 파악한 내용(2026-10-18, 로드맵 10번) — 진단·성격 라벨이 아니라 "~일 수 있어요" 제안 문장이다.
-// 2026-11-24 대표님 요청: 맞아요/아니에요 버튼 없음(지우기는 남김) · 첫 문장 굵게 ·
+// 2026-11-24 대표님 요청: 맞아요/아니에요·지우기 버튼 없음(보기만 — 지우고 싶으면 '고객의 의견'·탈퇴로 요청, 서버 PATCH·DELETE는 남겨 둠) · 첫 문장 굵게 ·
 //   마이페이지 맨 위에는 "가장 최근 대화 기준" 한 개(LatestInsightCard) → "더 알아보기"로 들어오면 "당신에 대한 해석입니다"와 쌓인 내용을 묶어서(InsightsPage).
 // 서버의 맞아요/아니에요(confirm/reject) 처리는 그대로 둔다(예전 답은 그대로 반영).
 
 type Payload = { items: Insight[]; latest?: Insight | null; growth?: string[] };
 
-async function call(method: "GET" | "PATCH" | "DELETE", body?: { rootId: string; action: "remove" }): Promise<Payload> {
+async function call(method: "GET"): Promise<Payload> {
   const token = await getAccessToken();
   if (!token) throw new Error("login");
-  const res = await fetch("/api/mypage/insights", { method, headers: authHeaders(token), cache: "no-store", ...(body ? { body: JSON.stringify(body) } : {}) });
+  const res = await fetch("/api/mypage/insights", { method, headers: authHeaders(token), cache: "no-store" });
   if (!res.ok) throw new Error(String(res.status));
   return (await res.json()) as Payload;
 }
@@ -67,8 +67,6 @@ export default function InsightsSection() {
   const [items, setItems] = useState<Insight[] | null>(null);
   const [growth, setGrowth] = useState<string[]>([]); // 요즘의 변화 한 줄(성장 방향·동기 위치 — 늘었을 때·처음일 때만 있고 줄었다는 말은 없음)
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [confirmAll, setConfirmAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,28 +76,12 @@ export default function InsightsSection() {
     return () => { cancelled = true; };
   }, []);
 
-  async function remove(rootId: string) {
-    setBusy(rootId);
-    setError(null);
-    try { setItems((await call("PATCH", { rootId, action: "remove" })).items); }
-    catch { setError("지우지 못했어요. 잠시 후 다시 시도해주세요."); }
-    finally { setBusy(null); }
-  }
-
-  async function clearAll() {
-    setBusy("all");
-    setError(null);
-    try { setItems((await call("DELETE")).items); setGrowth([]); setConfirmAll(false); }
-    catch { setError("지우지 못했어요. 잠시 후 다시 시도해주세요."); }
-    finally { setBusy(null); }
-  }
-
   return (
     <div className="space-y-4">
       <div>
         <h1 className="font-serif text-[20px] font-bold leading-7 text-foreground">당신에 대한 해석입니다</h1>
         <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
-          쏘웰라와의 이야기와 고르신 답(심리테스트·온보딩·점성술)을 모아 정리한 마음이에요. 정확하지 않을 수 있어요. 지우면 더는 쓰지 않아요.
+          쏘웰라와의 이야기와 고르신 답(심리테스트·온보딩·점성술)을 모아 정리한 마음이에요. 정확하지 않을 수 있어요.
         </p>
       </div>
       {error && <p className="text-[13px] text-red-600">{error}</p>}
@@ -120,29 +102,11 @@ export default function InsightsSection() {
                 <InsightText text={it.text} />
                 {it.strength && <p className="mt-1.5 text-[13px] leading-5 text-slate-500">{it.strength}</p>}
                 {it.directionLine && <p className="mt-1.5 text-[13px] leading-5 text-slate-500">{it.directionLine}</p>}
-                <button type="button" disabled={busy !== null} onClick={() => remove(it.rootId)} className="mt-2.5 rounded-full border border-line px-3 py-1 text-[13px] text-slate-500 disabled:opacity-50">
-                  지우기
-                </button>
               </div>
             ))}
           </div>
         </section>
       ))}
-      {!!items?.length && (
-        <div className="pt-1">
-          {!confirmAll ? (
-            <button type="button" onClick={() => setConfirmAll(true)} className="text-[13px] text-slate-400 underline">전부 지우기</button>
-          ) : (
-            <div className="rounded-xl bg-slate-50 p-3 text-[13px]">
-              <p className="mb-2 leading-5">쏘웰라가 파악한 내용을 모두 지울까요? 대화 기록은 그대로 남아요.</p>
-              <div className="flex gap-2">
-                <button type="button" disabled={busy !== null} onClick={clearAll} className="rounded-full border border-line px-3 py-1 text-foreground disabled:opacity-50">모두 지우기</button>
-                <button type="button" onClick={() => setConfirmAll(false)} className="rounded-full px-3 py-1 text-slate-500">취소</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

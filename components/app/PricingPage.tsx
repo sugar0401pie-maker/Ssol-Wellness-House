@@ -19,6 +19,7 @@ import {
   type PlanId,
 } from "@/lib/billing/pricing";
 import KakaoPayButton from "@/components/billing/KakaoPayButton";
+import OfflineSessionCode from "@/components/billing/OfflineSessionCode";
 import { isMobileUserAgent } from "@/lib/billing/kakaopayRequest";
 
 // 2026-09-27: "이용권 결제하기" 눌러 들어오는 요금 안내 + 결제 화면(전용 주소 /pricing).
@@ -204,10 +205,7 @@ export default function PricingPage() {
       {kakaoCanceled && !error && <p className="mt-3 text-[13px] text-slate-500">카카오페이 결제를 취소했어요. 결제된 금액은 없어요.</p>}
       {error && <p className="mt-3 text-[13px] text-red-600">{error}</p>}
 
-      <div className="mt-6 rounded-xl border border-line bg-background p-4 text-[13px] leading-5 text-slate-500">
-        <p className="font-medium text-foreground">오프라인 웰니스 세션을 이용 중이신가요?</p>
-        <p className="mt-1">오프라인 웰니스 세션 패키지를 이용하고 계신 분은 패키지별로 채팅을 무료로 이용하실 수 있어요.</p>
-      </div>
+      <OfflineSessionCode />
 
       <div className="mt-6 text-[12px] leading-5 text-slate-400">
         <p className="font-medium text-slate-500">이용 관련 안내</p>

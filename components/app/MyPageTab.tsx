@@ -50,24 +50,40 @@ type BillingStatus = {
   trialDays: number;
 };
 
+// nested(2026-11-24): '내 정보'·'내 테스트' 묶음 안의 항목 — 들여 쓰고 글자를 조금 작게.
 function SectionRow({
   title,
   open,
   onToggle,
   children,
+  nested = false,
 }: {
   title: string;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  nested?: boolean;
 }) {
+  return (
+    <div className={nested ? "border-t border-line bg-background/40" : "border-b border-line"}>
+      <button type="button" onClick={onToggle} className={`flex w-full items-center justify-between py-3.5 text-left ${nested ? "pl-7 pr-4" : "px-4"}`}>
+        <span className={nested ? "text-[14px] text-foreground" : "text-[15px] font-medium text-foreground"}>{title}</span>
+        <span className="text-[13px] text-slate-400">{open ? "접기" : "보기"}</span>
+      </button>
+      {open && <div className={`pb-4 text-[14px] leading-6 text-slate-600 ${nested ? "pl-7 pr-4" : "px-4"}`}>{children}</div>}
+    </div>
+  );
+}
+
+// 2026-11-24 대표님 요청: 여러 줄을 묶음으로 — 접어 두고, 펼치면 안의 항목(각자 다시 접고 펼침)이 나온다.
+function GroupRow({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
   return (
     <div className="border-b border-line">
       <button type="button" onClick={onToggle} className="flex w-full items-center justify-between px-4 py-3.5 text-left">
         <span className="text-[15px] font-medium text-foreground">{title}</span>
         <span className="text-[13px] text-slate-400">{open ? "접기" : "보기"}</span>
       </button>
-      {open && <div className="px-4 pb-4 text-[14px] leading-6 text-slate-600">{children}</div>}
+      {open && <div>{children}</div>}
     </div>
   );
 }
@@ -80,6 +96,7 @@ export default function MyPageTab() {
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"type" | "insights" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | "help" | null>(null);
+  const [group, setGroup] = useState<"me" | "tests" | null>(null); // 2026-11-24: '내 정보'·'내 테스트' 묶음
   const [editingOnboarding, setEditingOnboarding] = useState(false);
   const helpOpenedRef = useRef(false);
 
@@ -192,177 +209,181 @@ export default function MyPageTab() {
 
       {data && (
         <div className="flex-1">
-          <SectionRow title="테스트 결과 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
-            {/* 2026-10-17 owner 요청: 큰 분류 "테스트 결과 열람하기" 아래에 테스트 종류별 소제목 + 결과 목록(디저트 → 점성술 순).
-                어떤 종류가 있는지는 서버의 lib/mypage/testRegistry.ts가 정한다 — 새 테스트는 거기에 등록하면 여기에 자동으로 나온다. */}
-            {testGroups === null && <p>테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요.</p>}
-            {testGroups?.map((g, gi) => (
-              <div key={g.key} className={gi > 0 ? "mt-6" : ""}>
-                <p className="mb-2.5 text-[17px] font-bold text-foreground">{g.title}</p>
-                {g.items && g.items.length > 0 ? (
-                  <div className="divide-y divide-line rounded-xl border border-line">
-                    {g.items.map((r) => (
-                      <div key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
-                        <div className="min-w-0">
-                          <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
-                          <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
-                            {r.title}
-                            {r.badge && <span className="ml-1.5 text-[11px] font-normal text-navy">{r.badge}</span>}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          {r.primary &&
-                            (r.primary.isPrimary ? (
-                              <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
+          <GroupRow title="내 정보" open={group === "me"} onToggle={() => setGroup(group === "me" ? null : "me")}>
+            <SectionRow nested title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
+              <dl className="space-y-2">
+                <div className="flex justify-between">
+                  <dt className="text-slate-400">이름(실명)</dt>
+                  <dd>{data.displayName ?? "미설정"}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-400">닉네임</dt>
+                  <dd>{data.nickname ?? "미설정"}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-400">생년월일</dt>
+                  <dd>{formatBirthDate(data.birthDate)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-400">이메일</dt>
+                  <dd>{data.email ?? "-"}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-400">휴대전화번호</dt>
+                  <dd>{data.phone ?? "미설정"}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-slate-400">주소</dt>
+                  <dd className="text-right">{data.address ?? "미설정"}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-400">마케팅 정보 활용 동의</dt>
+                  <dd>{data.marketingConsent ? "동의함" : "동의 안 함"}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-slate-400">AI 서비스 개선(모델 학습) 활용 동의</dt>
+                  <dd className="shrink-0">{data.aiTrainingConsent ? "동의함" : "동의 안 함"}</dd>
+                </div>
+                {data.gender && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-400">성별</dt>
+                    <dd>{data.gender === "female" ? "여성" : data.gender === "male" ? "남성" : data.gender}</dd>
+                  </div>
+                )}
+              </dl>
+              <button
+                type="button"
+                onClick={() => {
+                  // 2026-09-28 버그 수정: 카카오/네이버로 가입한 사용자는 비밀번호 자체가 없어서
+                  // 재확인 단계를 통과할 방법이 없었다(항상 실패) — 그런 계정은 비밀번호 확인
+                  // 없이 바로 수정 화면으로 보낸다. 세션이 이미 그 provider의 최근 로그인으로
+                  // 확인된 상태라, 이메일/비밀번호 계정과 동등한 수준의 확인이라고 본다.
+                  if (data && !data.hasPassword) setShowInfoEdit(true);
+                  else setShowPasswordConfirm(true);
+                }}
+                className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+              >
+                정보 수정
+              </button>
+            </SectionRow>
+            <SectionRow nested title="이용권 정보" open={open === "billing"} onToggle={() => setOpen(open === "billing" ? null : "billing")}>
+              {billing && (
+                <>
+                  {billing.reason === "entitlement" ? (
+                    <p>
+                      이용권 이용 중이에요.
+                      {billing.entitlementExpiresAt ? ` (만료일: ${formatDateTimeKR(billing.entitlementExpiresAt)})` : " (만료일 없음)"}
+                    </p>
+                  ) : (
+                    <p>
+                      채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (쏘웰라에 처음 들어온 날로부터 +{billing.trialDays}일,
+                      그날 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
+                    </p>
+                  )}
+                  <p className="mt-1.5 text-slate-500">만료 이후에도 기존 대화내역과 심층 보고서는 볼 수 있어요.</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/pricing")}
+                    className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+                  >
+                    웰니스 채팅 구독하기
+                  </button>
+                </>
+              )}
+            </SectionRow>
+          </GroupRow>
+
+          <GroupRow title="내 테스트" open={group === "tests"} onToggle={() => setGroup(group === "tests" ? null : "tests")}>
+            <SectionRow nested title="테스트 결과 열람하기" open={open === "type"} onToggle={() => setOpen(open === "type" ? null : "type")}>
+              {/* 2026-10-17 owner 요청: 큰 분류 "테스트 결과 열람하기" 아래에 테스트 종류별 소제목 + 결과 목록(디저트 → 점성술 순).
+                  어떤 종류가 있는지는 서버의 lib/mypage/testRegistry.ts가 정한다 — 새 테스트는 거기에 등록하면 여기에 자동으로 나온다. */}
+              {testGroups === null && <p>테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요.</p>}
+              {testGroups?.map((g, gi) => (
+                <div key={g.key} className={gi > 0 ? "mt-6" : ""}>
+                  <p className="mb-2.5 text-[17px] font-bold text-foreground">{g.title}</p>
+                  {g.items && g.items.length > 0 ? (
+                    <div className="divide-y divide-line rounded-xl border border-line">
+                      {g.items.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                          <div className="min-w-0">
+                            <p className="text-[12px] text-slate-400">{formatShortDate(r.createdAt)}</p>
+                            <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
+                              {r.title}
+                              {r.badge && <span className="ml-1.5 text-[11px] font-normal text-navy">{r.badge}</span>}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {r.primary &&
+                              (r.primary.isPrimary ? (
+                                <span className="rounded-full bg-navy-soft px-3 py-1.5 text-[12px] font-medium text-navy">대표 유형</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => selectPrimary(r.id)}
+                                  disabled={settingPrimaryId === r.id}
+                                  className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
+                                >
+                                  대표 유형으로 선택
+                                </button>
+                              ))}
+                            {r.open.external ? (
+                              <a
+                                href={r.open.href}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
+                              >
+                                {r.open.label}
+                              </a>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => selectPrimary(r.id)}
-                                disabled={settingPrimaryId === r.id}
-                                className="rounded-full border border-line px-3 py-1.5 text-[12px] font-medium text-slate-500 active:bg-background disabled:opacity-60"
+                                onClick={() => router.push(r.open.href)}
+                                className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
                               >
-                                대표 유형으로 선택
+                                {r.open.label}
                               </button>
-                            ))}
-                          {r.open.external ? (
-                            <a
-                              href={r.open.href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
-                            >
-                              {r.open.label}
-                            </a>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => router.push(r.open.href)}
-                              className="rounded-full border border-navy px-3 py-1.5 text-[13px] font-medium text-navy active:bg-navy-soft"
-                            >
-                              {r.open.label}
-                            </button>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    <p>{g.items === null ? "이 테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요." : g.emptyMessage}</p>
-                    <a
-                      href={g.start.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
-                    >
-                      {g.start.label}
-                    </a>
-                  </div>
-                )}
-              </div>
-            ))}
-          </SectionRow>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>
+                      <p>{g.items === null ? "이 테스트 결과를 불러오지 못했어요. 잠시 후 다시 확인해주세요." : g.emptyMessage}</p>
+                      <a
+                        href={g.start.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-block rounded-xl bg-navy px-4 py-2.5 text-[14px] font-medium text-white"
+                      >
+                        {g.start.label}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </SectionRow>
+            <SectionRow
+              nested
+              title="온보딩 답변 수정"
+              open={open === "onboarding"}
+              onToggle={() => setOpen(open === "onboarding" ? null : "onboarding")}
+            >
+              <p>가입 직후 답했던 생활·취향 질문을 다시 확인하거나 바꿀 수 있어요. 바뀐 내용은 다음 날 추천부터 반영돼요.</p>
+              <button
+                type="button"
+                onClick={() => setEditingOnboarding(true)}
+                className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
+              >
+                답변 수정하기
+              </button>
+            </SectionRow>
+          </GroupRow>
 
           <SectionRow title="쏘웰라가 파악한 내용" open={open === "insights"} onToggle={() => setOpen(open === "insights" ? null : "insights")}>
             {/* 2026-10-18(로드맵 10번): 열었을 때만 불러온다(열려 있는 동안만 마운트). */}
             <InsightsSection />
-          </SectionRow>
-          <SectionRow title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
-            <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="text-slate-400">이름(실명)</dt>
-                <dd>{data.displayName ?? "미설정"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-400">닉네임</dt>
-                <dd>{data.nickname ?? "미설정"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-400">생년월일</dt>
-                <dd>{formatBirthDate(data.birthDate)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-400">이메일</dt>
-                <dd>{data.email ?? "-"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-400">휴대전화번호</dt>
-                <dd>{data.phone ?? "미설정"}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="shrink-0 text-slate-400">주소</dt>
-                <dd className="text-right">{data.address ?? "미설정"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-400">마케팅 정보 활용 동의</dt>
-                <dd>{data.marketingConsent ? "동의함" : "동의 안 함"}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-400">AI 서비스 개선(모델 학습) 활용 동의</dt>
-                <dd className="shrink-0">{data.aiTrainingConsent ? "동의함" : "동의 안 함"}</dd>
-              </div>
-              {data.gender && (
-                <div className="flex justify-between">
-                  <dt className="text-slate-400">성별</dt>
-                  <dd>{data.gender === "female" ? "여성" : data.gender === "male" ? "남성" : data.gender}</dd>
-                </div>
-              )}
-            </dl>
-            <button
-              type="button"
-              onClick={() => {
-                // 2026-09-28 버그 수정: 카카오/네이버로 가입한 사용자는 비밀번호 자체가 없어서
-                // 재확인 단계를 통과할 방법이 없었다(항상 실패) — 그런 계정은 비밀번호 확인
-                // 없이 바로 수정 화면으로 보낸다. 세션이 이미 그 provider의 최근 로그인으로
-                // 확인된 상태라, 이메일/비밀번호 계정과 동등한 수준의 확인이라고 본다.
-                if (data && !data.hasPassword) setShowInfoEdit(true);
-                else setShowPasswordConfirm(true);
-              }}
-              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
-            >
-              정보 수정
-            </button>
-          </SectionRow>
-
-          <SectionRow title="이용권 정보" open={open === "billing"} onToggle={() => setOpen(open === "billing" ? null : "billing")}>
-            {billing && (
-              <>
-                {billing.reason === "entitlement" ? (
-                  <p>
-                    이용권 이용 중이에요.
-                    {billing.entitlementExpiresAt ? ` (만료일: ${formatDateTimeKR(billing.entitlementExpiresAt)})` : " (만료일 없음)"}
-                  </p>
-                ) : (
-                  <p>
-                    채팅 무료체험 만료일: {formatDateTimeKR(billing.trialEndsAt)} (쏘웰라에 처음 들어온 날로부터 +{billing.trialDays}일,
-                    그날 포함 — 심층보고서가 있으면 7일, 없으면 3일이에요)
-                  </p>
-                )}
-                <p className="mt-1.5 text-slate-500">만료 이후에도 기존 대화내역과 심층 보고서는 볼 수 있어요.</p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/pricing")}
-                  className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
-                >
-                  웰니스 채팅 구독하기
-                </button>
-              </>
-            )}
-          </SectionRow>
-
-          <SectionRow
-            title="온보딩 답변 수정"
-            open={open === "onboarding"}
-            onToggle={() => setOpen(open === "onboarding" ? null : "onboarding")}
-          >
-            <p>가입 직후 답했던 생활·취향 질문을 다시 확인하거나 바꿀 수 있어요. 바뀐 내용은 다음 날 추천부터 반영돼요.</p>
-            <button
-              type="button"
-              onClick={() => setEditingOnboarding(true)}
-              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
-            >
-              답변 수정하기
-            </button>
           </SectionRow>
 
           <SectionRow
@@ -379,34 +400,27 @@ export default function MyPageTab() {
               상담 예약 신청하기
             </button>
           </SectionRow>
-
-          <SectionRow
-            title="고객의 의견"
-            open={open === "feedback"}
-            onToggle={() => setOpen(open === "feedback" ? null : "feedback")}
-          >
-            <p>쏘웰라 이용에 불편이 있거나 제안사항이 있으실 경우 편하게 알려주세요.</p>
-            <button
-              type="button"
-              onClick={() => setShowFeedback(true)}
-              className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
-            >
-              건의하기
-            </button>
-          </SectionRow>
         </div>
       )}
 
       {/* 2026-11-18 CSO 결정: 대화에는 전화번호를 넣지 않고 "마이페이지로 가기" 버튼이 이곳(#help)을 가리킨다(들어오면 펼쳐 둔다).
           같은 날 대표님 요청: 다른 항목처럼 접어 두고, 대신 아래 안내 문구(마들랜 링크 포함)는 늘 보이게 한다. */}
-      <div id="help" className="scroll-mt-4 border-t border-line">
-        <SectionRow title="도움받을 곳" open={open === "help"} onToggle={() => setOpen(open === "help" ? null : "help")}>
-          <p className="mb-3 text-[13px] leading-5 text-slate-500">혼자 감당하기 벅찬 순간에 바로 이야기할 수 있는 곳이에요. 언제든 여기서 찾을 수 있어요.</p>
-          <HelpResources compact />
-          <Link href="/help" className="mt-3 inline-block text-[13px] text-navy underline underline-offset-2">
-            도움받을 곳 자세히 보기
-          </Link>
-        </SectionRow>
+      {/* 2026-11-24 대표님 요청: '도움받을 곳'은 줄 대신 맨 아래 쏘웰라 소개 옆 링크로. 채팅 안전 응답의 "마이페이지로 가기"(/mypage#help)와
+          아래 안내 문구·하단 링크로 들어오면 이 자리에 펼쳐 보여 준다(CSO 11-18 결정 그대로 — 마이페이지에서 언제든 찾을 수 있게). */}
+      <div id="help" className="scroll-mt-4">
+        {open === "help" && (
+          <div className="border-t border-line px-4 py-4 text-[14px] leading-6 text-slate-600">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[15px] font-medium text-foreground">도움받을 곳</p>
+              <button type="button" onClick={() => setOpen(null)} className="text-[13px] text-slate-400">접기</button>
+            </div>
+            <p className="mb-3 text-[13px] leading-5 text-slate-500">혼자 감당하기 벅찬 순간에 바로 이야기할 수 있는 곳이에요. 언제든 여기서 찾을 수 있어요.</p>
+            <HelpResources compact />
+            <Link href="/help" className="mt-3 inline-block text-[13px] text-navy underline underline-offset-2">
+              도움받을 곳 자세히 보기
+            </Link>
+          </div>
+        )}
       </div>
       <p className="px-4 pt-4 text-[12px] leading-5 text-slate-600">
         쏘웰라는 일상의 고민과 생각을 편하게 털어놓는 공간입니다. 우리 서비스는 진료 또는 진단을 대신할 수 없기 때문에 더 큰 힘듦과 불안을 느끼는 분들께는
@@ -423,7 +437,28 @@ export default function MyPageTab() {
 
       {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신판매업신고번호 포함). */}
       <div className="px-4 pb-6">
-        <SiteFooter />
+        {/* 2026-11-24 대표님 요청: '고객의 의견'·'도움받을 곳'은 맨 아래 쏘웰라 소개 옆으로. */}
+        <SiteFooter
+          extra={
+            <>
+              {" · "}
+              <button type="button" onClick={() => setShowFeedback(true)} className="text-navy underline">
+                고객의 의견
+              </button>
+              {" · "}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen("help");
+                  setTimeout(() => document.getElementById("help")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                }}
+                className="text-navy underline"
+              >
+                도움받을 곳
+              </button>
+            </>
+          }
+        />
       </div>
 
       {showFeedback && <CustomerFeedbackModal onClose={() => setShowFeedback(false)} />}

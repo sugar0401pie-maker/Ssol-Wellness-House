@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
-import { interpretationParagraphs, splitFirstSentence, type Insight } from "@/lib/interp/insights";
+import { interpretationPages, splitFirstSentence, type Insight } from "@/lib/interp/insights";
 
 // 쏘웰라가 파악한 내용(2026-10-18, 로드맵 10번) — 진단·성격 라벨이 아니라 "~일 수 있어요" 제안 문장이다.
 // 2026-11-24 대표님 요청: 맞아요/아니에요·지우기 버튼 없음(보기만 — 지우고 싶으면 '고객의 의견'·탈퇴로 요청, 서버 PATCH·DELETE는 남겨 둠) · 첫 문장 굵게 ·
@@ -63,10 +63,11 @@ export function LatestInsightCard({ name }: { name?: string | null }) {
 }
 
 // "○○님과의 대화에서 읽은 것들" 화면(2026-11-24 대표님 요청) — 이야기·테스트로 나누지 않고, 글머리표 문단을 줄글로 이어 한 줄씩 띄운다.
-// 첫 문단 "○○님은 이런 마음이 보여요." · 다음부터 "○○님은 이런 모습도 있어요." + 그 마음의 문장(첫 문장 굵게)·강점·방향 한 줄. 맨 아래 채팅으로 가는 버튼.
+// 한 번에 최대 3문단 · "더 알고 싶어요"로 다음 3문단(끝나면 처음으로) · 앞 한 줄은 화면의 첫 문단에만(lib/interp/insights.ts interpretationPages). 맨 아래 채팅으로 가는 버튼.
 export default function InsightsSection() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0); // "더 알고 싶어요"로 넘기는 3문단 묶음
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +78,8 @@ export default function InsightsSection() {
   }, []);
 
   const name = data?.name?.trim() || null;
-  const paragraphs = data ? interpretationParagraphs(data.items, data.growth ?? [], name) : [];
+  const pages = data ? interpretationPages(data.items, data.growth ?? [], name) : [];
+  const paragraphs = pages.length ? pages[page % pages.length] : [];
 
   return (
     <div className="space-y-5">
@@ -94,7 +96,7 @@ export default function InsightsSection() {
             const [first, rest] = p.text ? splitFirstSentence(p.text) : ["", ""];
             return (
               <li key={i} className="text-[14.5px] leading-7 text-foreground">
-                {p.lead}{" "}
+                {p.lead && `${p.lead} `}
                 {p.text && (
                   <>
                     <strong className="font-bold">{first}</strong>
@@ -106,6 +108,13 @@ export default function InsightsSection() {
             );
           })}
         </ul>
+      )}
+      {pages.length > 1 && (
+        <div className="text-center">
+          <button type="button" onClick={() => setPage((x) => (x + 1) % pages.length)} className="rounded-full border border-navy px-4 py-2 text-[14px] font-medium text-navy active:bg-navy-soft">
+            더 알고 싶어요
+          </button>
+        </div>
       )}
       {data && (
         <div className="rounded-2xl bg-navy-soft p-4 text-center">

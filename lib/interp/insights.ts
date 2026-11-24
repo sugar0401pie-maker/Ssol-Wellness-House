@@ -75,18 +75,22 @@ export const isInsightAction = (v: unknown): v is InsightAction => v === "confir
 export const isRootId = (v: unknown): v is string => typeof v === "string" && /^ROOT-[A-Za-z0-9-]{1,12}$/.test(v);
 
 // "○○님과의 대화에서 읽은 것들" 화면(2026-11-24 대표님 요청): 묶음으로 나누지 않고 문단(글머리표)을 줄글로 잇는다.
-// 첫 문단은 "○○님은 이런 마음이 보여요.", 다음부터는 "○○님은 이런 모습도 있어요."로 시작하고 그 마음의 문장·강점·방향 한 줄을 이어 쓴다.
-// 순서는 buildInsights 그대로(맞다고 하신 것 → 점수 순). 요즘의 변화가 있으면 마지막 문단.
+// 한 번에 최대 3문단(PAGE_SIZE), "더 알고 싶어요"를 누르면 다음 3문단(끝나면 처음으로). 앞 한 줄은 한 화면의 첫 문단에만 —
+// 첫 화면은 "○○님은 이런 마음이 보여요.", 다음 화면부터는 "○○님은 이런 모습도 있어요."(대표님: 문단마다 반복되면 지루함).
+// 순서는 buildInsights 그대로(맞다고 하신 것 → 점수 순). 요즘의 변화가 있으면 맨 끝 문단(자기 앞 한 줄을 가짐).
+export const INTERP_PAGE_SIZE = 3;
 export type InterpParagraph = { lead: string; text: string | null; extras: string[] };
-export function interpretationParagraphs(items: Insight[], growth: string[], name: string | null | undefined): InterpParagraph[] {
+export function interpretationPages(items: Insight[], growth: string[], name: string | null | undefined, size = INTERP_PAGE_SIZE): InterpParagraph[][] {
   const n = name?.trim();
   const who = n ? `${n}님은 ` : "";
-  const out: InterpParagraph[] = items.map((it, i) => ({
-    lead: `${who}${i === 0 ? "이런 마음이 보여요." : "이런 모습도 있어요."}`,
-    text: it.text,
-    extras: [it.strength, it.directionLine].filter((x): x is string => !!x && x.trim().length > 0),
-  }));
+  const paras: InterpParagraph[] = items.map((it) => ({ lead: "", text: it.text, extras: [it.strength, it.directionLine].filter((x): x is string => !!x && x.trim().length > 0) }));
   const g = growth.filter((x) => x.trim());
-  if (g.length) out.push({ lead: `${n ? `${n}님에게 ` : ""}요즘 이런 변화도 보여요.`, text: null, extras: g });
-  return out;
+  if (g.length) paras.push({ lead: `${n ? `${n}님에게 ` : ""}요즘 이런 변화도 보여요.`, text: null, extras: g });
+  const pages: InterpParagraph[][] = [];
+  for (let i = 0; i < paras.length; i += size) {
+    const page = paras.slice(i, i + size).map((p) => ({ ...p }));
+    if (page[0].text !== null) page[0].lead = `${who}${i === 0 ? "이런 마음이 보여요." : "이런 모습도 있어요."}`;
+    pages.push(page);
+  }
+  return pages;
 }

@@ -29,9 +29,17 @@ export function decideBranch(
   return { branch_id: unknownBranch(intentId), known: false, by: "none" };
 }
 
+// 2026-11-24 대표님 결정(A안): 엔진의 묻는 말("이 중에 지금 마음에 가까운 까닭이 있어요?" — 엔진 안내서에도 "초안")이 직관적이지 않아 화면 문구만 바꾼다(엔진 파일은 그대로).
+export const BRANCH_ASK = "왜 그런 마음이 드는 것 같아요? 가장 가까운 걸 골라 주세요.";
+export const BRANCH_ASK_MORE = "그럼 이 중에는 있나요?";
+const OPTION_LABEL: Record<string, string> = { other: "다른 이유예요", unknown: "잘 모르겠어요" };
+
 // 갈래 카드 → 화면 모양. 갈래 문장이 길어 한 줄씩 버튼으로 보인다(과제 카드와 같은 모양).
 export function branchCardPayload(card: EngineBranchCard): CardPayload {
-  return { kind: "branch", cardId: BRANCH_CARD_ID, text: card.ask, options: card.options.map((o) => ({ id: o.id, label: o.text })), fixed: [] };
+  return {
+    kind: "branch", cardId: BRANCH_CARD_ID, text: card.more ? BRANCH_ASK_MORE : BRANCH_ASK,
+    options: card.options.map((o) => ({ id: o.id, label: OPTION_LABEL[o.id] ?? o.text })), fixed: [],
+  };
 }
 
 export function branchCardState(card: EngineBranchCard, at = new Date().toISOString()): BranchCardState {
@@ -48,5 +56,5 @@ export function concernKeyFor(route: { intent_id: string; scene_key?: string | n
   return route.scene_key || route.scene_candidate || route.intent_id;
 }
 
-export const BRANCH_UNKNOWN_REPLY = "괜찮아요. 까닭은 이야기하다 보면 천천히 보이기도 해요. 지금 떠오르는 대로 편하게 이어서 들려주세요.";
+export const BRANCH_UNKNOWN_REPLY = "괜찮아요. 이유는 이야기하다 보면 천천히 보이기도 해요. 지금 떠오르는 대로 편하게 이어서 들려주세요.";
 export const BRANCH_NO_TASK_REPLY = "알려 줘서 고마워요. 그 마음을 조금 더 들려주시면 함께 살펴볼게요.";

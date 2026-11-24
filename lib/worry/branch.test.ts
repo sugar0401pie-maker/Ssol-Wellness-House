@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { branchCardPayload, branchCardState, branchPickAllowed, concernKeyFor, decideBranch, isKnownBranch, unknownBranch } from "./branch.ts";
+import { BRANCH_ASK, BRANCH_ASK_MORE, branchCardPayload, branchCardState, branchPickAllowed, concernKeyFor, decideBranch, isKnownBranch, unknownBranch } from "./branch.ts";
 import { parseCardPick, tapMarker } from "../cards/flow.ts";
 import { taskOfferText, TASK_OFFER_TEXT } from "../tasks/flow.ts";
 
@@ -27,8 +27,12 @@ const card = { intent_id: "WK-QUIT", ask: "이 중에 지금 마음에 가까운
 test("갈래 카드: 화면 모양과 보여 준 보기만 받기(한 번만)", () => {
   const p = branchCardPayload(card);
   assert.equal(p.kind, "branch");
-  assert.equal(p.text, card.ask);
+  assert.equal(p.text, BRANCH_ASK); // 2026-11-24 A안 — 엔진 초안 문구 대신
   assert.deepEqual(p.options.map((o) => o.id), ["WK-QUIT-1", "WK-QUIT-2", "other", "unknown"]);
+  assert.deepEqual(p.options.slice(2).map((o) => o.label), ["다른 이유예요", "잘 모르겠어요"]);
+  assert.equal(p.options[0].label, "일이 너무 많아서요"); // 갈래 문장은 그대로
+  assert.equal(branchCardPayload({ ...card, more: true }).text, BRANCH_ASK_MORE);
+  assert.doesNotMatch(JSON.stringify(p), /까닭/);
   const st = branchCardState(card, "2026-11-23T00:00:00Z");
   assert.equal(branchPickAllowed(st, "WK-QUIT-2"), true);
   assert.equal(branchPickAllowed(st, "WK-QUIT-9"), false); // 보여 주지 않은 보기

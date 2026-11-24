@@ -47,7 +47,15 @@ export async function GET(req: NextRequest) {
     ]).then(([p, o, c, q]) => [p, o, c, q] as const),
   );
   // 인사말엔 닉네임을 우선 쓰고, 닉네임을 안 정했으면 가입 때 적은 실명을 대신 쓴다.
-  const greetingName = profile?.nickname ?? profile?.display_name ?? null;
+  // 2026-11-24: 카카오·네이버 가입자에게 이름을 따로 묻지 않기로 해서(대표님 — "최대한 많은 사람을 받는 게 목적"), 프로필에 이름이 없으면
+  // 로그인 서비스가 넘겨준 이름(user_metadata.name·full_name)을 인사말에 쓴다. 없으면 이름 없이 인사한다.
+  let greetingName = profile?.nickname ?? profile?.display_name ?? null;
+  if (!greetingName) {
+    const { data: au } = await admin.auth.admin.getUserById(userId).catch(() => ({ data: null }));
+    const meta = au?.user?.user_metadata as Record<string, unknown> | undefined;
+    const n = (typeof meta?.name === "string" && meta.name.trim()) || (typeof meta?.full_name === "string" && meta.full_name.trim()) || "";
+    greetingName = n ? n.slice(0, 20) : null;
+  }
 
   // 2026-09-25: 관계/육아/업무 적격성 하드 필터는 온보딩 여부와 무관하게 항상 먼저 적용된다
   // (getDailyPractice 내부) — 온보딩을 안 했거나 개인화 동의를 안 했으면 prefs가 전부 비어

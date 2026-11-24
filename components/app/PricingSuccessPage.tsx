@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { isPlanId, type PlanId } from "@/lib/billing/pricing";
+import { reportPurchase } from "@/lib/ads/googleAds";
 
 // 2026-10-01 owner 요청: 결제 완료 화면에 "며칠 연장됐는지"를 구체적으로 보여준다.
 // 요금제가 정해져 있어 날짜 계산 없이 상수로 고정(월간=30일, 3개월=90일, 연간=365일) — 실제
@@ -44,6 +45,8 @@ export default function PricingSuccessPage({ orderId }: { orderId: string }) {
         if (res.ok) {
           if (isPlanId(data?.plan)) setPlan(data.plan);
           setStatus("done");
+          // 2026-11-24: 구글 광고 결제 전환 — 이번에 새로 승인된 결제만(이미 처리된 주문을 다시 연 경우 제외), 실제 금액·주문 번호로 한 번.
+          if (!data?.already && typeof data?.amount === "number") reportPurchase({ value: data.amount, transactionId: String(data.orderId ?? orderId) });
         } else {
           setStatus("error");
           setError(data?.error ?? "결제 확인에 실패했어요.");

@@ -4,6 +4,7 @@ import { Noto_Sans_KR, Gowun_Batang } from "next/font/google";
 import "./globals.css";
 import { SHARE_IMAGE, SITE_URL } from "@/lib/seo/paths";
 import { OG_DESCRIPTION, OG_TITLE, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/siteCopy";
+import { GOOGLE_ADS_ID } from "@/lib/ads/googleAds";
 
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -22,6 +23,7 @@ const gowunBatang = Gowun_Batang({
 // "모든 페이지" 같은 기본 트리거가 안 걸릴 수 있어, 구글이 안내하는 표준 GTM 코드로 넣는다(화면이 그려진 뒤 불러와 첫 로딩을 늦추지 않음).
 // 채팅 내용은 주소에 들어가지 않는다 — GTM에 페이지 글자를 읽는 태그를 추가하지 말 것(대화 내용이 밖으로 나갈 수 있음).
 const GTM_ID = "GTM-T4G8FRKC";
+// 2026-11-24 대표님 요청: 구글 광고 태그(gtag.js). 결제 전환(purchase)은 결제 완료 화면이 보낸다(lib/ads/googleAds.ts).
 
 // 검색 결과·링크 미리보기 제목과 설명은 lib/seo/siteCopy.ts 한 곳에서 관리한다(홈 구조화 데이터도 같은 설명을 쓴다).
 
@@ -70,6 +72,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <iframe src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
         </noscript>
         {children}
+        <Script id="google-ads-gtag" src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} strategy="afterInteractive" />
+        <Script id="google-ads-config" strategy="afterInteractive">
+          {`window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){dataLayer.push(arguments);};gtag('js',new Date());gtag('config','${GOOGLE_ADS_ID}');`}
+        </Script>
         <Script id="gtm" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`}
         </Script>

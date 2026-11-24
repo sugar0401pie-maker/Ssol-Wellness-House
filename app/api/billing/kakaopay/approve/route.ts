@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const plan = ent.plan;
   if (!isPlanId(plan)) return NextResponse.json({ error: "결제할 수 없는 이용권 종류예요." }, { status: 400 });
   // 새로고침 등으로 같은 주문을 다시 확인하면, 이미 승인된 주문은 그대로 성공으로 알려 준다(두 번 승인하지 않는다).
-  if (ent.status === "active") return NextResponse.json({ ok: true, plan, expiresAt: ent.expires_at, already: true });
+  if (ent.status === "active") return NextResponse.json({ ok: true, plan, expiresAt: ent.expires_at, already: true, orderId, amount: ent.amount ?? null });
   if (ent.status !== "pending" || !ent.kakaopay_tid) return NextResponse.json({ error: "이미 처리된 주문이에요." }, { status: 409 });
 
   const result = await kakaopayApprove({ tid: ent.kakaopay_tid, orderId, userId, pgToken, amount: ent.amount });
@@ -65,5 +65,6 @@ export async function POST(req: NextRequest) {
   });
   if (!sent.ok) console.warn("결제 완료 알림 이메일 발송 실패:", sent.reason);
 
-  return NextResponse.json({ ok: true, expiresAt: expiresAt.toISOString(), plan });
+  // orderId·amount(2026-11-24): 결제 완료 화면이 구글 광고 전환(실제 결제 금액·주문 번호)을 한 번 보낸다.
+  return NextResponse.json({ ok: true, expiresAt: expiresAt.toISOString(), plan, orderId, amount: result.total });
 }

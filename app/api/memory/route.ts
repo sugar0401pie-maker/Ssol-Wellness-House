@@ -4,8 +4,8 @@ import { summarizeSessionIntoMemory } from "@/lib/memory/summarize";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { withUsageScope } from "@/lib/ai/usage";
 
-// 사용자가 "이 대화를 기억하기"를 선택했을 때만 프런트에서 호출한다 (동의 기반).
-// 선택하지 않은 대화는 이 엔드포인트가 아예 호출되지 않으므로 요약되지 않는다.
+// 2026-11-24 대표님 결정: 묻지 않고, 사용자가 새 대화를 시작할 때 화면이 지금 대화를 자동으로 보낸다(예전에는 "기억하기"를 고른 경우만).
+// 근거는 약관 개정 예고 2항(대화 내용을 이전 대화 이어가기·맞춤 제안에 이용). 위기·폭력 메시지는 요약에서 빠진다(lib/memory/summarize.ts).
 export const runtime = "nodejs";
 
 async function handlePOST(req: NextRequest) {

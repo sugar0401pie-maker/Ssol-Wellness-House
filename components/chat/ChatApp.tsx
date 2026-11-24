@@ -80,7 +80,6 @@ export default function ChatApp() {
   // 선택지 카드의 "다른 이유가 있어요": 다음에 쓰는 글을 그 카드의 직접 쓴 답으로 보낸다(2026-10-20).
   const [otherFor, setOtherFor] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const [memoryPrompt, setMemoryPrompt] = useState<"idle" | "asking" | "saving">("idle");
   const [showSuggested, setShowSuggested] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
@@ -407,7 +406,6 @@ export default function ChatApp() {
       sessionId.current = id;
       saveActiveSessionId(id);
       setInput("");
-      setMemoryPrompt("idle");
       setShowHistory(false);
     } catch {
       setHistoryError("대화를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
@@ -455,35 +453,22 @@ export default function ChatApp() {
     setInput("");
     sessionId.current = null;
     saveActiveSessionId(null);
-    setMemoryPrompt("idle");
+  }
+
+  // 2026-11-24 대표님 결정: "이번 대화를 기억해 둘까요?"를 묻지 않고, 새 대화를 시작할 때 지금 대화를 자동으로 기억한다(약관 개정 예고 2항 — 이전 대화 이어가기·맞춤 제안).
+  // 위기·폭력 메시지는 서버 요약에서 빠진다(lib/memory/summarize.ts). 저장은 뒤에서 하고(keepalive) 새 대화는 바로 시작한다 — 실패해도 새 대화에는 영향 없음.
+  async function rememberSession(id: string) {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      void fetch("/api/memory", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ sessionId: id }), keepalive: true }).catch(() => undefined);
+    } catch {
+      // 기억 저장은 부가 기능이라 실패해도 조용히 넘어간다.
+    }
   }
 
   function requestNewChat() {
-    // 나눈 대화가 없으면 굳이 물어보지 않는다.
-    if (!messages.length) {
-      resetChat();
-      return;
-    }
-    setMemoryPrompt("asking");
-  }
-
-  async function confirmNewChat(remember: boolean) {
-    const currentSessionId = sessionId.current;
-    if (remember && currentSessionId) {
-      setMemoryPrompt("saving");
-      try {
-        const token = await getAccessToken();
-        if (token) {
-          await fetch("/api/memory", {
-            method: "POST",
-            headers: authHeaders(token),
-            body: JSON.stringify({ sessionId: currentSessionId }),
-          });
-        }
-      } catch {
-        // 기억 저장은 부가 기능이라, 실패해도 새 대화 시작을 막지 않는다.
-      }
-    }
+    if (messages.length && sessionId.current) void rememberSession(sessionId.current);
     resetChat();
   }
 
@@ -739,47 +724,6 @@ export default function ChatApp() {
                 className="h-10 w-full rounded-xl bg-navy text-sm font-medium text-white"
               >
                 새 대화 시작
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {memoryPrompt !== "idle" && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
-          <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
-            {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다. */}
-            <div className="flex items-start justify-between">
-              <p className="text-[15px] font-medium leading-6 text-foreground">이번 대화를 기억해 둘까요?</p>
-              <button
-                type="button"
-                onClick={() => setMemoryPrompt("idle")}
-                disabled={memoryPrompt === "saving"}
-                aria-label="닫기"
-                className="shrink-0 text-[12px] text-slate-400 disabled:opacity-40"
-              >
-                닫기
-              </button>
-            </div>
-            <p className="mt-1.5 text-[13px] leading-5 text-slate-500">
-              다음에 대화할 때 참고할 수 있어요. 위기·폭력 관련 내용은 저장하지 않아요.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => confirmNewChat(true)}
-                disabled={memoryPrompt === "saving"}
-                className="h-10 rounded-xl bg-navy text-sm font-medium text-white disabled:opacity-60"
-              >
-                {memoryPrompt === "saving" ? "저장하는 중…" : "기억하기"}
-              </button>
-              <button
-                type="button"
-                onClick={() => confirmNewChat(false)}
-                disabled={memoryPrompt === "saving"}
-                className="h-10 rounded-xl border border-line text-sm font-medium text-foreground disabled:opacity-60"
-              >
-                기억하지 않기
               </button>
             </div>
           </div>

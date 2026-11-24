@@ -32,7 +32,13 @@ function InsightText({ text, size = "text-[14px]" }: { text: string; size?: stri
 }
 
 // 마이페이지 맨 위 카드 — 가장 최근 대화에서 비친 마음 한 개. 대화에서 비친 게 아직 없으면 그리지 않는다.
-export function LatestInsightCard() {
+// 2026-11-24 대표님: 문장이 "~하는 분들이 있어요"처럼 일반론이라 뜬금없게 느껴질 수 있어, 앞에 "{닉네임}님과 나눈 최근 대화를 보면" 한 줄로 그 사람 이야기임을 먼저 알려 준다.
+export function insightLeadIn(name: string | null | undefined): string {
+  const n = name?.trim();
+  return n ? `${n}님과 나눈 최근 대화를 보면, 이런 마음이 있을 수 있어요.` : "최근 나눈 대화를 보면, 이런 마음이 있을 수 있어요.";
+}
+
+export function LatestInsightCard({ name }: { name?: string | null }) {
   const [latest, setLatest] = useState<Insight | null | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +52,7 @@ export function LatestInsightCard() {
     <div className="border-b border-line px-4 py-4">
       <div className="rounded-2xl bg-navy-soft p-4">
         <p className="mb-1.5 text-[12px] text-slate-500">최근 대화에서 쏘웰라가 알게 된 마음</p>
+        <p className="mb-1 text-[14px] leading-6 text-slate-600">{insightLeadIn(name)}</p>
         <InsightText text={latest.text} size="text-[15px]" />
         <Link href="/mypage/insights" className="mt-3 inline-block rounded-full bg-navy px-3.5 py-1.5 text-[13px] font-medium text-white">
           더 알아보기

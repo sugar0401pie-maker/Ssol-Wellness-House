@@ -210,7 +210,7 @@ export default function MyPageTab() {
       {data && (
         <div className="flex-1">
           {/* 2026-11-24 대표님 요청: 내 정보 위에 "가장 최근 대화 기준" 쏘웰라가 알게 된 마음 한 개 → "더 알아보기"(/mypage/insights)에서 쌓인 내용 전체. */}
-          <LatestInsightCard />
+          <LatestInsightCard name={data.nickname ?? data.displayName} />
           <GroupRow title="내 정보" open={group === "me"} onToggle={() => setGroup(group === "me" ? null : "me")}>
             <SectionRow nested title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
               <dl className="space-y-2">

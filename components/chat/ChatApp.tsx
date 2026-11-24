@@ -11,6 +11,7 @@ import { ASTRO_OPENING_FROM, astroOpeningFromSearch, type AstroOpening } from "@
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
+import { onboardingPromptDue } from "@/lib/onboarding/promptTiming";
 import { choicesForMessage } from "@/lib/theory/offer";
 import ThinkingBubble from "./ThinkingBubble";
 import CardChoices from "./CardChoices";
@@ -196,6 +197,7 @@ export default function ChatApp() {
         if (!res.ok) return;
         const json = (await res.json()) as {
           completed: boolean;
+          useDay?: number | null;
           nickname: string | null;
           title: string;
           answers?: Record<string, unknown>;
@@ -205,7 +207,8 @@ export default function ChatApp() {
             completed: json.completed,
             nickname: json.nickname,
             title: json.title,
-            showPrompt: !json.completed || allOnboardingAnswersBlank(json.answers),
+            // 2026-11-24 대표님 결정: 온보딩은 팝업 없이, 쓰기 시작한 지 3일차부터 여기서 권유만 한다.
+            showPrompt: onboardingPromptDue({ needsOnboarding: !json.completed || allOnboardingAnswersBlank(json.answers), useDay: json.useDay ?? null }),
           });
         }
       } catch {
@@ -516,6 +519,7 @@ export default function ChatApp() {
               <p>
                 온보딩 테스트를 하고 오시면 {onboarding.nickname ?? "회원"}님께 더 맞춤화된 답변을 받으실 수 있어요.
               </p>
+              <p className="mt-1">온보딩 없어도 대화는 이어나갈 수 있어요.</p>
               <button
                 type="button"
                 onClick={() => setShowOnboarding(true)}

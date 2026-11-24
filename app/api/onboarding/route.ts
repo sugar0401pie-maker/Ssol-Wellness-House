@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { dayOfUseKST } from "@/lib/onboarding/promptTiming";
 import { getUserIdFromAuthHeader, getUserIdFast } from "@/lib/supabase/auth";
 import { createTimer } from "@/lib/perf/serverTiming";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const admin = createAdminClient();
-  const [{ data: profile }, { data: ssolProfile }, { data: quizResult }, { data: onboarding }] = await timer.time("db", Promise.all([
+  const [{ data: profile }, { data: ssolProfile }, { data: quizResult }, { data: onboarding }, { data: trial }] = await timer.time("db", Promise.all([
     admin.from("profiles").select("display_name, nickname").eq("user_id", userId).maybeSingle(),
     admin.from("ssol_profiles").select("name, gender").eq("id", userId).maybeSingle(),
     admin
@@ -55,6 +56,8 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .maybeSingle(),
     admin.from("user_onboarding").select("*").eq("user_id", userId).maybeSingle(),
+    // 2026-11-24: 채팅 첫머리 온보딩 권유는 3일차부터(lib/onboarding/promptTiming.ts) — 쓰기 시작한 날 = 무료체험 시작일. 따로 읽어서 칸이 없어도 위 값은 그대로.
+    admin.from("profiles").select("trial_started_at").eq("user_id", userId).maybeSingle(),
   ]));
 
   const nickname = profile?.nickname ?? profile?.display_name ?? ssolProfile?.name ?? quizResult?.user_name ?? null;
@@ -62,6 +65,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     completed: onboarding?.status === "completed",
+    useDay: dayOfUseKST((trial as { trial_started_at?: string | null } | null)?.trial_started_at ?? null),
     nickname,
     title: titleFor(gender),
     resumeStep: onboarding?.current_step ?? 0,

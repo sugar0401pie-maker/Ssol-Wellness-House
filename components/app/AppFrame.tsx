@@ -25,6 +25,9 @@ const OAUTH_REMINDER_DISMISS_KEY = "oauthProfileReminderDismissedDate";
 // computeAccess 하나만 보는 단일 기준)를 그대로 써서 "오늘이 며칠째인지" 따로 계산하지 않는다.
 const TRIAL_REMINDER_DISMISS_KEY = "trialExpiringReminderDismissedDate";
 const ASK_OAUTH_PROFILE = false; // 카카오·네이버 가입자 추가 정보(이름·생년월일) 알림 — 2026-11-24 끔
+// 2026-11-24 대표님 결정: 온보딩을 로그인 직후 팝업으로 띄우지 않는다 — 3일차부터 채팅 첫머리에서 권유만(components/chat/ChatApp.tsx · lib/onboarding/promptTiming.ts).
+// 마이페이지 "온보딩 답변 수정"과 채팅의 권유 버튼으로는 언제든 할 수 있다. 다시 팝업으로 띄우려면 true.
+const SHOW_ONBOARDING_GATE = false;
 
 // 2026-09-28: owner 요청으로 홈/채팅/마이페이지를 "/home", "/chat", "/mypage" 개별 주소로
 // 분리했다(예전엔 AppShell.tsx가 세 탭을 전부 마운트해두고 CSS로만 보이기/숨기기 — 그래서
@@ -170,7 +173,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const needsOnboarding = typeof onboarding === "object" && !onboarding.completed;
+  const needsOnboarding = SHOW_ONBOARDING_GATE && typeof onboarding === "object" && !onboarding.completed;
   // 2026-11-24 대표님 결정: 카카오·네이버 가입자에게 이름·생년월일을 따로 묻지 않는다("최대한 많은 사람을 받는 게 목적" —
   // 생년월일은 사주·점성술을 하면서 들어온다). 알림·입력 폼은 다시 켤 수 있게 남겨 두고 여기서만 끈다.
   const needsOauthProfile = ASK_OAUTH_PROFILE && typeof oauthProfile === "object" && oauthProfile.needsCompletion;

@@ -60,9 +60,6 @@ export default function WorryBoard({
         className="mx-auto max-w-md pb-10"
         style={{ containerType: "inline-size" }}
       >
-        <div className="[&>div]:border-b-0 [&_.bg-navy-soft]:bg-night-panel [&_.bg-navy-soft]:text-night-text [&_p]:!text-inherit">
-          <LatestInsightCard variant="board" />
-        </div>
         <div className="px-5 pt-4">
           <h1 className="text-[22px] font-bold">고민 타파</h1>
           {data && (
@@ -70,6 +67,12 @@ export default function WorryBoard({
               {BASIS_SUB[data.basis]}
             </p>
           )}
+        </div>
+        {/* 2026-11-25 대표님: "고민 타파" 제목 바로 아래에 "{닉네임}님과 최근 나눈 대화를 보면, 이런 마음이 보여요." 카드(최근 대화에서 비친 마음이 있을 때만) */}
+        <div className="[&>div]:border-b-0 [&>div]:px-5 [&>div]:pb-0 [&>div]:pt-3 [&_.bg-navy-soft]:bg-night-panel [&_.bg-navy-soft]:text-night-text [&_p]:!text-inherit">
+          <LatestInsightCard variant="board" />
+        </div>
+        <div className="px-5">
           {error && (
             <p className="mt-6 text-[13.5px] text-night-yellow">
               지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.

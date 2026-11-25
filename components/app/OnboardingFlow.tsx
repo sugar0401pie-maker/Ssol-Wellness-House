@@ -28,6 +28,9 @@ type Props = {
   mode: "gate" | "edit";
   onDone: () => void;
   onClose?: () => void; // edit 모드에서만 사용(취소하고 닫기)
+  // 2026-11-25 대표님 "화면 바꾸면 무조건 링크 나눠": 페이지(/onboarding/N)로 열 때 처음 보여 줄 질문(0부터)과, 질문이 바뀔 때 주소를 맞추는 콜백.
+  initialStep?: number;
+  onStepChange?: (stepIndex: number) => void;
 };
 
 function activeBranch(q: QuestionDef, answers: Answers): BranchDef | null {
@@ -40,9 +43,12 @@ function activeBranch(q: QuestionDef, answers: Answers): BranchDef | null {
   return null;
 }
 
-export default function OnboardingFlow({ nickname, title, mode, onDone, onClose }: Props) {
+export default function OnboardingFlow({ nickname, title, mode, onDone, onClose, initialStep, onStepChange }: Props) {
   const [loading, setLoading] = useState(true);
-  const [stepIndex, setStepIndex] = useState(0); // 0..8 = QUESTIONS, 9 = 동의 화면
+  const [stepIndex, setStepIndex] = useState(() => Math.max(0, Math.min(QUESTIONS.length, initialStep ?? 0))); // 0..8 = QUESTIONS, 9 = 동의 화면
+  useEffect(() => {
+    onStepChange?.(stepIndex);
+  }, [stepIndex, onStepChange]);
   const [answers, setAnswers] = useState<Answers>({});
   const [otherTexts, setOtherTexts] = useState<OtherTexts>({});
   const [consent, setConsent] = useState(false);

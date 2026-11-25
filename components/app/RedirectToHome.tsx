@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { safeNext } from "@/lib/auth/authPaths";
 
 // 2026-09-28: /signup에서 가입·로그인이 끝나면(AuthGate가 "로그인됨"으로 판단하면) 홈으로
 // 보낸다 — 예전엔 AuthGate의 children으로 AppShell을 통째로 렌더링했지만, 이제 홈/채팅/
@@ -10,7 +11,14 @@ import { useRouter } from "next/navigation";
 export default function RedirectToHome() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/home");
+    // 2026-11-25: 로그인이 필요한 화면에서 /login?next=…로 왔으면 그 화면으로 돌아간다(이 사이트 안의 경로만).
+    let next: string | null = null;
+    try {
+      next = safeNext(new URLSearchParams(window.location.search).get("next"));
+    } catch {
+      next = null;
+    }
+    router.replace(next ?? "/home");
   }, [router]);
   return null;
 }

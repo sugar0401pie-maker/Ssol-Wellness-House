@@ -1,5 +1,6 @@
 "use client";
 
+import { authPathFor, currentNext } from "@/lib/auth/authPaths";
 import { KakaoSymbol, NaverSymbol } from "./SocialLogos";
 import { useState } from "react";
 import Image from "next/image";
@@ -46,7 +47,7 @@ export default function LoginScreen({
   initialMode = "landing",
 }: {
   onLoggedIn: () => void;
-  initialMode?: "landing" | "signin" | "signup";
+  initialMode?: "landing" | "signin" | "signup" | "reset";
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -92,10 +93,17 @@ export default function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // 2026-11-25 대표님 "화면 바꾸면 무조건 링크 나눠": 첫 화면·로그인·비밀번호 재설정·회원가입은 각자 주소(lib/auth/authPaths.ts).
+  // 화면을 바꾸면 그 주소로 이동하고, 로그인이 필요한 화면에서 왔으면 ?next=로 돌아갈 곳을 들고 간다.
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
     setNotice(null);
+    try {
+      router.push(authPathFor(next, currentNext(window.location.pathname, window.location.search)));
+    } catch {
+      /* 주소를 못 바꿔도 화면은 바뀐다 */
+    }
   }
 
   function backToResetRequest() {
@@ -262,7 +270,7 @@ export default function LoginScreen({
             type="button"
             onClick={() => {
               if (mode === "reset" && resetStep === "confirm") backToResetRequest();
-              else if (mode === "signup") router.push("/"); // /signup은 전용 주소라 뒤로가기는 홈으로.
+              else if (mode === "reset") switchMode("signin"); // 비밀번호 재설정의 뒤로가기는 로그인 화면으로
               else switchMode("landing");
             }}
             className="mb-3 text-[13px] text-slate-500"
@@ -348,7 +356,7 @@ export default function LoginScreen({
 
               <button
                 type="button"
-                onClick={() => router.push("/signup")}
+                onClick={() => switchMode("signup")}
                 className="mt-4 block w-full text-center text-[12px] text-slate-500"
               >
                 계정이 없으신가요? <span className="text-navy underline underline-offset-2">회원가입하기</span>

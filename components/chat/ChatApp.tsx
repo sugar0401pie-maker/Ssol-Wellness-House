@@ -2,14 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { revealText } from "@/lib/ui/typewriter";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggestedQuestions, type SuggestedQuestionGroup } from "@/lib/persona/suggestedQuestions";
 import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting, type WelcomeStatus } from "@/lib/persona/welcome";
 import { ASTRO_OPENING_FROM, astroOpeningFromSearch, type AstroOpening } from "@/lib/persona/astroGreeting";
+import { boardInsightLeadIn } from "@/components/app/InsightsSection";
+import { testOpeningKey, testOpeningSourceFrom, type TestOpeningSource } from "@/lib/persona/testOpeningSource";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
-import OnboardingFlow from "@/components/app/OnboardingFlow";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
 import { onboardingPromptDue } from "@/lib/onboarding/promptTiming";
 import { choicesForMessage } from "@/lib/theory/offer";
@@ -56,6 +58,18 @@ function saveActiveSessionId(id: string | null) {
   }
 }
 
+// 2026-11-25 대표님 "화면 바꾸면 무조건 링크 나눠": 새 대화 /chat · 이어 보는 대화 /chat/<대화 id> · 지난 대화 목록 /chat/history.
+// 채팅 화면은 그대로 두고 주소만 바꾼다(history.replaceState — Next.js 라우터와 맞춰지고, 뒤로 가기는 채팅에 들어오기 전 화면으로).
+// 대화 id는 대화 내용이 아니고, 서버가 본인 대화인지 확인한 뒤에만 내용을 준다.
+function setChatPath(path: string) {
+  try {
+    if (window.location.pathname.startsWith("/chat") && window.location.pathname !== path) window.history.replaceState(window.history.state, "", path);
+  } catch {
+    // 주소를 못 바꿔도 대화에는 지장 없다.
+  }
+}
+const chatPathFor = (id: string | null) => (id ? `/chat/${id}` : "/chat");
+
 // 대화 목록에 "언제"를 사람이 읽기 편하게 보여준다 — 오늘/어제는 시각만, 그 외엔 날짜만.
 function formatSessionDate(iso: string): string {
   const d = new Date(iso);
@@ -73,7 +87,8 @@ function formatSessionDate(iso: string): string {
 const CHAT_DARK_KEY = "ssol.chatDark";
 const SHOW_ONBOARDING_PROMPT = false;
 
-export default function ChatApp() {
+export default function ChatApp({ initialSessionId, openHistoryOnMount }: { initialSessionId?: string; openHistoryOnMount?: boolean } = {}) {
+  const router = useRouter(); // 2026-11-25: 온보딩·지난 대화는 자기 주소(/onboarding/N · /chat/history)로
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -104,7 +119,6 @@ export default function ChatApp() {
     title: string;
     showPrompt: boolean;
   } | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   // 2026-09-28 owner 요청(시안 .chipq): 대화 시작 전(메시지가 아직 없을 때)엔 첫 인사말 밑에
   // 눌러볼 만한 질문 몇 개를 칩으로 랜덤 노출한다 — lazy initializer로 마운트 시 한 번만 뽑아서
   // 리렌더될 때마다 바뀌지 않게 한다. 대화가 시작되면(messages.length>0) 더 이상 안 보인다.
@@ -122,6 +136,10 @@ export default function ChatApp() {
   // 2026-10-26: 점성술 [쏘웰라와 대화 시작하기]로 들어왔는지(/chat?from=astro&result=…). 들어온 그 순간의 새 대화에서만
   // 그 결과의 맞춤 첫 인사를 보여 주고, 첫 메시지와 함께 서버에 알려 인사를 대화 기록에도 남긴다(lib/persona/astroGreeting.ts).
   const astroOpening = useRef<AstroOpening | null>(typeof window === "undefined" ? null : astroOpeningFromSearch(window.location.search));
+  // 2026-11-25 대표님: 테스트(타로·점성술·디저트 유형)를 하고 들어오면 고정 인사 대신 결과를 요약하고 마음을 먼저 짚은 뒤 "더 궁금한 고민이 있나요?"로 묻는 첫 메시지.
+  // 주소는 첫 그림 때 한 번만 읽는다(점성술 주소는 아래에서 지운다). "pending"이면 만드는 중(말풍선에 점 세 개), null이면 예전 고정 인사.
+  const [testSrc] = useState<TestOpeningSource | null>(() => (typeof window === "undefined" ? null : testOpeningSourceFrom(window.location.search)));
+  const [testOpening, setTestOpening] = useState<string | null | "pending">(() => (testSrc ? "pending" : null));
   const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
   const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
   const starter = welcome ? chooseStarterChips(welcome, { persona: personaChips, everyday: everydayChips }) : { chips: [], persona: false };
@@ -169,6 +187,42 @@ export default function ChatApp() {
   }, []);
 
   useEffect(() => {
+    if (!testSrc) return;
+    let cancelled = false;
+    const key = `ssol.testOpening:${testOpeningKey(testSrc)}`;
+    void (async () => {
+      let text: string | null = null;
+      try {
+        text = sessionStorage.getItem(key); // 같은 결과로 다시 들어오면 새로 만들지 않는다
+      } catch {
+        /* 저장소를 못 쓰면 새로 만든다 */
+      }
+      if (!text) {
+        try {
+          const token = await getAccessToken();
+          const qs = new URLSearchParams({ from: testSrc.kind, ...(testSrc.kind !== "quiz" && testSrc.resultId ? { result: testSrc.resultId } : {}) });
+          const res = token ? await fetch(`/api/chat/test-opening?${qs}`, { headers: authHeaders(token) }) : null;
+          const json = res?.ok ? ((await res.json()) as { text?: string | null }) : null;
+          text = typeof json?.text === "string" ? json.text : null;
+          if (text) {
+            try {
+              sessionStorage.setItem(key, text);
+            } catch {
+              /* 무시 */
+            }
+          }
+        } catch {
+          text = null; // 못 만들면 예전 고정 인사
+        }
+      }
+      if (!cancelled) setTestOpening(text);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [testSrc]);
+
+  useEffect(() => {
     let cancelled = false;
     async function checkPersona() {
       const token = await getAccessToken();
@@ -178,7 +232,7 @@ export default function ChatApp() {
         const qs = o ? `?from=${ASTRO_OPENING_FROM}${o.resultId ? `&result=${o.resultId}` : ""}` : tarotResultId ? `?tarot=${encodeURIComponent(tarotResultId)}` : "";
         const res = await fetch(`/api/chat/persona-status${qs}`, { headers: authHeaders(token) });
         const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
-        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, typeName: json?.typeName ?? null, hasReport: json?.hasReport === true, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null, tarot: json?.tarot ?? null });
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, typeName: json?.typeName ?? null, hasReport: json?.hasReport === true, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null, tarot: json?.tarot ?? null, insight: json?.insight ?? null });
       } catch {
         if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
       }
@@ -288,7 +342,7 @@ export default function ChatApp() {
           sessionId: sessionId.current,
           isPersonaQuestion: options?.isPersonaQuestion ?? false,
           // 맞춤 첫 인사를 본 새 대화의 첫 메시지에만(인사 문장은 서버가 다시 읽는다)
-          ...(astroOpening.current && !sessionId.current && welcome?.astroGreeting ? { opening: { from: ASTRO_OPENING_FROM, resultId: astroOpening.current.resultId } } : {}),
+          ...(astroOpening.current && !sessionId.current && welcome?.astroGreeting && typeof testOpening !== "string" ? { opening: { from: ASTRO_OPENING_FROM, resultId: astroOpening.current.resultId } } : {}),
           ...(options?.choiceId ? { choiceId: options.choiceId } : {}),
           ...(options?.cardPick ? { cardPick: options.cardPick } : {}),
           ...(tarotResultId ? { tarotResultId } : {}),
@@ -314,6 +368,7 @@ export default function ChatApp() {
       };
       sessionId.current = data.sessionId;
       saveActiveSessionId(data.sessionId);
+      setChatPath(chatPathFor(data.sessionId));
       setSending(false); // "생각하는 중" 대신 타이핑 연출이 바로 이어지도록
       const followUp = data.followUp;
       const limitReached = data.sessionLimitReached === true;
@@ -353,6 +408,7 @@ export default function ChatApp() {
 
   async function openHistory() {
     setShowHistory(true);
+    setChatPath("/chat/history");
     setHistoryError(null);
     const token = await getAccessToken();
     if (!token) {
@@ -392,6 +448,7 @@ export default function ChatApp() {
   function endAstroOpening() {
     astroOpening.current = null;
     setWelcome((w) => (w && w.astroGreeting ? { ...w, astroGreeting: null } : w));
+    setTestOpening(null); // 테스트 첫 메시지도 들어온 그 대화에서만
   }
 
   async function loadSession(id: string) {
@@ -411,8 +468,10 @@ export default function ChatApp() {
       saveActiveSessionId(id);
       setInput("");
       setShowHistory(false);
+      setChatPath(chatPathFor(id));
     } catch {
       setHistoryError("대화를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+      if (!showHistory) setChatPath(chatPathFor(sessionId.current)); // 주소로 바로 연 대화를 못 불러오면 새 대화 주소로
     } finally {
       setLoadingSessionId(null);
     }
@@ -441,7 +500,11 @@ export default function ChatApp() {
     // loadSession은 그 안에서 setState를 곧바로 호출하므로, 이펙트 본문에서 직접 부르지 않고
     // 마이크로태스크로 한 틱 미룬다(react-hooks/set-state-in-effect 회피).
     // 타로에서 막 넘어왔으면 이어 보던 대화 대신 새 대화로 시작한다 — 맞춤 첫 인사가 보이고, 새 대화가 그 타로 결과를 참고하도록.
-    if (savedId && !tarotResultId) void Promise.resolve().then(() => loadSession(savedId));
+    // 2026-11-25: 주소로 연 대화(/chat/<id>)가 있으면 그 대화, 지난 대화 목록 주소(/chat/history)면 목록을 연다.
+    if (initialSessionId) savedId = initialSessionId;
+    if (savedId && !tarotResultId && !testSrc) void Promise.resolve().then(() => loadSession(savedId));
+    else if (!openHistoryOnMount) setChatPath("/chat");
+    if (openHistoryOnMount) void Promise.resolve().then(() => openHistory());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -457,6 +520,7 @@ export default function ChatApp() {
     setInput("");
     sessionId.current = null;
     saveActiveSessionId(null);
+    setChatPath("/chat");
   }
 
   // 2026-11-24 대표님 결정: "이번 대화를 기억해 둘까요?"를 묻지 않고, 새 대화를 시작할 때 지금 대화를 자동으로 기억한다(약관 제17조 2항 — 이전 대화 이어가기·맞춤 제안).
@@ -540,7 +604,19 @@ export default function ChatApp() {
       </header>
 
       <main className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
-        <Bubble role="assistant" content={welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING} />
+        {testOpening === "pending" ? (
+          <div className="flex justify-start" aria-label="쏘웰라가 첫 메시지를 쓰고 있어요">
+            <div className="rounded-2xl bg-navy-soft px-4 py-2.5 text-[20px] leading-6 text-navy" aria-hidden="true">
+              <span className="ssol-thinking-dot">·</span>
+              <span className="ssol-thinking-dot" style={{ animationDelay: "150ms" }}>·</span>
+              <span className="ssol-thinking-dot" style={{ animationDelay: "300ms" }}>·</span>
+            </div>
+          </div>
+        ) : (
+          <Bubble role="assistant" content={testOpening ?? (welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING)} />
+        )}
+        {/* 2026-11-25 대표님: 다시 들어온 새 대화 첫 화면에 지난 대화에서 비친 마음을 알려 준다(고민 타파 카드와 같은 문장). 테스트에서 막 넘어온 맞춤 인사가 있으면 그 인사만. */}
+        {isEmptyChat && welcome?.insight && !testSrc && !welcome.tarot && !welcome.astroGreeting && <Bubble role="assistant" content={`${boardInsightLeadIn(welcome.nickname)}\n\n${welcome.insight}`} />}
         {onboarding && onboarding.showPrompt && (
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-2xl bg-navy-soft px-4 py-2.5 text-[15px] leading-6 text-foreground">
@@ -550,7 +626,7 @@ export default function ChatApp() {
               <p className="mt-1">온보딩 없어도 대화는 이어나갈 수 있어요.</p>
               <button
                 type="button"
-                onClick={() => setShowOnboarding(true)}
+                onClick={() => router.push("/onboarding/1?back=/chat")}
                 className="mt-2 rounded-full bg-navy px-3 py-1.5 text-[13px] font-medium text-white"
               >
                 온보딩 테스트 하기
@@ -692,7 +768,10 @@ export default function ChatApp() {
               <p className="text-[15px] font-medium text-foreground">지난 대화</p>
               <button
                 type="button"
-                onClick={() => setShowHistory(false)}
+                onClick={() => {
+                  setShowHistory(false);
+                  setChatPath(chatPathFor(sessionId.current));
+                }}
                 aria-label="닫기"
                 className="rounded-full px-2 py-1 text-slate-500"
               >
@@ -815,18 +894,6 @@ export default function ChatApp() {
         </div>
       )}
 
-      {showOnboarding && onboarding && (
-        <OnboardingFlow
-          mode="gate"
-          nickname={onboarding.nickname}
-          title={onboarding.title}
-          onDone={() => {
-            setOnboarding({ ...onboarding, completed: true, showPrompt: false });
-            setShowOnboarding(false);
-          }}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
     </div>
   );
 }

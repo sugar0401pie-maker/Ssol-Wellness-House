@@ -13,4 +13,4 @@ export const PUBLIC_PATHS = ["/", "/signup", "/legal", "/board"] as const;
 
 // 로그인 뒤의 화면·내 정보·결제 결과·서버 주소. 이 안에는 개인 데이터가 있어 검색엔진이 들어오지 않게 한다.
 // (막는 것은 "수집하지 마세요"라는 안내일 뿐이고, 실제 보호는 로그인·서버 권한 검사가 맡는다.)
-export const PRIVATE_PATHS = ["/api/", "/home", "/chat", "/mypage", "/report/", "/session-reserve", "/pricing/success", "/pricing/fail", "/admin", "/challenge", "/worry", "/lantern", "/soundbath"] as const; // 2026-11-25: 갓생러모임·앱 안 고민 타파·풍등·사운드 배스(로그인 뒤)
+export const PRIVATE_PATHS = ["/api/", "/home", "/chat", "/mypage", "/report/", "/session-reserve", "/pricing/success", "/pricing/fail", "/admin", "/challenge", "/worry", "/lantern", "/soundbath", "/login", "/onboarding"] as const; // 2026-11-25: 갓생러모임·앱 안 고민 타파·풍등·사운드 배스(로그인 뒤)

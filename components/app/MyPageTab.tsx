@@ -8,9 +8,7 @@ import HelpResources from "@/components/help/HelpResources";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import CustomerFeedbackModal from "./CustomerFeedbackModal";
-import OnboardingFlow from "./OnboardingFlow";
 import PasswordConfirmModal from "./PasswordConfirmModal";
-import { LatestInsightCard } from "./InsightsSection";
 import { HELP_RESOURCES } from "@/lib/safety/safetyReplyData";
 
 // 안내 문구의 '마들랜' 링크 — 도움받을 곳 목록과 같은 주소를 쓴다(한 곳만 고치면 되게).
@@ -98,7 +96,6 @@ export default function MyPageTab() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<"type" | "insights" | "info" | "billing" | "onboarding" | "counselor" | "feedback" | "help" | null>(null);
   const [group, setGroup] = useState<"me" | "tests" | null>(null); // 2026-11-24: '내 정보'·'내 테스트' 묶음
-  const [editingOnboarding, setEditingOnboarding] = useState(false);
   const helpOpenedRef = useRef(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
@@ -210,8 +207,7 @@ export default function MyPageTab() {
 
       {data && (
         <div className="flex-1">
-          {/* 2026-11-24 대표님 요청: 내 정보 위에 "가장 최근 대화 기준" 쏘웰라가 알게 된 마음 한 개 → "더 알아보기"(/mypage/insights)에서 쌓인 내용 전체. */}
-          <LatestInsightCard name={data.nickname ?? data.displayName} />
+          {/* 2026-11-25 대표님: "최근 나눈 대화를 보면, 이런 마음이 보여요." 카드는 마이페이지에서 빼고 고민 타파 제목 아래와 채팅(새 대화 첫 화면)으로 옮김. */}
           <GroupRow title="내 정보" open={group === "me"} onToggle={() => setGroup(group === "me" ? null : "me")}>
             <SectionRow nested title="내 정보 확인" open={open === "info"} onToggle={() => setOpen(open === "info" ? null : "info")}>
               <dl className="space-y-2">
@@ -376,7 +372,7 @@ export default function MyPageTab() {
               <p>가입 직후 답했던 생활·취향 질문을 다시 확인하거나 바꿀 수 있어요. 바뀐 내용은 다음 날 추천부터 반영돼요.</p>
               <button
                 type="button"
-                onClick={() => setEditingOnboarding(true)}
+                onClick={() => router.push("/onboarding/1?back=/mypage")}
                 className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
               >
                 답변 수정하기
@@ -475,14 +471,6 @@ export default function MyPageTab() {
 
       {showFeedback && <CustomerFeedbackModal onClose={() => setShowFeedback(false)} />}
 
-      {editingOnboarding && (
-        <OnboardingFlow
-          mode="edit"
-          nickname={data?.nickname ?? data?.displayName ?? null}
-          onDone={() => setEditingOnboarding(false)}
-          onClose={() => setEditingOnboarding(false)}
-        />
-      )}
 
       {showPasswordConfirm && data?.email && (
         <PasswordConfirmModal

@@ -7,6 +7,7 @@ import { loadTarotWelcome } from "@/lib/tarot/loadTarotInsight";
 import { TAROT_CARDS } from "@/lib/tarot/catalog";
 import { loadAstroGreeting } from "@/lib/mypage/loadAstroGreeting";
 import { astroOpeningFromSearch } from "@/lib/persona/astroGreeting";
+import { loadInsightsWithLatest } from "@/lib/interp/insightsStore";
 
 // 채팅 첫 화면이 무엇을 보여 줄지 정하려고 부르는 가벼운 조회(2026-10-22): ① 디저트 유형 테스트 결과가 있는지(없으면 성향 질문 대신 일상 문구) ②
 // 점성술(쏠 아스트로 하우스) 결과를 보고 넘어온 사용자인지와 그때 고른 "요즘 신경 쓰이는 부분"(Q1) → 환영 인사·시작 문구. 유형·결과 내용은 싣지 않는다.
@@ -23,12 +24,14 @@ export async function GET(req: NextRequest) {
   const safe = async <T,>(f: () => PromiseLike<T>, fallback: T): Promise<T> => { try { return await f(); } catch { return fallback; } };
     // 2026-10-26: 타로 결과 10쪽 버튼으로 넘어오면 ?tarot=<결과 id> — 본인 결과일 때만 고민 글·세 번째 카드로 맞춤 인사.
   const tarotId = req.nextUrl.searchParams.get("tarot");
-  const [persona, astro, profile, astroGreeting, tarotRow] = await Promise.all([
+  // 2026-11-25 대표님: 지난 대화에서 비친 마음(가장 최근 대화 기준 한 개)을 새 대화 첫 화면에도 알려 준다(고민 타파 카드와 같은 내용).
+  const [persona, astro, profile, astroGreeting, tarotRow, insight] = await Promise.all([
     safe(() => loadQuizPersona(admin, userId, { includeReport: false }), null),
     safe(async () => (await admin.from("astro_results").select("answers, nickname").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle()).data, null),
     safe(async () => (await admin.from("profiles").select("nickname, display_name").eq("user_id", userId).maybeSingle()).data, null),
     opening ? safe(() => loadAstroGreeting(admin, userId, opening.resultId), null) : Promise.resolve(null),
     tarotId ? safe(() => loadTarotWelcome(admin, userId, tarotId), null) : Promise.resolve(null),
+    safe(async () => (await loadInsightsWithLatest(admin, userId, 1)).latest?.text ?? null, null),
   ]);
   let tarot: { worry: string | null; card: string | null } | null = null;
   if (tarotRow) {
@@ -52,6 +55,7 @@ export async function GET(req: NextRequest) {
     astroQ1: q1,
     astroGreeting,
     tarot,
+    insight,
     nickname: profile?.nickname || profile?.display_name || tarotRow?.nickname || (astro?.nickname as string | null) || null,
   });
 }

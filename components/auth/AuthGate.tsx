@@ -22,7 +22,7 @@ export default function AuthGate({
   initialMode,
 }: {
   children: React.ReactNode;
-  initialMode?: "signin" | "signup";
+  initialMode?: "signin" | "signup" | "reset";
 }) {
   const [status, setStatus] = useState<"checking" | "loggedOut" | "loggedIn">("checking");
 

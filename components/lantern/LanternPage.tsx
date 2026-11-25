@@ -83,6 +83,17 @@ function sceneStyle(
 }
 
 // getToken: 화면 확인용으로 바꿔 끼울 수 있게 둔 자리(실제 화면은 기본값 — 로그인 세션의 토큰).
+// 화면마다 주소(대표님 2026-11-25 "화면 바꾸면 무조건 링크 나눠"): 쓰기 /lantern · 날린 뒤(축하·높이) /lantern/done.
+// 날아가는 장면은 쓰기 → 끝 화면으로 이어지는 움직임이라 페이지를 새로 그리지 않고 주소만 바꾼다(history.replaceState — Next.js 라우터와 맞춰짐).
+// /lantern/done으로 바로 들어왔는데 아직 안 날렸으면 쓰기 화면(/lantern)으로.
+function setLanternPath(path: "/lantern" | "/lantern/done") {
+  try {
+    if (window.location.pathname !== path) window.history.replaceState(window.history.state, "", path);
+  } catch {
+    /* 주소를 못 바꿔도 화면은 그대로 */
+  }
+}
+
 export default function LanternPage({
   getToken = getAccessToken,
 }: { getToken?: () => Promise<string | null> } = {}) {
@@ -115,6 +126,7 @@ export default function LanternPage({
     setNow(Date.now());
     setScene(5);
     setPhase("already");
+    setLanternPath("/lantern/done");
   }
 
   async function loadStatus(): Promise<Status | null> {
@@ -138,7 +150,11 @@ export default function LanternPage({
         else if (s?.open === false) {
           setScene(1); // 축하 그림(장면 5)에는 "날아갔어요" 글자가 있어서 기간이 아닐 때는 첫 장면
           setPhase("closed");
-        } else setPhase("compose");
+          setLanternPath("/lantern");
+        } else {
+          setPhase("compose");
+          setLanternPath("/lantern");
+        }
       })
       .catch(() => {
         if (cancelled) return;
@@ -169,6 +185,7 @@ export default function LanternPage({
     setNow(Date.now());
     setScene(5);
     setPhase("done");
+    setLanternPath("/lantern/done");
   }
 
   // 저장이 안 됐을 때 — 날던 장면을 멈추고 상황에 맞는 화면으로.

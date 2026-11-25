@@ -43,6 +43,8 @@ export type WelcomeStatus = {
   hasReport?: boolean;
   /** 쏠 타로 하우스 결과 10쪽 버튼(…/chat?from=tarot&result=id)으로 넘어온 경우 그 결과의 고민 글과 세 번째 카드(2026-10-26 owner 결정 — 고민 내용까지 언급). */
   tarot?: TarotWelcome | null;
+  /** 지난 대화에서 비친 마음(가장 최근 대화 기준 한 개, 2026-11-25). 없으면 null. */
+  insight?: string | null;
 };
 
 /** 인사말에 넣을 고민 글 앞부분(줄바꿈은 띄어쓰기로, 길면 max자에서 자르고 …). */

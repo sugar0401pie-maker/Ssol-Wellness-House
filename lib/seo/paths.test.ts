@@ -10,7 +10,7 @@ describe("검색엔진 안내 주소", () => {
   });
 
   test("로그인 뒤 화면·내 정보·결제 결과·서버 주소는 막혀 있다", () => {
-    for (const p of ["/api/chat", "/home", "/chat", "/mypage", "/report/abc", "/session-reserve", "/pricing/success", "/pricing/fail", "/challenge", "/worry", "/worry/guide/x", "/lantern", "/soundbath"]) {
+    for (const p of ["/api/chat", "/home", "/chat", "/mypage", "/report/abc", "/session-reserve", "/pricing/success", "/pricing/fail", "/challenge", "/worry", "/worry/guide/x", "/lantern", "/lantern/done", "/soundbath", "/login", "/login/reset", "/onboarding/1", "/chat/history", "/challenge/day/1"]) {
       assert.equal(isBlocked(p), true, `${p}가 열려 있음`);
     }
   });

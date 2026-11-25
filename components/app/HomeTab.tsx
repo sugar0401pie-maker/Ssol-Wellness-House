@@ -6,6 +6,7 @@ import { authHeaders } from "@/lib/supabase/authHeaders";
 import { bootstrap } from "@/lib/app/bootstrapClient";
 import SiteFooter from "@/components/SiteFooter";
 import SeaFriendCard from "@/components/app/SeaFriendCard";
+import LanternBanner from "@/components/lantern/LanternBanner";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -83,6 +84,8 @@ export default function HomeTab() {
       </header>
 
       <div className="flex-1 px-4 py-5">
+        {/* 2026-11-25(요청문 v1.9.4 8-2장): 풍등 이벤트 기간에 오늘 아직 안 날렸으면 맨 위에 배너 */}
+        <LanternBanner />
         <p className="text-[13px] text-slate-400">{data ? formatDateKey(data.dateKey) : " "}</p>
         {/* 2026-09-28 버그 수정: 시안의 홈 인사말은 .h-title(Gowun Batang 서체, 24px)인데
             여기만 제목 서체가 빠져 있어서 "홈이 하나도 안 바뀌었다"는 지적을 받았다 — 다른

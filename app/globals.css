@@ -321,3 +321,10 @@ body {
 .ssol-home:has(.ssol-banner) .ssol-moon {
   display: none; /* 홈 위 배너가 보이면 달이 겹쳐 보여서 숨긴다(12-5장 3번) */
 }
+
+/* 2026-11-25 대표님: 데스크톱에서 앱 양옆(가운데 앱 밖)도 밤하늘 색으로 — 밤하늘 화면(.ssol-night: 로그인 뒤 앱·고민 타파 공개 게시판)이 떠 있을 때만.
+   로그인·약관·결제 화면은 예전 밝은 바탕 그대로. */
+html:has(.ssol-night),
+body:has(.ssol-night) {
+  background: var(--sky-top) var(--sky-text-bg) fixed;
+}

@@ -38,12 +38,23 @@ export function insightLeadIn(name: string | null | undefined): string {
   return n ? `${n}님과 나눈 최근 대화를 보면, 이런 마음이 보여요.` : "최근 나눈 대화를 보면, 이런 마음이 보여요.";
 }
 
-export function LatestInsightCard({ name }: { name?: string | null }) {
+// 고민 타파 맨 위에서는 "{닉네임}님과 최근 나눈 대화를 보면, 이런 마음이 보여요."(대표님 2026-11-25) — 이름은 서버가 같이 주는 값을 쓴다.
+export const boardInsightLeadIn = (name: string | null | undefined): string => {
+  const n = name?.trim();
+  return n ? `${n}님과 최근 나눈 대화를 보면, 이런 마음이 보여요.` : "최근 나눈 대화를 보면, 이런 마음이 보여요.";
+};
+
+export function LatestInsightCard({ name, variant = "mypage" }: { name?: string | null; variant?: "mypage" | "board" }) {
   const [latest, setLatest] = useState<Insight | null | undefined>(undefined);
+  const [serverName, setServerName] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     call("GET")
-      .then((v) => { if (!cancelled) setLatest(v.latest ?? null); })
+      .then((v) => {
+        if (cancelled) return;
+        setLatest(v.latest ?? null);
+        setServerName(v.name ?? null);
+      })
       .catch(() => { if (!cancelled) setLatest(null); });
     return () => { cancelled = true; };
   }, []);
@@ -52,7 +63,7 @@ export function LatestInsightCard({ name }: { name?: string | null }) {
     <div className="border-b border-line px-4 py-4">
       <div className="rounded-2xl bg-navy-soft p-4">
         <p className="mb-1.5 text-[12px] text-slate-500">최근 대화에서 쏘웰라가 알게 된 마음</p>
-        <p className="mb-1 text-[14px] leading-6 text-slate-600">{insightLeadIn(name)}</p>
+        <p className="mb-1 text-[14px] leading-6 text-slate-600">{variant === "board" ? boardInsightLeadIn(name ?? serverName) : insightLeadIn(name ?? serverName)}</p>
         <InsightText text={latest.text} size="text-[15px]" />
         <Link href="/mypage/insights" className="mt-3 inline-block rounded-full bg-navy px-3.5 py-1.5 text-[13px] font-medium text-white">
           더 알아보기

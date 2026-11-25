@@ -60,7 +60,7 @@ export default function WorryBoard({
         style={{ containerType: "inline-size" }}
       >
         <div className="[&>div]:border-b-0 [&_.bg-navy-soft]:bg-night-panel [&_.bg-navy-soft]:text-night-text [&_p]:!text-inherit">
-          <LatestInsightCard />
+          <LatestInsightCard variant="board" />
         </div>
         <div className="px-5 pt-4">
           <h1 className="text-[22px] font-bold">고민 타파</h1>

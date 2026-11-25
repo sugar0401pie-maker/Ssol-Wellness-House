@@ -1,5 +1,6 @@
 "use client";
 
+import { KakaoSymbol, NaverSymbol } from "./SocialLogos";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
@@ -248,12 +249,13 @@ export default function LoginScreen({
     // 스크롤을 허용하지 않는 CSS 특성이 있어서 — 특히 회원가입처럼 긴 폼에서 위쪽이 항상
     // 잘려 보였다. items-start로 위에서부터 쌓이게 바꿔서 어떤 화면 높이에서도 스크롤만
     // 하면 전체 내용에 닿을 수 있게 한다.
-    <div className="flex h-dvh w-full items-start justify-center overflow-y-auto bg-background px-6 py-10">
+    // 2026-11-25 대표님: 첫 화면에서 쏘웰라로 들어가는 이 화면(로그인·가입·비밀번호 재설정)도 밤하늘 테마 색 + 흰 로고.
+    <div className="ssol-night ssol-sky flex h-dvh w-full items-start justify-center overflow-y-auto px-6 py-10">
       <div className="w-full max-w-xs">
         {/* 2026-09-28 재확인 중 발견: 랜딩/앱 헤더는 새 로고로 바꿨는데 이 화면(로그인/회원가입/
             비밀번호 재설정 카드)만 옛 흰 박스 로고(logo.jpg)가 그대로 남아있었다 — 놓친 부분이라
             같은 물결 심볼로 통일한다. 실제 비율(440:117)대로 너비만 지정, 높이는 auto. */}
-        <Image src="/logo-mark.png" alt="쏠 웰니스 하우스" width={84} height={22} className="mx-auto h-auto w-[84px]" />
+        <Image src="/logo-mark-white.png" alt="쏠 웰니스 하우스" width={84} height={22} className="mx-auto h-auto w-[84px]" />
 
         <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
           <button
@@ -324,8 +326,9 @@ export default function LoginScreen({
                   <button
                     type="button"
                     onClick={() => handleOAuth("kakao")}
-                    className="h-11 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
                   >
+                    <KakaoSymbol />
                     카카오로 로그인
                   </button>
                 )}
@@ -333,8 +336,9 @@ export default function LoginScreen({
                   <button
                     type="button"
                     onClick={() => handleOAuth("naver")}
-                    className="h-11 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
                   >
+                    <NaverSymbol />
                     네이버로 로그인
                   </button>
                 )}
@@ -360,8 +364,9 @@ export default function LoginScreen({
                 <button
                   type="button"
                   onClick={() => handleOAuth("kakao")}
-                  className="mb-1 h-11 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
+                  className="mb-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
                 >
+                  <KakaoSymbol />
                   회원가입 없이 10초만에 카카오로 로그인하기
                 </button>
               )}
@@ -370,8 +375,9 @@ export default function LoginScreen({
                 <button
                   type="button"
                   onClick={() => handleOAuth("naver")}
-                  className="mb-1 h-11 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
+                  className="mb-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
                 >
+                  <NaverSymbol />
                   회원가입 없이 10초만에 네이버로 로그인하기
                 </button>
               )}

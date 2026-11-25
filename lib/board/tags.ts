@@ -49,3 +49,18 @@ export function tagsFor(kind: "guide" | "post", id: string | number): string[] {
 
 // 태그 주소 조각 ↔ 태그(한글 그대로 encodeURIComponent)
 export const tagHref = (basePath: string, tag: string) => `${basePath}/tag/${encodeURIComponent(tag)}`;
+
+// 주요 태그 5개(대표님 2026-11-25: 목록·글에 5개만 보이고 나머지는 접어 둠 — 접힌 태그도 글에 그대로 달려 있어 태그 검색에 걸린다).
+// 모든 글에 같은 공통·종류 태그는 빼고, 그 글만의 태그를 앞에서부터. 그 글만의 태그가 없으면 앞에서부터 5개.
+export const MAIN_TAGS = 5;
+export function mainTags(tags: string[]): string[] {
+  const common = new Set<string>([...COMMON_TAGS, ...Object.values(KIND_TAG)]);
+  const own = tags.filter((t) => !common.has(t));
+  return (own.length ? own : tags).slice(0, MAIN_TAGS);
+}
+// 글 화면의 태그 순서: 주요 5개 먼저, 나머지(접힘)는 그 뒤에 원래 순서대로
+export function splitTags(tags: string[]): { main: string[]; rest: string[] } {
+  const main = mainTags(tags);
+  const set = new Set(main);
+  return { main, rest: tags.filter((t) => !set.has(t)) };
+}

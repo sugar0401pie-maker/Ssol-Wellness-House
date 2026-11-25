@@ -1,7 +1,7 @@
 import Image from "next/image";
 import ImageCarousel from "./ImageCarousel";
 import { TAROT_NAME, TAROT_URL, promoFor, promoIndex } from "@/lib/board/promo";
-import { tagHref } from "@/lib/board/tags";
+import { splitTags, tagHref } from "@/lib/board/tags";
 import Link from "next/link";
 import {
   episodeCover,
@@ -37,13 +37,12 @@ export default function ReaderView({
         )
       : promoIndex("post", e?.n ?? 0),
   );
+  const tagParts = splitTags(g?.tags ?? e?.tags ?? []);
+  const tagBase = isPublic ? "/board" : "/worry";
   const carousel = e?.images && e.images.length > 0 ? e.images : null;
   const cover = e && !carousel ? (e.image ?? episodeCover(e.n)) : null;
   return (
     <>
-      {carousel && (
-        <ImageCarousel images={carousel} label={`고민우체국 ${e?.n}화 그림`} />
-      )}
       {cover && (
         <Image
           src={cover}
@@ -54,12 +53,20 @@ export default function ReaderView({
           className="mt-2 h-auto w-full rounded-2xl"
         />
       )}
-      <span className="mt-3 inline-block rounded-full bg-night-amber px-3 py-0.5 text-[12.5px] text-night-on-amber">
-        {g ? `#${g.tag} · 고민 가이드` : `고민우체국 ${e?.n}화`}
-      </span>
+      <div className="mt-3">
+        <span className="inline-block rounded-full bg-night-amber px-3 py-0.5 text-[12.5px] text-night-on-amber">
+          {g ? `#${g.tag} · 고민 가이드` : `고민우체국 ${e?.n}화`}
+        </span>
+      </div>
       <h1 className="mt-2 text-[22px] font-bold leading-snug">
         {g?.title ?? e?.title}
       </h1>
+      {/* 대표님 2026-11-25: 제목 바로 아래에 대표님이 준 캐러셀(실제 대화 캡처) 그대로 */}
+      {carousel && (
+        <div className="mt-3">
+          <ImageCarousel images={carousel} label={`고민우체국 ${e?.n}화 대화 캡처`} />
+        </div>
+      )}
       {stale && (
         <p className="mt-1 text-[12px] text-night-yellow">
           지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.
@@ -118,7 +125,7 @@ export default function ReaderView({
       )}
       {e && (
         <p className="mt-3 text-[12.5px] text-night-dim">
-          창작 이야기이며 실제 이용자 사연이 아니에요.
+          일상의 고민을 받아서 답변해드려요.
         </p>
       )}
       <p className="mt-3 text-[12.5px] leading-5 text-night-dim">
@@ -150,17 +157,27 @@ export default function ReaderView({
           </span>
         </a>
       </section>
-      {(g?.tags ?? e?.tags ?? []).length > 0 && (
-        <nav aria-label="태그" className="mt-4 flex flex-wrap gap-1.5">
-          {(g?.tags ?? e?.tags ?? []).map((t) => (
-            <Link
-              key={t}
-              href={tagHref(isPublic ? "/board" : "/worry", t)}
-              className="rounded-full border border-night-line px-2.5 py-1 text-[12px] text-night-soft"
-            >
-              #{t}
-            </Link>
-          ))}
+      {/* 주요 태그 5개만 보이고 나머지는 접어 둠(대표님 2026-11-25) — 접힌 태그도 링크로 페이지에 그대로 있어 태그 검색·검색 엔진에 걸린다 */}
+      {tagParts.main.length > 0 && (
+        <nav aria-label="태그" className="mt-4">
+          <div className="flex flex-wrap gap-1.5">
+            {tagParts.main.map((t) => (
+              <TagChip key={t} t={t} base={tagBase} />
+            ))}
+          </div>
+          {tagParts.rest.length > 0 && (
+            <details className="group mt-2">
+              <summary className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-full border border-night-line px-3 text-[12px] text-night-sub [&::-webkit-details-marker]:hidden">
+                <span className="group-open:hidden">태그 {tagParts.rest.length}개 더 보기</span>
+                <span className="hidden group-open:inline">태그 접기</span>
+              </summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tagParts.rest.map((t) => (
+                  <TagChip key={t} t={t} base={tagBase} />
+                ))}
+              </div>
+            </details>
+          )}
         </nav>
       )}
       <Link
@@ -170,5 +187,13 @@ export default function ReaderView({
         쏘웰라와 이야기하기
       </Link>
     </>
+  );
+}
+
+function TagChip({ t, base }: { t: string; base: string }) {
+  return (
+    <Link href={tagHref(base, t)} className="rounded-full border border-night-line px-2.5 py-1 text-[12px] text-night-soft">
+      #{t}
+    </Link>
   );
 }

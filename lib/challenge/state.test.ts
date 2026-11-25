@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addDays, bannerCopy, dayDiff, deriveView, needsToday, normalizeMemo, resultLine, startDayFor, type Challenge, type Checkin } from "./state.ts";
+import { addDays, bannerCopy, dayDiff, deriveView, needsToday, normalizeMemo, parseDay, resultLine, startDayFor, type Challenge, type Checkin } from "./state.ts";
 import { CHALLENGE_THEMES, themeOf } from "./themes.ts";
 
 const T = "2026-11-26";
@@ -86,4 +86,10 @@ test("오늘 찍어 볼 것: 대표님 문구 + 별가루, '인증샷 아이디�
   for (const t of CHALLENGE_THEMES) for (const i of [0, 1, 2]) assert.ok(SPARKLES.some((sp) => proofLine(t.key, i).endsWith(sp)));
   assert.deepEqual(CHALLENGE_THEMES.map((t) => t.label), ["걱정이 머릿속을 떠나지 않아요", "할 일을 자꾸 미뤄요", "몸도 마음도 기운이 없어요"]);
   assert.ok(SPARKLES.every((sp) => !/[‍‎]/.test(sp)));
+});
+
+test("주소의 일차는 1·2·3만", () => {
+  assert.equal(parseDay("1"), 1);
+  assert.equal(parseDay("3"), 3);
+  for (const s of ["0", "4", "01", "1.0", "", "x"]) assert.equal(parseDay(s), null);
 });

@@ -100,3 +100,8 @@ export function bannerCopy(v: View): { title: string; desc: string } | null {
 
 // 결과 화면(13-9장) 줄
 export const resultLine = (n: number): string => (n >= CHALLENGE_DAYS ? "3일을 모두 채웠어요!" : `${n}일차 도장을 찍었어요. 내일은 ${n + 1}일차예요.`);
+
+// 주소의 일차(/challenge/day/N) — "1"·"2"·"3"만 받는다.
+export function parseDay(s: string): 1 | 2 | 3 | null {
+  return s === "1" || s === "2" || s === "3" ? (Number(s) as 1 | 2 | 3) : null;
+}

@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { canvasToBlob } from "@/lib/challenge/card";
-import { resultLine } from "@/lib/challenge/state";
 import { downloadBlob, shareToInstagram, shareToKakao } from "@/lib/challenge/share";
 import { InstagramButton, KakaoButton } from "./ShareButtons";
 
-// 스토리 카드 화면 "갓생살기 N일차 달성!"(요청문 3-5·9-3·13-9장) → 인스타그램·카카오톡 → 결과 화면 "오늘 챌린지를 완료했어요~!!".
+// 스토리 카드 화면 "갓생살기 N일차 달성!"(요청문 3-5·9-3·13-9장) → 인스타그램·카카오톡 → 결과 화면 "오늘 챌린지를 완료했어요~!!"(ResultScreen — 자기 주소 /challenge/day/N/done).
 // 카드는 이 기기에서 그리고(사진은 서버에 안 올림), 저장하는 순간 한 번 자동으로 내려받는다(웹이라 소리 없는 앨범 저장은 브라우저가 막아서 다운로드로 처리).
 // 공유가 끝나면(올렸는지·취소했는지와 상관없이) 결과 화면으로 간다(앱은 올렸는지 알 수 없어서 "올렸어요" 확인을 받지 않음 — v1.9.3).
 // 대표님 2026-11-25: 계정은 @ssol.swhmkt 하나만, "이벤트 보기"는 그 인스타그램 계정으로, 결과 화면에도 그림.
@@ -21,28 +18,23 @@ export const SHARE_LINK = "https://app.ssolwellnesshouse.com";
 
 export default function CardScreen({
   title,
-  n,
   make,
   autoSave,
-  withResult,
   fileName,
   shareText,
-  resultArt,
+  onShared,
   onBack,
 }: {
   title: string;
-  n: number;
   make: () => Promise<HTMLCanvasElement>;
   autoSave: boolean;
-  withResult: boolean;
   fileName: string;
   shareText: string;
-  resultArt: string;
+  onShared?: () => void; // 방금 저장한 날만: 공유가 끝나면 결과 화면 주소(/challenge/day/N/done)로
   onBack: () => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [save, setSave] = useState<SaveState>(autoSave ? "saving" : "idle");
-  const [result, setResult] = useState(false);
   const [copied, setCopied] = useState(false);
   const blob = useRef<Blob | null>(null);
 
@@ -70,11 +62,11 @@ export default function CardScreen({
 
   async function insta() {
     if (blob.current) await shareToInstagram(blob.current, fileName);
-    if (withResult) setResult(true);
+    onShared?.();
   }
   async function kakao() {
     if (blob.current) await shareToKakao(blob.current, fileName, { title, description: shareText, url: SHARE_LINK });
-    if (withResult) setResult(true);
+    onShared?.();
   }
 
   async function copy() {
@@ -85,34 +77,6 @@ export default function CardScreen({
     } catch {
       setCopied(false);
     }
-  }
-
-  if (result) {
-    return (
-      <div className="ssol-sky fixed inset-0 z-[60] overflow-y-auto text-night-text">
-        <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 px-8 py-10 text-center">
-          <div className="relative">
-            <Image src={resultArt} alt="함께 기뻐하는 바다 친구" width={200} height={200} unoptimized className="h-[180px] w-[180px] rounded-3xl object-cover shadow-[0_10px_30px_rgba(0,0,0,.4)]" />
-            <div className="absolute -bottom-3 -right-3 grid h-16 w-16 place-items-center rounded-full bg-night-amber" style={{ animation: "ssol-stamp-pop .45s ease-out both" }} aria-hidden="true">
-              <svg viewBox="0 0 24 24" className="h-9 w-9">
-                <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke="var(--night-on-amber)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-          </div>
-          <h2 className="mt-2 text-[23px] font-bold leading-snug">오늘 챌린지를 완료했어요~!!</h2>
-          <p className="text-[16px] text-night-yellow">{resultLine(n)}</p>
-          <p className="break-keep text-[12.5px] leading-5 text-night-dim">스토리에 {EVENT_ACCOUNT} 계정을 태그하고 공개 계정으로 올리면 추첨 대상이에요. 올렸는지는 운영에서 확인해요.</p>
-          <div className="mt-2 grid w-full gap-2">
-            <button type="button" onClick={onBack} className="rounded-full bg-night-amber py-3 text-[16px] font-bold text-night-on-amber">
-              갓생러모임으로
-            </button>
-            <Link href="/home" className="rounded-full border border-night-border py-3 text-[15px]">
-              홈으로
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return (

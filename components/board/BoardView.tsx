@@ -12,6 +12,7 @@ import {
   type Guide,
 } from "@/lib/board/data";
 import { boldFor, colorFor, layoutCloud } from "@/lib/board/cloud";
+import { mainTags } from "@/lib/board/tags";
 
 // 고민 타파 본문(요청문 v1.9.4 10장) — 앱 안(/worry)과 로그인 없이 보는 공개 게시판(/board)이 같은 화면을 쓴다(대표님 2026-11-25).
 // 해시태그 글자 구름(가까운 고민이 크게, 천천히 떠다님) → 고른 고민 패널(이름표·제목·먼저 한 줄로 3줄·글 읽기) → 고민우체국 연재.
@@ -145,8 +146,8 @@ export default function BoardView({
           <div>
             <h2 className="text-[19px] font-bold">고민우체국</h2>
             <p className="mt-0.5 break-keep text-[12.5px] leading-5 text-night-sub">
-              1화, 2화로 이어지는 연재예요. 창작 이야기이며 실제 이용자 사연이
-              아니에요.
+              {/* 대표님 2026-11-25 문구 */}
+              일상의 고민을 받아서 답변해드려요.
             </p>
           </div>
         </div>
@@ -162,7 +163,10 @@ export default function BoardView({
               </span>
               <span className="min-w-0">
                 <b className="block text-[14.5px] leading-snug">{e.title}</b>
-                <small className="text-[12px] text-night-dim">#{e.tag}</small>
+                {/* 주요 태그 5개(대표님 2026-11-25) — 글만의 태그가 없으면 원래 분류 하나 */}
+                <small className="mt-0.5 block break-keep text-[12px] leading-5 text-night-dim">
+                  {(e.tags?.length ? mainTags(e.tags) : [e.tag]).map((t) => `#${t}`).join(" ")}
+                </small>
               </span>
               {i === episodes.length - 1 ? (
                 <span className="rounded-full bg-danger-dot px-2 py-0.5 text-[11px] text-night-text">

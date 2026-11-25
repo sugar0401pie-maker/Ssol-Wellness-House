@@ -22,18 +22,21 @@ const B = [
   [29, 32],
 ];
 
-export default function SkyDecor() {
+// moon=false: 그림 안에 이미 달이 있는 화면(갓생러모임 — 대표님 2026-11-25 "그림에도 달이 있어서 겹쳐, 겹치는 달은 숨겨줘")
+export default function SkyDecor({ moon = true }: { moon?: boolean } = {}) {
   return (
     <>
       {/* 달은 따로 그린다(별 층은 화면 비율에 맞춰 늘어나서, 그 안에 그리면 타원이 됨) */}
-      <span
-        className="ssol-moon pointer-events-none absolute right-[7%] top-[18px] aspect-square w-[12%] rounded-full"
-        style={{
-          background: "var(--moon)",
-          boxShadow: "0 0 24px rgba(246,239,213,.35)",
-        }}
-        aria-hidden="true"
-      />
+      {moon && (
+        <span
+          className="ssol-moon pointer-events-none absolute right-[7%] top-[18px] aspect-square w-[12%] rounded-full"
+          style={{
+            background: "var(--moon)",
+            boxShadow: "0 0 24px rgba(246,239,213,.35)",
+          }}
+          aria-hidden="true"
+        />
+      )}
       <svg
         className="pointer-events-none absolute inset-x-0 top-0 h-[34%] w-full"
         viewBox="0 0 100 40"

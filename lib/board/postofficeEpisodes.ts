@@ -1,6 +1,6 @@
 // 고민우체국 1~10화(2026-11-25 대표님 전달 "고민우체국 1-5화·6-10화 글·이미지 묶음 v1"). 6~10화는 예약 게시(publishAt, 하루에 하나 — 대표님). 글 원고(md)의 "1. 본문 초안"에서
 // 본문과 FAQ만 옮겼다 — 메타 정보·개발 메모·검수 메모·촬영 예정 빈칸·인스타 연결 구역(게시 후 입력)·검수 표기(검수일 미기입)는 뺐고,
-// 요약의 "상담 자격을 가진 전문가 두 명이 검수했어요"도 검수 전이라 뺐다. 대화 캡처는 위 캐러셀(images)로, 캡처를 글자로 옮긴 인용은 본문에 남긴다.
+// 요약의 "상담 자격을 가진 전문가 두 명이 검수했어요"도 검수 전이라 뺐다. 대화 캡처는 제목 아래 캐러셀(images — 대표님이 준 대화 캡처만, 2026-11-25 "내가 준 캐러셀 그대로")로, 표지 그림은 image(목록·공유용)로, 캡처를 글자로 옮긴 인용은 본문에 남긴다.
 // 원고 상태는 "초안(CEO·CSO 검수 뒤 게시)" — 관리자 화면에서 같은 회차를 고치면 그 글이 이 내용을 덮는다(그림은 여기 것을 그대로 쓴다).
 import type { Episode } from "./data.ts";
 
@@ -11,11 +11,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "별자리",
     "summary": "꼼꼼함이 지칠 만큼 커졌다면, 별자리보다 그 아래 있는 마음을 같이 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/1",
+    "image": "/postoffice/letters/1/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/1/cover.webp",
-        "alt": "고민우체국 1화 표지 — 해달 우체부"
-      },
       {
         "src": "/postoffice/letters/1/chat-1.webp",
         "alt": "나 디테일에 집착하는데 이거 설마 처녀자리라서 그런거야? 라는 질문에 쏘웰라AI가 답한 실제 대화 화면"
@@ -33,11 +30,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "MBTI",
     "summary": "사람을 좋아하는데 MBTI는 I라서 헷갈린다면, 만남이 끝난 뒤 내 에너지가 어떻게 움직이는지 같이 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/2",
+    "image": "/postoffice/letters/2/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/2/cover.webp",
-        "alt": "고민우체국 2화 표지 — 해달 우체부"
-      },
       {
         "src": "/postoffice/letters/2/chat-1.webp",
         "alt": "MBTI는 I인데 사람 만나는 게 좋다는 질문에 쏘웰라AI가 답한 실제 대화 화면"
@@ -55,11 +49,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "MBTI",
     "summary": "도움이 되려고 한 말인데 친구가 서운해한다면, 말의 내용보다 순서와 타이밍을 같이 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/3",
+    "image": "/postoffice/letters/3/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/3/cover.webp",
-        "alt": "고민우체국 3화 표지 — 해달 우체부"
-      },
       {
         "src": "/postoffice/letters/3/chat-1.webp",
         "alt": "T라서 조심해서 말하는데 사람들이 상처받는 것 같다는 질문에 쏘웰라AI가 답한 실제 대화 화면"
@@ -81,11 +72,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "썸",
     "summary": "썸 타는 사람의 답장이 늦어 불안하다면, 그 사람 마음을 추측하기보다 지금 내 마음을 먼저 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/4",
+    "image": "/postoffice/letters/4/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/4/cover.webp",
-        "alt": "고민우체국 4화 표지 — 다리를 건너는 수달 우체부"
-      },
       {
         "src": "/postoffice/letters/4/chat-1.webp",
         "alt": "썸 타는 사람이 카톡 답장을 3시간째 안 한다는 질문에 쏘웰라AI가 답한 실제 대화 화면"
@@ -107,11 +95,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "주말휴식",
     "summary": "주말 내내 쉬었는데 일요일 밤이 허무하다면, 더 열심히 쉬기보다 한 시간만 내가 고르는 주말을 만들어 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/5",
+    "image": "/postoffice/letters/5/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/5/cover.webp",
-        "alt": "고민우체국 5화 표지 — 해달 우체부"
-      },
       {
         "src": "/postoffice/letters/5/chat-1.webp",
         "alt": "주말에 누워서 폰만 보다가 일요일 밤에 허무하다는 질문에 쏘웰라AI가 답한 실제 대화 화면"
@@ -134,11 +119,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "summary": "이직할지 남을지 매일 생각만 하다 지친다면, 당장 결론을 내기보다 후회를 줄일 정보부터 모아 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/6",
     "publishAt": "2026-11-26",
+    "image": "/postoffice/letters/6/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/6/cover.webp",
-        "alt": "고민우체국 6화 표지 — 수달 편지 줍기"
-      },
       {
         "src": "/postoffice/letters/6/chat-1.webp",
         "alt": "회사 옮길까 그냥 다닐까, 오늘도 생각만 하다 퇴근했어… 에 쏘웰라AI가 답한 실제 대화 화면"
@@ -161,11 +143,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "summary": "단톡방에서 내 말에만 반응이 늦어 서운하다면, 늦은 답장이라는 사실과 내가 붙인 해석을 나눠서 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/7",
     "publishAt": "2026-11-27",
+    "image": "/postoffice/letters/7/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/7/cover.webp",
-        "alt": "고민우체국 7화 표지 — 해달 앉아서 편지 쓰기"
-      },
       {
         "src": "/postoffice/letters/7/chat-1.webp",
         "alt": "단톡방에서 내 말에만 답장이 늦는 것 같아서 서운해..… 에 쏘웰라AI가 답한 실제 대화 화면"
@@ -188,11 +167,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "summary": "뭘 샀는지도 모르게 통장이 비어 있다면, 아끼기 전에 내가 언제 사는지부터 같이 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/8",
     "publishAt": "2026-11-28",
+    "image": "/postoffice/letters/8/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/8/cover.webp",
-        "alt": "고민우체국 8화 표지 — 수달 편지 건네기"
-      },
       {
         "src": "/postoffice/letters/8/chat-1.webp",
         "alt": "이번 달도 통장이 텅 비었어.. 뭘 샀는지도 모르겠는데… 에 쏘웰라AI가 답한 실제 대화 화면"
@@ -215,11 +191,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "summary": "퇴근 후 뭐라도 배워야 할 것 같은데 고르지 못하고 있다면, 완벽한 선택 대신 한 달만 해 보는 것부터 시작해요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/9",
     "publishAt": "2026-11-29",
+    "image": "/postoffice/letters/9/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/9/cover.webp",
-        "alt": "고민우체국 9화 표지 — 해달 편지 열기"
-      },
       {
         "src": "/postoffice/letters/9/chat-1.webp",
         "alt": "퇴근하고 뭐라도 배워야 할 것 같은데 뭘 해야 할지 모… 에 쏘웰라AI가 답한 실제 대화 화면"
@@ -242,11 +215,8 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "summary": "타로와 사주를 좋아하는데 말하기 망설여진다면, 숨기지 않고 내 방식대로 설명하는 말을 같이 찾아봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/10",
     "publishAt": "2026-11-30",
+    "image": "/postoffice/letters/10/cover.webp",
     "images": [
-      {
-        "src": "/postoffice/letters/10/cover.webp",
-        "alt": "고민우체국 10화 표지 — 수달 다리 건너기"
-      },
       {
         "src": "/postoffice/letters/10/chat-1.webp",
         "alt": "나 타로도 믿고 사주도 믿는데 이런 얘기 어디 가서 하… 에 쏘웰라AI가 답한 실제 대화 화면"

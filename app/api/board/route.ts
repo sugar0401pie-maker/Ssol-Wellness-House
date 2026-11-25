@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFast } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
-import { loadEpisodes, loadGuides } from "@/lib/board/fetchSite";
+import { loadEpisodes, loadGuides, upcomingEpisodes } from "@/lib/board/fetchSite";
 import type { Basis } from "@/lib/board/data";
 
 // 고민 타파 목록(요청문 v1.9.4 10장): 고민 가이드 목록 + 고민우체국 회차 + 글자 구름 기준(이 사람의 "기저 생각").
@@ -20,5 +20,5 @@ export async function GET(req: NextRequest) {
   ]);
   const theme = (ch.data as { theme?: string } | null)?.theme;
   const basis: Basis = theme === "worry" || theme === "delay" || theme === "energy" ? theme : "none";
-  return NextResponse.json({ guides: guides.data, episodes: episodes.data, basis, stale: guides.stale || episodes.stale, source: guides.source });
+  return NextResponse.json({ guides: guides.data, episodes: episodes.data, upcoming: upcomingEpisodes(), basis, stale: guides.stale || episodes.stale, source: guides.source });
 }

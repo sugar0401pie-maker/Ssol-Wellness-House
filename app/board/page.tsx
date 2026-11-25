@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import PublicBoardShell from "@/components/board/PublicBoardShell";
 import BoardView from "@/components/board/BoardView";
-import { loadEpisodes, loadGuides } from "@/lib/board/fetchSite";
+import { loadEpisodes, loadGuides, upcomingEpisodes } from "@/lib/board/fetchSite";
 import { BASIS_SUB } from "@/lib/board/data";
 import { SHARE_IMAGE } from "@/lib/seo/paths";
 
@@ -25,7 +25,7 @@ export default async function PublicBoard() {
         <p className="mt-1 text-[13.5px] leading-5 text-night-sub">{BASIS_SUB.none}</p>
         {(guides.stale || episodes.stale) && <p className="mt-1 text-[12px] text-night-yellow">지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.</p>}
       </div>
-      <BoardView guides={guides.data} episodes={episodes.data} basis="none" basePath="/board" />
+      <BoardView guides={guides.data} episodes={episodes.data} upcoming={upcomingEpisodes()} basis="none" basePath="/board" />
       <div className="h-6" />
     </PublicBoardShell>
   );

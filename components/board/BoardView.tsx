@@ -19,11 +19,13 @@ import { boldFor, colorFor, layoutCloud } from "@/lib/board/cloud";
 export default function BoardView({
   guides,
   episodes,
+  upcoming = [],
   basis,
   basePath,
 }: {
   guides: Guide[];
   episodes: Episode[];
+  upcoming?: { n: number; title: string; tag: string; publishAt: string }[];
   basis: Basis;
   basePath: string;
 }) {
@@ -171,17 +173,38 @@ export default function BoardView({
               )}
             </Link>
           ))}
-          <div className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-dashed border-night-line py-3 pl-4 pr-3 opacity-55">
-            <span className="grid h-[54px] w-[48px] place-items-center rounded text-[15px] font-bold text-night-dim outline-2 outline-dashed outline-night-border">
-              {episodes.length + 1}화
-            </span>
-            <span>
-              <b className="block text-[14.5px]">다음 화 준비 중이에요</b>
-              <small className="text-[12px] text-night-dim">
-                곧 우체국에 도착해요
-              </small>
-            </span>
-          </div>
+          {/* 예약 회차는 반투명하게 미리 — 누를 수 없고 공개 날짜를 알려 준다(대표님 2026-11-25). 없으면 "다음 화 준비 중" */}
+          {upcoming.map((u) => (
+            <div
+              key={u.n}
+              aria-disabled="true"
+              className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-dashed border-night-line py-3 pl-4 pr-3 opacity-50"
+            >
+              <span className="grid h-[54px] w-[48px] place-items-center rounded text-[15px] font-bold text-night-dim outline-2 outline-dashed outline-night-border">
+                {u.n}화
+              </span>
+              <span className="min-w-0">
+                <b className="block text-[14.5px] leading-snug">{u.title}</b>
+                <small className="text-[12px] text-night-yellow">
+                  {+u.publishAt.slice(5, 7)}월 {+u.publishAt.slice(8, 10)}일
+                  공개 예정이에요
+                </small>
+              </span>
+            </div>
+          ))}
+          {upcoming.length === 0 && (
+            <div className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-dashed border-night-line py-3 pl-4 pr-3 opacity-55">
+              <span className="grid h-[54px] w-[48px] place-items-center rounded text-[15px] font-bold text-night-dim outline-2 outline-dashed outline-night-border">
+                {episodes.length + 1}화
+              </span>
+              <span>
+                <b className="block text-[14.5px]">다음 화 준비 중이에요</b>
+                <small className="text-[12px] text-night-dim">
+                  곧 우체국에 도착해요
+                </small>
+              </span>
+            </div>
+          )}
         </div>
       </section>
     </>

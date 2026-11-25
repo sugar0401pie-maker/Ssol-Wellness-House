@@ -19,6 +19,7 @@ import { LatestInsightCard } from "@/components/app/InsightsSection";
 type Payload = {
   guides: Guide[];
   episodes: Episode[];
+  upcoming?: { n: number; title: string; tag: string; publishAt: string }[];
   basis: Basis;
   stale: boolean;
 };
@@ -88,6 +89,7 @@ export default function WorryBoard({
           <BoardView
             guides={data.guides}
             episodes={data.episodes}
+            upcoming={data.upcoming ?? []}
             basis={data.basis}
             basePath="/worry"
           />

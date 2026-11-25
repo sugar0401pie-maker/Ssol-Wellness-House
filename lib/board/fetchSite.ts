@@ -99,6 +99,15 @@ export async function loadEpisodes(): Promise<Got<Episode[]>> {
   return { ...base, data: tagged.filter((e) => isPublishedOn(e, today)).sort((a, b) => a.n - b.n) };
 }
 
+// 예약 회차 미리 보기(대표님 2026-11-25: 목록에 반투명하게 "○월 ○일 공개 예정이에요") — 제목·태그·날짜만 넘기고 본문·그림은 넘기지 않는다.
+export type UpcomingEpisode = { n: number; title: string; tag: string; publishAt: string };
+export function upcomingEpisodes(): UpcomingEpisode[] {
+  const today = todayKeyKST();
+  return STARTER_EPISODES.filter((e) => e.publishAt && !isPublishedOn(e, today))
+    .map((e) => ({ n: e.n, title: e.title, tag: e.tag, publishAt: e.publishAt! }))
+    .sort((a, b) => a.n - b.n);
+}
+
 // 글 한 편의 본문 — 관리자 글이면 그 본문, 아니면 주소에서 가져온다.
 export async function articleFor(item: { url: string; bodyHtml?: string | null }): Promise<{ html: string | null; stale: boolean }> {
   if (item.bodyHtml !== undefined) return { html: item.bodyHtml, stale: false };

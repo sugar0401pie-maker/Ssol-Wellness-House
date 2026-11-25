@@ -5,13 +5,15 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { renderBody } from "@/lib/board/markdown";
 import { sanitizeHtml } from "@/lib/board/sanitize";
 import type { Episode, Guide } from "@/lib/board/data";
+import { parseTags } from "@/lib/board/postInput";
+import { tagsFor } from "@/lib/board/tags";
 
 // 고민 타파 글 쓰기(2026-11-25 대표님: "게시판 만들어주면 거기에 올릴 거여"). 여기서 저장하면 공개 게시판(/board)과 앱 안 고민 타파(/worry)에 보인다.
 // 지우기는 없고 '공개' 체크를 풀면 숨겨진다. 아직 글이 없는 처음 목록(요청문 예시 11편·3화)은 "이어서 쓰기"로 불러와 본문을 채운다.
 
-type Row = { id: string; kind: "guide" | "post"; slug: string | null; n: number | null; tag: string; title: string; lines: string[]; summary: string | null; body: string; image: string | null; published: boolean; updated_at: string };
-type Form = { id?: string; kind: "guide" | "post"; slug: string; n: string; tag: string; title: string; lines: [string, string, string]; summary: string; body: string; image: string; published: boolean };
-const EMPTY: Form = { kind: "guide", slug: "", n: "", tag: "", title: "", lines: ["", "", ""], summary: "", body: "", image: "", published: true };
+type Row = { id: string; kind: "guide" | "post"; slug: string | null; n: number | null; tag: string; title: string; lines: string[]; summary: string | null; body: string; image: string | null; published: boolean; updated_at: string; tags?: string[] | null };
+type Form = { id?: string; kind: "guide" | "post"; slug: string; n: string; tag: string; title: string; lines: [string, string, string]; summary: string; body: string; image: string; published: boolean; tags: string };
+const EMPTY: Form = { kind: "guide", slug: "", n: "", tag: "", title: "", lines: ["", "", ""], summary: "", body: "", image: "", published: true, tags: "" };
 
 async function api(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await getAccessToken();
@@ -30,6 +32,7 @@ const fromRow = (r: Row): Form => ({
   body: r.body,
   image: r.image ?? "",
   published: r.published,
+  tags: (r.tags?.length ? r.tags : tagsFor(r.kind, r.kind === "guide" ? (r.slug ?? "") : (r.n ?? 0))).join(", "),
 });
 
 const input = "w-full rounded-[10px] border border-line px-3 py-2 text-[14px]";
@@ -68,7 +71,7 @@ export default function AdminBoard({ onNeedPassword }: { onNeedPassword: () => v
       const res = await api("/api/admin/board", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: form.id, kind: form.kind, slug: form.slug, n: form.n, tag: form.tag, title: form.title, lines: form.lines, summary: form.summary, body: form.body, image: form.image, published: form.published }),
+        body: JSON.stringify({ id: form.id, kind: form.kind, slug: form.slug, n: form.n, tag: form.tag, title: form.title, lines: form.lines, summary: form.summary, body: form.body, image: form.image, published: form.published, tags: form.tags }),
       });
       if (res.status === 401) return onNeedPassword();
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; error?: string };
@@ -96,8 +99,8 @@ export default function AdminBoard({ onNeedPassword }: { onNeedPassword: () => v
             <span className={`ml-2 flex-none text-[11.5px] ${r.published ? "text-navy" : "text-slate-400"}`}>{r.published ? "공개" : "숨김"}</span>
           </button>
         ))}
-        {[...guidesTodo.map((g) => ({ note: "본문 없음 · 이어서 쓰기", key: g.slug, label: `#${g.tag} · ${g.title}`, f: { ...EMPTY, kind: "guide" as const, slug: g.slug, tag: g.tag, title: g.title, lines: [g.lines[0] ?? "", g.lines[1] ?? "", g.lines[2] ?? ""] as [string, string, string] } })),
-          ...postsTodo.map((e) => ({ note: e.publishAt ? `예약 ${+e.publishAt.slice(5, 7)}/${+e.publishAt.slice(8, 10)} · 고치기` : "앱에 넣어 둔 글 · 고치기", key: `p${e.n}`, label: `고민우체국 ${e.n}화 · ${e.title}`, f: { ...EMPTY, kind: "post" as const, n: String(e.n), tag: e.tag, title: e.title, summary: e.summary, body: e.body ?? "" } }))].map((x) => (
+        {[...guidesTodo.map((g) => ({ note: "본문 없음 · 이어서 쓰기", key: g.slug, label: `#${g.tag} · ${g.title}`, f: { ...EMPTY, kind: "guide" as const, slug: g.slug, tag: g.tag, title: g.title, lines: [g.lines[0] ?? "", g.lines[1] ?? "", g.lines[2] ?? ""] as [string, string, string], tags: tagsFor("guide", g.slug).join(", ") } })),
+          ...postsTodo.map((e) => ({ note: e.publishAt ? `예약 ${+e.publishAt.slice(5, 7)}/${+e.publishAt.slice(8, 10)} · 고치기` : "앱에 넣어 둔 글 · 고치기", key: `p${e.n}`, label: `고민우체국 ${e.n}화 · ${e.title}`, f: { ...EMPTY, kind: "post" as const, n: String(e.n), tag: e.tag, title: e.title, summary: e.summary, body: e.body ?? "", tags: tagsFor("post", e.n).join(", ") } }))].map((x) => (
           <button key={x.key} type="button" onClick={() => { setForm(x.f); setMsg(""); }} className="flex w-full items-center justify-between rounded-[10px] border border-dashed border-line px-3 py-2 text-left text-slate-500">
             <span className="min-w-0 truncate">{x.label}</span>
             <span className="ml-2 flex-none text-[11.5px]">{x.note}</span>
@@ -143,6 +146,11 @@ export default function AdminBoard({ onNeedPassword }: { onNeedPassword: () => v
         {preview && (
           <div className="rounded-[10px] border border-line p-3 text-[14px] leading-7 [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_h2]:mt-3 [&_h2]:font-bold [&_h3]:mt-2 [&_h3]:font-bold [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mt-2 [&_ul]:list-disc" dangerouslySetInnerHTML={{ __html: previewHtml }} />
         )}
+        <label className="block">
+          태그(쉼표·줄바꿈으로 나눠요, 최대 40개 · 지금 {parseTags(form.tags).length}개)
+          <textarea className={input} rows={4} value={form.tags} onChange={(e) => set({ tags: e.target.value })} placeholder="예: 썸, 카톡답장, 연애고민 …" />
+        </label>
+        <p className="text-[11.5px] leading-5 text-slate-400">태그를 누르면 같은 태그가 달린 글이 모여 보여요. 비우면 기본 태그(공통 10개 + 종류)만 달려요. 글마다 &lsquo;프로 갓생러들의 비밀, 쏘웰라 AI&rsquo;와 쏠 타로 하우스 문구는 저절로 붙어요.</p>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.published} onChange={(e) => set({ published: e.target.checked })} /> 공개(체크를 풀면 숨겨져요)</label>
         <button type="button" disabled={busy} onClick={() => void save()} className="w-full rounded-[10px] bg-navy px-4 py-2.5 text-[14px] font-medium text-white disabled:opacity-50">{busy ? "저장하는 중…" : form.id ? "고친 내용 저장" : "새 글 저장"}</button>
         {msg && <p className="text-[12.5px] leading-5 text-slate-600">{msg}</p>}

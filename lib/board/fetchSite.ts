@@ -3,6 +3,7 @@ import { GUIDE_INDEX_URL, POST_INDEX_URL, STARTER_EPISODES, STARTER_GUIDES, epis
 import { extractMain, isAllowedUrl, sanitizeHtml } from "./sanitize";
 import { loadDbPosts } from "./posts";
 import { renderBody } from "./markdown";
+import { COMMON_TAGS, KIND_TAG, tagsFor } from "./tags";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
 
 // 공개 사이트에서 고민 가이드·고민우체국을 가져온다(요청문 10-2장). 우리 도메인만, 30분 캐시(Next fetch), 실패하면 마지막으로 가져온 내용 + stale 표시.
@@ -69,6 +70,8 @@ async function list<T>(url: string, parse: (b: unknown) => T[], starter: T[]): P
   return { data: starter, stale: r.status === "error", source: "starter" };
 }
 
+const withFallback = (t: string[], kind: "guide" | "post") => (t.length > COMMON_TAGS.length + 1 ? t : [...COMMON_TAGS, KIND_TAG[kind]]);
+
 // 2026-11-25 대표님: 글은 관리자 화면에서 쓴다 — 관리자 글(board_posts)이 같은 주소 이름·회차의 처음 목록·공개 사이트 글을 덮고, 숨긴 글은 빠진다.
 function merge<T>(base: T[], mine: T[], key: (x: T) => string | number, hidden: Set<string | number>): T[] {
   const out = new Map<string | number, T>();
@@ -79,7 +82,9 @@ function merge<T>(base: T[], mine: T[], key: (x: T) => string | number, hidden: 
 
 export async function loadGuides(): Promise<Got<Guide[]>> {
   const [base, db] = await Promise.all([list(GUIDE_INDEX_URL, parseGuides, STARTER_GUIDES), loadDbPosts()]);
-  return { ...base, data: merge(base.data, db.guides, (g) => g.slug, db.hiddenSlugs as Set<string | number>) };
+  // 태그 40개(대표님 2026-11-25): 관리자 글은 적은 태그, 아니면 정해 둔 태그(lib/board/tags.ts), 그것도 없으면 공통 태그
+  const tagged = merge(base.data, db.guides, (g) => g.slug, db.hiddenSlugs as Set<string | number>).map((g) => ({ ...g, tags: g.tags?.length ? g.tags : withFallback(tagsFor("guide", g.slug), "guide") }));
+  return { ...base, data: tagged };
 }
 export async function loadEpisodes(): Promise<Got<Episode[]>> {
   const [base, db] = await Promise.all([list(POST_INDEX_URL, parseEpisodes, STARTER_EPISODES), loadDbPosts()]);
@@ -90,7 +95,8 @@ export async function loadEpisodes(): Promise<Got<Episode[]>> {
   // 관리자 화면에서 고친 회차도 앱에 넣어 둔 그림과 예약 날짜를 그대로 따른다(예약 회차를 미리 고쳐도 그날 전에는 안 보임)
   const mine = db.episodes.map((e) => ({ ...e, images: e.images ?? starterByN.get(e.n)?.images, publishAt: e.publishAt ?? starterByN.get(e.n)?.publishAt }));
   const merged = merge(withBody, mine, (e) => e.n, db.hiddenNs as Set<string | number>);
-  return { ...base, data: merged.filter((e) => isPublishedOn(e, today)).sort((a, b) => a.n - b.n) };
+  const tagged = merged.map((e) => ({ ...e, tags: e.tags?.length ? e.tags : withFallback(tagsFor("post", e.n), "post") }));
+  return { ...base, data: tagged.filter((e) => isPublishedOn(e, today)).sort((a, b) => a.n - b.n) };
 }
 
 // 글 한 편의 본문 — 관리자 글이면 그 본문, 아니면 주소에서 가져온다.

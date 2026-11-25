@@ -25,9 +25,17 @@ export async function POST(req: Request) {
   const v = checked.value;
   const blocked = await auditOrBlock(gate.admin, "board_save", { detail: { kind: v.kind, slug: v.slug, n: v.n, published: v.published }, ip: clientIp(req) });
   if (blocked) return blocked;
-  const row = { kind: v.kind, slug: v.slug, n: v.n, tag: v.tag, title: v.title, lines: v.lines, summary: v.summary, body: v.body, image: v.image, published: v.published, updated_at: new Date().toISOString() };
-  const db = createAdminClient().from("board_posts");
-  const res = v.id ? await db.update(row).eq("id", v.id).select("id").single() : await db.insert(row).select("id").single();
+  const row: Record<string, unknown> = { tags: v.tags, kind: v.kind, slug: v.slug, n: v.n, tag: v.tag, title: v.title, lines: v.lines, summary: v.summary, body: v.body, image: v.image, published: v.published, updated_at: new Date().toISOString() };
+  const save = (r: Record<string, unknown>) => {
+    const db = createAdminClient().from("board_posts");
+    return v.id ? db.update(r).eq("id", v.id).select("id").single() : db.insert(r).select("id").single();
+  };
+  let res = await save(row);
+  // tags 칸을 만드는 SQL을 아직 안 돌렸으면 태그만 빼고 저장한다
+  if (res.error?.code === "PGRST204") {
+    delete row.tags;
+    res = await save(row);
+  }
   if (res.error) {
     if (res.error.code === "23505") return NextResponse.json({ error: v.kind === "guide" ? "같은 주소 이름의 글이 이미 있어요. 목록에서 그 글을 열어 고쳐 주세요." : "같은 회차의 글이 이미 있어요. 목록에서 그 글을 열어 고쳐 주세요." }, { status: 409 });
     if (res.error.code === "42P01" || res.error.code === "PGRST205") return NextResponse.json({ error: "글 표가 아직 없어요(SQL 실행 전)." }, { status: 503 });

@@ -11,7 +11,19 @@ export type PostInput = {
   body: string;
   image: string | null;
   published: boolean;
+  tags: string[]; // 최대 40개(대표님 2026-11-25), 비우면 정해 둔 태그·공통 태그
 };
+
+// 태그: 쉼표·줄바꿈·띄어쓰기·#로 나눠 같은 것 빼고 40개까지(한 개 20자까지)
+export function parseTags(v: unknown): string[] {
+  const raw = Array.isArray(v) ? v.join(",") : typeof v === "string" ? v : "";
+  const out: string[] = [];
+  for (const t of raw.split(/[,\n\s#]+/)) {
+    const k = t.trim().slice(0, 20);
+    if (k && !out.includes(k)) out.push(k);
+  }
+  return out.slice(0, 40);
+}
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -32,11 +44,11 @@ export function checkPostInput(raw: unknown): { ok: true; value: PostInput } | {
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return { ok: false, error: "주소 이름은 영어 소문자·숫자·하이픈(-)으로 적어 주세요(예: is-this-ssom)." };
     const lines = (Array.isArray(o.lines) ? o.lines : []).map((l) => str(l, 120)).filter(Boolean).slice(0, 3);
     if (lines.length === 0) return { ok: false, error: "'먼저 한 줄로'를 한 줄 이상 적어 주세요." };
-    return { ok: true, value: { id, kind, slug, n: null, tag, title, lines, summary: null, body, image: null, published } };
+    return { ok: true, value: { id, kind, slug, n: null, tag, title, lines, summary: null, body, image: null, published, tags: parseTags(o.tags) } };
   }
   const n = Number(o.n);
   if (!Number.isInteger(n) || n < 1 || n > 999) return { ok: false, error: "회차를 숫자로 적어 주세요(예: 4)." };
   const summary = str(o.summary, 600);
   if (!summary) return { ok: false, error: "줄거리를 적어 주세요." };
-  return { ok: true, value: { id, kind, slug: null, n, tag, title, lines: [], summary, body, image, published } };
+  return { ok: true, value: { id, kind, slug: null, n, tag, title, lines: [], summary, body, image, published, tags: parseTags(o.tags) } };
 }

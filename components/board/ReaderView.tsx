@@ -1,5 +1,12 @@
 import Image from "next/image";
 import ImageCarousel from "./ImageCarousel";
+import {
+  SOWELLA_PROMO,
+  TAROT_NAME,
+  TAROT_PROMO,
+  TAROT_URL,
+} from "@/lib/board/promo";
+import { tagHref } from "@/lib/board/tags";
 import Link from "next/link";
 import {
   episodeCover,
@@ -29,7 +36,9 @@ export default function ReaderView({
   const cover = e && !carousel ? (e.image ?? episodeCover(e.n)) : null;
   return (
     <>
-      {carousel && <ImageCarousel images={carousel} label={`고민우체국 ${e?.n}화 그림`} />}
+      {carousel && (
+        <ImageCarousel images={carousel} label={`고민우체국 ${e?.n}화 그림`} />
+      )}
       {cover && (
         <Image
           src={cover}
@@ -111,6 +120,38 @@ export default function ReaderView({
         이 글은 자기이해를 돕는 일반 정보예요. 의료적 진단이나 심리 치료를
         대신하지 않아요.
       </p>
+      {/* 글마다 꼭 들어가는 두 문구(대표님 2026-11-25) + 태그 40개 */}
+      <section className="mt-6 rounded-2xl border border-night-line bg-night-panel p-4">
+        <p className="text-[16px] font-bold text-night-yellow">
+          {SOWELLA_PROMO}
+        </p>
+        <a
+          href={TAROT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 block rounded-xl bg-[rgba(255,255,255,.06)] px-3 py-2.5"
+        >
+          <span className="block text-[12px] text-night-amber">
+            {TAROT_NAME}
+          </span>
+          <span className="block text-[14px] font-bold leading-snug">
+            {TAROT_PROMO}
+          </span>
+        </a>
+      </section>
+      {(g?.tags ?? e?.tags ?? []).length > 0 && (
+        <nav aria-label="태그" className="mt-4 flex flex-wrap gap-1.5">
+          {(g?.tags ?? e?.tags ?? []).map((t) => (
+            <Link
+              key={t}
+              href={tagHref(isPublic ? "/board" : "/worry", t)}
+              className="rounded-full border border-night-line px-2.5 py-1 text-[12px] text-night-soft"
+            >
+              #{t}
+            </Link>
+          ))}
+        </nav>
+      )}
       <Link
         href={isPublic ? "/" : "/chat"}
         className="mt-5 block rounded-full bg-night-amber py-3 text-center text-[16px] font-bold text-night-on-amber"

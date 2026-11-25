@@ -66,15 +66,15 @@ export default function StampSlam({ n, onDone }: { n: number; onDone: () => void
         className="absolute left-1/2 top-[38%] w-[min(86vw,380px)] -translate-x-1/2"
         style={!reduce && phase === "hit" ? { animation: "ssol-shake .26s linear" } : undefined}
       >
-        <p className="mb-3 text-center text-[28px] font-bold text-[#fdf6e9]">쏠 작심삼일 챌린지</p>
-        <div className="relative h-[150px] rotate-[-1.2deg] rounded-[22px] bg-[#fdf6e9] shadow-[0_8px_24px_rgba(0,0,0,.45)]">
+        <p className="mb-3 text-center text-[28px] font-bold text-night-text">쏠 작심삼일 챌린지</p>
+        <div className="relative h-[150px] rotate-[-1.2deg] rounded-[22px] bg-night-text shadow-[0_8px_24px_rgba(0,0,0,.45)]">
           {[1, 2, 3].map((d, i) => {
             const on = d < n || (d === n && hit);
             return (
               <div key={d} className="absolute top-1/2 -ml-[44px] -mt-[44px] h-[88px] w-[88px]" style={{ left: slotX[i] }}>
                 {on ? (
                   <div
-                    className="grid h-full w-full rotate-[-10deg] place-items-center rounded-full border-[4px] border-[#d4553a] text-center font-bold leading-none text-[#d4553a]"
+                    className="grid h-full w-full rotate-[-10deg] place-items-center rounded-full border-[4px] border-stamp-red text-center font-bold leading-none text-stamp-red"
                     style={d === n && !reduce ? { animation: "ssol-stamp-pop .3s cubic-bezier(.2,1.7,.4,1) both" } : undefined}
                   >
                     <span className="text-[26px]">
@@ -92,7 +92,7 @@ export default function StampSlam({ n, onDone }: { n: number; onDone: () => void
                     style={{ top: stampTop, transition: phase === "down" ? "top .11s cubic-bezier(.6,0,1,.6)" : "top .3s ease-out", opacity: phase === "lift" ? 0 : 1 }}
                   >
                     <div className="mx-auto h-[38px] w-[30px] rounded-t-[12px] bg-[#8a5a2b]" />
-                    <div className="h-[22px] w-[70px] rounded-[6px] bg-[#d4553a] shadow-[0_3px_0_#8a2f1f]" />
+                    <div className="h-[22px] w-[70px] rounded-[6px] bg-stamp-red shadow-[0_3px_0_#8a2f1f]" />
                   </div>
                 )}
               </div>
@@ -102,7 +102,7 @@ export default function StampSlam({ n, onDone }: { n: number; onDone: () => void
         {hit && !reduce && (
           <p
             aria-hidden="true"
-            className="pointer-events-none absolute -right-2 -top-10 rotate-[-9deg] text-[64px] font-bold text-[#ffd36b]"
+            className="pointer-events-none absolute -right-2 -top-10 rotate-[-9deg] text-[64px] font-bold text-night-yellow"
             style={{ textShadow: "0 3px 0 #8a3b1d, 0 0 14px rgba(255,211,107,.6)", animation: "ssol-stamp-pop .5s cubic-bezier(.2,1.8,.4,1) both" }}
           >
             쾅!

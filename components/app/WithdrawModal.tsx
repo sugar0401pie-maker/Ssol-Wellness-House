@@ -41,7 +41,7 @@ export default function WithdrawModal({ nickname, onClose }: { nickname: string 
 
   const close = step === "done" ? () => void finish() : step === "working" ? () => undefined : onClose;
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="ssol-day fixed inset-0 z-30 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="w-full max-w-md rounded-t-2xl bg-white sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <p className="text-[15px] font-medium text-foreground">회원 탈퇴</p>

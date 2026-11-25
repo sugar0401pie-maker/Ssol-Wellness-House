@@ -34,18 +34,18 @@ export default function ChallengeBanner({ getToken = getAccessToken }: { getToke
     <Link
       href="/challenge"
       aria-label={`${copy.title}. ${copy.desc}`}
-      className="mb-4 flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-[#fdf6e9]"
+      className="ssol-banner mb-4 flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-night-text"
       style={{ borderColor: "rgba(143,188,235,.5)", background: "linear-gradient(100deg, rgba(91,121,166,.45), rgba(91,121,166,0) 70%), #0d2140" }}
     >
       <svg viewBox="0 0 24 24" className="h-8 w-8 flex-none" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" fill="#f3b04c" />
-        <path d="M6.5 12.5 L10.5 16.5 L17.5 8" fill="none" stroke="#3b2208" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="10" fill="var(--night-amber)" />
+        <path d="M6.5 12.5 L10.5 16.5 L17.5 8" fill="none" stroke="var(--night-on-amber)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span className="min-w-0 flex-1">
         <b className="block text-[15px] font-bold leading-5">{copy.title}</b>
-        <small className="mt-0.5 block text-[13px] leading-5 text-[#cfe0f5]">{copy.desc}</small>
+        <small className="mt-0.5 block text-[13px] leading-5 text-night-soft">{copy.desc}</small>
       </span>
-      <span className="text-[20px] leading-none text-[#8fbceb]" aria-hidden="true">
+      <span className="text-[20px] leading-none text-night-sub" aria-hidden="true">
         ›
       </span>
     </Link>

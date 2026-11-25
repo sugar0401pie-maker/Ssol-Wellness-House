@@ -13,7 +13,7 @@ export default function PhotoCropper({ img, crop, onChange }: { img: HTMLImageEl
     const ctx = canvas.current?.getContext("2d");
     if (!ctx) return;
     const r = cropRect(crop, img.naturalWidth, img.naturalHeight, SIZE);
-    ctx.fillStyle = "#0b1d3a";
+    ctx.fillStyle = "var(--night-deep)";
     ctx.fillRect(0, 0, SIZE, SIZE);
     ctx.drawImage(img, r.x, r.y, r.dw, r.dh);
   }, [img, crop]);
@@ -41,7 +41,7 @@ export default function PhotoCropper({ img, crop, onChange }: { img: HTMLImageEl
         onPointerUp={() => (drag.current = null)}
         onPointerCancel={() => (drag.current = null)}
       />
-      <label className="mt-2 flex items-center justify-center gap-2 text-[12.5px] text-[#bcd0ea]">
+      <label className="mt-2 flex items-center justify-center gap-2 text-[12.5px] text-night-sub">
         확대
         <input
           type="range"
@@ -50,10 +50,10 @@ export default function PhotoCropper({ img, crop, onChange }: { img: HTMLImageEl
           step={0.05}
           value={crop.zoom}
           onChange={(e) => onChange(clampCrop({ ...crop, zoom: Number(e.target.value) }, img.naturalWidth, img.naturalHeight))}
-          className="w-[40%] accent-[#f3b04c]"
+          className="w-[40%] accent-night-amber"
         />
       </label>
-      <p className="mt-1 text-[12px] text-[#9db4d3]">사진을 끌어서 위치를 맞춰요.</p>
+      <p className="mt-1 text-[12px] text-night-dim">사진을 끌어서 위치를 맞춰요.</p>
     </div>
   );
 }

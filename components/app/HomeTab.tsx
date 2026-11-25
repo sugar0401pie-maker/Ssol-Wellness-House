@@ -8,6 +8,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SeaFriendCard from "@/components/app/SeaFriendCard";
 import LanternBanner from "@/components/lantern/LanternBanner";
 import ChallengeBanner from "@/components/challenge/ChallengeBanner";
+import SkyDecor from "@/components/app/SkyDecor";
 
 type Practice = { title: string; detail: string; category: string; domain: string } | null;
 type Character = { code: string; name: string | null; tagline: string | null; hasResult: boolean };
@@ -79,12 +80,14 @@ export default function HomeTab() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <header className="border-b border-line px-4 py-3">
+    // 2026-11-25: 그림 있는 화면이라 밤하늘 배경에 달·별(요청문 12장). 내용은 달·별 위에 놓는다.
+    <div className="ssol-sky ssol-home relative flex h-full flex-col overflow-y-auto">
+      <SkyDecor />
+      <header className="relative border-b border-line px-4 py-3">
         <p className="text-[15px] font-medium text-foreground">홈</p>
       </header>
 
-      <div className="flex-1 px-4 py-5">
+      <div className="relative flex-1 px-4 py-5">
         {/* 2026-11-25(요청문 v1.9.4 8-2장): 맨 위 배너 2개 — ① 풍등(기간 중·아직 안 날림) ② 작심삼일 챌린지(기간 중·3번 채우기 전) */}
         <LanternBanner />
         <ChallengeBanner />

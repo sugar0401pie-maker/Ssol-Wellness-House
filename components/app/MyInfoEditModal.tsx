@@ -139,7 +139,7 @@ export default function MyInfoEditModal({
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="ssol-day fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <p className="text-[15px] font-medium text-foreground">내 정보 수정</p>

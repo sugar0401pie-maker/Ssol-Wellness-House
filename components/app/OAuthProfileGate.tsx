@@ -66,7 +66,7 @@ export default function OAuthProfileGate({
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="ssol-day fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl">
         <div className="flex items-start justify-between">
           <p className="font-serif text-[18px] font-bold text-foreground">몇 가지만 더 알려주세요</p>

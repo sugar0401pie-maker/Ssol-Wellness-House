@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Noto_Sans_KR, Gowun_Batang } from "next/font/google";
+import { Noto_Sans_KR, Gowun_Batang, Gowun_Dodum } from "next/font/google";
 import "./globals.css";
 import { SHARE_IMAGE, SITE_URL } from "@/lib/seo/paths";
 import { OG_DESCRIPTION, OG_TITLE, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/siteCopy";
@@ -17,6 +17,13 @@ const gowunBatang = Gowun_Batang({
   variable: "--font-gowun-batang",
   subsets: ["latin"],
   weight: ["400", "700"],
+});
+
+// 2026-11-25(요청문 v1.9.4 12-3장): 밤하늘 분위기 화면의 본문·제목 글꼴. 로그인 뒤 앱 틀(.ssol-night) 안에서만 쓴다.
+const gowunDodum = Gowun_Dodum({
+  variable: "--font-gowun-dodum",
+  subsets: ["latin"],
+  weight: ["400"],
 });
 
 // 2026-11-24 대표님 요청: 구글 광고(전환 측정)용 Google Tag Manager 컨테이너. 보내 주신 코드는 dataLayer만 만들고 GTM 시작 신호(gtm.js)가 없어
@@ -56,7 +63,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${notoSansKr.variable} ${gowunBatang.variable} h-full antialiased`}>
+    <html lang="ko" className={`${notoSansKr.variable} ${gowunBatang.variable} ${gowunDodum.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {/* 2026-11-15: 앱 첫 화면(/)은 로그인 확인이 끝나야 그려져서, 서버 HTML에는 "불러오고 있어요" 문구뿐이다. 자바스크립트를 실행하지 않는 크롤러(검색·AI)가
             소개 페이지를 찾을 수 있게, 자바스크립트가 꺼진 환경에서만 보이는 링크 모음을 둔다(자바스크립트가 켜진 일반 사용자 화면에는 나오지 않는다). */}

@@ -234,14 +234,14 @@ export default function OnboardingFlow({ nickname, title, mode, onDone, onClose 
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
+      <div className="ssol-day fixed inset-0 z-20 flex items-center justify-center bg-black/40">
         <p className="text-[13px] text-white">불러오는 중…</p>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="ssol-day fixed inset-0 z-20 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
         <div className="border-b border-line px-5 pb-3 pt-4">
           <div className="flex items-center justify-between">

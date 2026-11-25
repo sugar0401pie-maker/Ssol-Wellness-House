@@ -138,8 +138,8 @@ export default function SoundBath() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-[#0a1224]">
-      <div className="relative overflow-hidden text-[#fdf6e9]" style={{ width: "min(100vw, 50dvh)", aspectRatio: "1 / 2", containerType: "inline-size" }}>
+    <div className="fixed inset-0 flex items-center justify-center bg-night-deep">
+      <div className="relative overflow-hidden text-night-text" style={{ width: "min(100vw, 50dvh)", aspectRatio: "1 / 2", containerType: "inline-size" }}>
         <Image src="/soundbath/bg.webp" alt="달밤 호숫가에 크리스털 보울 다섯 개가 한 줄로 놓여 있고, 해달이 그 뒤에 앉아 있어요" fill unoptimized priority className="object-cover" />
         {/* 해달 — 자세가 바뀌어도 미리 받아 두려고 다섯 장을 다 깔고 지금 자세만 보인다 */}
         {[1, 2, 3, 4, 5].map((n) => {
@@ -185,40 +185,40 @@ export default function SoundBath() {
                 stopAll();
                 strike(b.id);
               }}
-              className="absolute rounded-[40%] focus-visible:outline-2 focus-visible:outline-[#ffd36b]"
+              className="absolute rounded-[40%] focus-visible:outline-2 focus-visible:outline-night-yellow"
               style={{ left: `${a.left}%`, top: `${a.top}%`, width: `${a.width}%`, height: `${a.height}%` }}
             />
           );
         })}
 
-        <button type="button" onClick={() => (window.history.length > 1 ? router.back() : router.replace("/mypage"))} className="absolute z-10 rounded-full border text-[#cfe0f5]" style={{ left: "4cqw", top: "4cqw", fontSize: "3.6cqw", padding: "1.6cqw 3.4cqw", background: "rgba(8,20,42,.55)", borderColor: "rgba(188,208,234,.35)" }}>
+        <button type="button" onClick={() => (window.history.length > 1 ? router.back() : router.replace("/mypage"))} className="absolute z-10 rounded-full border text-night-soft" style={{ left: "4cqw", top: "4cqw", fontSize: "3.6cqw", padding: "1.6cqw 3.4cqw", background: "rgba(8,20,42,.55)", borderColor: "rgba(188,208,234,.35)" }}>
           돌아가기
         </button>
         <div className="absolute z-[3] text-left" style={{ left: "6cqw", right: "32cqw", top: "15cqw", textShadow: "0 1px 8px rgba(5,12,30,.85)" }}>
           <h1 className="font-bold" style={{ fontSize: "6.4cqw" }}>
             사운드 배스
           </h1>
-          <p className="text-[#e3edf9]" style={{ fontSize: "3.8cqw", lineHeight: 1.45, marginTop: "1.5cqw" }}>
+          <p className="text-night-soft" style={{ fontSize: "3.8cqw", lineHeight: 1.45, marginTop: "1.5cqw" }}>
             보울을 눌러 보세요. 해달이 울려 줘요.
           </p>
         </div>
         <div className="absolute z-[5] flex" style={{ left: "6cqw", right: "6cqw", top: "40cqw", gap: "2.5cqw" }}>
-          <button type="button" onClick={tour} className="flex-1 rounded-full border border-[#5b79a6] bg-[rgba(8,20,42,.55)]" style={{ fontSize: "3.8cqw", padding: "2.4cqw 0" }}>
+          <button type="button" onClick={tour} className="flex-1 rounded-full border border-night-border bg-night-panel" style={{ fontSize: "3.8cqw", padding: "2.4cqw 0" }}>
             차례로 울리기
           </button>
           <button
             type="button"
             aria-pressed={auto}
             onClick={toggleAuto}
-            className={`flex-1 rounded-full border ${auto ? "border-[#f3b04c] bg-[#f3b04c] text-[#3b2208]" : "border-[#5b79a6] bg-[rgba(8,20,42,.55)]"}`}
+            className={`flex-1 rounded-full border ${auto ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border bg-night-panel"}`}
             style={{ fontSize: "3.8cqw", padding: "2.4cqw 0" }}
           >
             알아서 울리기
           </button>
         </div>
-        <p className="absolute inset-x-0 z-[5] text-center text-[#f2f6ff]" style={{ bottom: "9cqw", fontSize: "3.6cqw", textShadow: "0 1px 6px rgba(5,12,30,.95)" }}>
+        <p className="absolute inset-x-0 z-[5] text-center text-night-text" style={{ bottom: "9cqw", fontSize: "3.6cqw", textShadow: "0 1px 6px rgba(5,12,30,.95)" }}>
           아무 생각 안 해도 돼요.
-          <span className="mt-1 block text-[#b8c9e2]" style={{ fontSize: "3cqw" }}>
+          <span className="mt-1 block text-night-sub" style={{ fontSize: "3cqw" }}>
             소리가 안 들리면 무음 모드를 확인해 주세요.
           </span>
         </p>

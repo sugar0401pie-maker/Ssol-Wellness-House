@@ -35,7 +35,7 @@ export default function PasswordConfirmModal({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-6">
+    <div className="ssol-day fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-6">
       <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
         {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다. */}
         <div className="flex items-start justify-between">

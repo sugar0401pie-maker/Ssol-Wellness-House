@@ -14,7 +14,7 @@ export default function OAuthProfileReminder({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-6">
+    <div className="ssol-day fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-6">
       <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
         <div className="flex items-center justify-end">
           <button type="button" onClick={onClose} aria-label="닫기" className="-mr-1.5 -mt-1.5 rounded-full px-2 py-1 text-[12px] text-slate-400">

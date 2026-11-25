@@ -68,19 +68,19 @@ export default function BottomNav({ getToken = getAccessToken }: { getToken?: ()
   return (
     <nav
       aria-label="메뉴"
-      className="relative grid grid-cols-5 items-end rounded-t-[18px] border-t border-[rgba(188,208,234,.2)] bg-[linear-gradient(to_top,rgba(5,14,30,.98),rgba(7,19,40,.95))] px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1"
+      className="relative grid grid-cols-5 items-end rounded-t-[18px] border-t border-night-line bg-[linear-gradient(to_top,rgba(5,14,30,.98),rgba(7,19,40,.95))] px-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1"
     >
       {TABS.map((t) => {
         const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
-        const color = active ? "text-[#ffd36b] font-bold" : "text-[#9db4d3]";
+        const color = active ? "text-night-yellow font-bold" : "text-night-dim";
         if (t.icon === "challenge") {
           return (
             <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined} aria-label={dot ? "갓생러모임, 오늘 인증 전" : "갓생러모임"} className={`flex min-h-11 flex-col items-center text-[10.5px] ${color}`}>
-              <span className={`relative -mt-6 grid h-[54px] w-[54px] place-items-center rounded-full border-2 shadow-[0_4px_14px_rgba(0,0,0,.45)] ${active ? "border-[#ffd36b] bg-[#f3b04c]" : "border-[#5b79a6] bg-[#13325e]"}`}>
+              <span className={`relative -mt-6 grid h-[54px] w-[54px] place-items-center rounded-full border-2 shadow-[0_4px_14px_rgba(0,0,0,.45)] ${active ? "border-night-yellow bg-night-amber" : "border-night-border bg-[#13325e]"}`}>
                 <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
-                  <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke={active ? "#3b2208" : "#fdf6e9"} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke={active ? "var(--night-on-amber)" : "var(--night-text)"} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                {dot && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full border-2 border-[#0b1d3a] bg-[#e5483b]" aria-hidden="true" />}
+                {dot && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full border-2 border-night-deep bg-danger-dot" aria-hidden="true" />}
               </span>
               <span className="mt-0.5 whitespace-nowrap">갓생러모임</span>
             </Link>

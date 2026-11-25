@@ -53,17 +53,17 @@ export default function WorryBoard({ getToken = getAccessToken }: { getToken?: T
   const selected = items.find((x) => x.g.slug === sel)?.g ?? items[0]?.g ?? null;
 
   return (
-    <div className="h-full overflow-y-auto bg-[linear-gradient(180deg,#0b1d3a_0%,#13325e_100%)] text-[#fdf6e9]">
+    <div className="h-full overflow-y-auto bg-[image:var(--sky-text-bg)] text-night-text">
       <div className="mx-auto max-w-md pb-10" style={{ containerType: "inline-size" }}>
-        <div className="[&>div]:border-b-0 [&_.bg-navy-soft]:bg-[rgba(8,20,42,.6)] [&_.bg-navy-soft]:text-[#fdf6e9] [&_p]:!text-inherit">
+        <div className="[&>div]:border-b-0 [&_.bg-navy-soft]:bg-night-panel [&_.bg-navy-soft]:text-night-text [&_p]:!text-inherit">
           <LatestInsightCard />
         </div>
         <div className="px-5 pt-4">
           <h1 className="text-[22px] font-bold">고민 타파</h1>
-          {data && <p className="mt-1 text-[13.5px] leading-5 text-[#bcd0ea]">{BASIS_SUB[data.basis]}</p>}
-          {error && <p className="mt-6 text-[13.5px] text-[#ffd36b]">지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.</p>}
-          {!data && !error && <p className="mt-6 text-[13.5px] text-[#9db4d3]">불러오는 중…</p>}
-          {data?.stale && <p className="mt-1 text-[12px] text-[#ffd36b]">지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.</p>}
+          {data && <p className="mt-1 text-[13.5px] leading-5 text-night-sub">{BASIS_SUB[data.basis]}</p>}
+          {error && <p className="mt-6 text-[13.5px] text-night-yellow">지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.</p>}
+          {!data && !error && <p className="mt-6 text-[13.5px] text-night-dim">불러오는 중…</p>}
+          {data?.stale && <p className="mt-1 text-[12px] text-night-yellow">지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.</p>}
         </div>
 
         {data && (
@@ -111,15 +111,15 @@ export default function WorryBoard({ getToken = getAccessToken }: { getToken?: T
             </div>
 
             {selected && (
-              <div className="mx-5 mt-3 rounded-2xl border border-[rgba(188,208,234,.22)] bg-[rgba(8,20,42,.66)] p-4" aria-live="polite">
-                <p className="text-[12.5px] text-[#f3b04c]">#{selected.tag} · 고민 가이드</p>
+              <div className="mx-5 mt-3 rounded-2xl border border-night-line bg-night-panel p-4" aria-live="polite">
+                <p className="text-[12.5px] text-night-amber">#{selected.tag} · 고민 가이드</p>
                 <p className="mt-1 text-[16.5px] font-bold leading-snug">{selected.title}</p>
-                <ol className="mt-2 list-decimal pl-5 text-[13.5px] leading-6 text-[#bcd0ea]">
+                <ol className="mt-2 list-decimal pl-5 text-[13.5px] leading-6 text-night-sub">
                   {selected.lines.map((l) => (
                     <li key={l}>{l}</li>
                   ))}
                 </ol>
-                <Link href={`/worry/guide/${selected.slug}`} className="mt-3 block rounded-full bg-[#f3b04c] py-2.5 text-center text-[15px] font-bold text-[#3b2208]">
+                <Link href={`/worry/guide/${selected.slug}`} className="mt-3 block rounded-full bg-night-amber py-2.5 text-center text-[15px] font-bold text-night-on-amber">
                   글 읽기
                 </Link>
               </div>
@@ -130,25 +130,25 @@ export default function WorryBoard({ getToken = getAccessToken }: { getToken?: T
                 <Image src={POST_INTRO_IMAGE} alt="편지를 여는 해달 우체부" width={72} height={72} unoptimized className="h-[72px] w-[72px] flex-none rounded-2xl object-cover" />
                 <div>
                   <h2 className="text-[19px] font-bold">고민우체국</h2>
-                  <p className="mt-0.5 break-keep text-[12.5px] leading-5 text-[#bcd0ea]">1화, 2화로 이어지는 연재예요. 창작 이야기이며 실제 이용자 사연이 아니에요.</p>
+                  <p className="mt-0.5 break-keep text-[12.5px] leading-5 text-night-sub">1화, 2화로 이어지는 연재예요. 창작 이야기이며 실제 이용자 사연이 아니에요.</p>
                 </div>
               </div>
               <div className="mt-3 grid gap-2">
                 {data.episodes.map((e, i) => (
-                  <Link key={e.n} href={`/worry/post/${e.n}`} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[rgba(188,208,234,.24)] bg-[rgba(8,20,42,.6)] py-3 pl-4 pr-3">
-                    <span className="grid h-[54px] w-[48px] rotate-[-3deg] place-items-center rounded bg-[#f6e3b4] text-[15px] font-bold text-[#3b2208] outline-2 outline-offset-2 outline-dashed outline-[#f6e3b4]">{e.n}화</span>
+                  <Link key={e.n} href={`/worry/post/${e.n}`} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-night-line bg-night-panel py-3 pl-4 pr-3">
+                    <span className="grid h-[54px] w-[48px] rotate-[-3deg] place-items-center rounded bg-[#f6e3b4] text-[15px] font-bold text-night-on-amber outline-2 outline-offset-2 outline-dashed outline-[#f6e3b4]">{e.n}화</span>
                     <span className="min-w-0">
                       <b className="block text-[14.5px] leading-snug">{e.title}</b>
-                      <small className="text-[12px] text-[#9db4d3]">#{e.tag}</small>
+                      <small className="text-[12px] text-night-dim">#{e.tag}</small>
                     </span>
-                    {i === data.episodes.length - 1 ? <span className="rounded-full bg-[#e0553d] px-2 py-0.5 text-[11px] text-white">NEW</span> : <span />}
+                    {i === data.episodes.length - 1 ? <span className="rounded-full bg-danger-dot px-2 py-0.5 text-[11px] text-white">NEW</span> : <span />}
                   </Link>
                 ))}
-                <div className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-dashed border-[rgba(188,208,234,.24)] py-3 pl-4 pr-3 opacity-55">
-                  <span className="grid h-[54px] w-[48px] place-items-center rounded text-[15px] font-bold text-[#9db4d3] outline-2 outline-dashed outline-[#5b79a6]">{data.episodes.length + 1}화</span>
+                <div className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-dashed border-night-line py-3 pl-4 pr-3 opacity-55">
+                  <span className="grid h-[54px] w-[48px] place-items-center rounded text-[15px] font-bold text-night-dim outline-2 outline-dashed outline-night-border">{data.episodes.length + 1}화</span>
                   <span>
                     <b className="block text-[14.5px]">다음 화 준비 중이에요</b>
-                    <small className="text-[12px] text-[#9db4d3]">곧 우체국에 도착해요</small>
+                    <small className="text-[12px] text-night-dim">곧 우체국에 도착해요</small>
                   </span>
                 </div>
               </div>

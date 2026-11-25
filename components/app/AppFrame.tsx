@@ -182,14 +182,15 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
     !trialReminderDismissedToday;
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-white shadow-sm sm:border-x sm:border-line">
+    <div className="ssol-night mx-auto flex h-dvh w-full max-w-md flex-col shadow-sm sm:border-x sm:border-line">
+      {/* 2026-11-25: 밤하늘 분위기(요청문 12장) — 앱 틀 전체에 .ssol-night(app/globals.css). 로고는 흰 물결 그림이 어두운 바탕에서 보이게 밝게 */}
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         {/* 2026-09-28: 디자인 시안 적용 — 흰 박스 로고(logo.jpg) 대신 투명 배경 물결 심볼 사용.
             로고 원본은 440×117(가로로 넓음) — 정사각형으로 강제하면 눌려 보여서(버그 수정),
             시안의 상단 브랜드 로고와 같은 34px 너비 기준으로 높이는 실제 비율대로 계산한다. */}
         <div className="flex items-center gap-1.5">
-          <Image src="/logo-mark.png" alt="" width={34} height={9} className="h-auto w-[34px]" />
-          <span className="text-[14px] font-medium text-navy">쏠 웰니스 하우스</span>
+          <Image src="/logo-mark.png" alt="" width={34} height={9} className="h-auto w-[34px] brightness-0 invert" />
+          <span className="text-[14px] font-medium text-foreground">쏠 웰니스 하우스</span>
         </div>
         <button
           type="button"

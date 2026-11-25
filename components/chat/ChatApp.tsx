@@ -643,7 +643,7 @@ export default function ChatApp() {
       )}
 
       {showHistory && (
-        <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">
+        <div className="ssol-day fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">
           <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-[15px] font-medium text-foreground">지난 대화</p>
@@ -697,7 +697,7 @@ export default function ChatApp() {
       )}
 
       {showSessionLimit && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
+        <div className="ssol-day fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
             {/* 2026-10-01 owner 하드룰: 모든 팝업은 우측 상단에 닫기 버튼이 있어야 한다. */}
             <div className="flex items-start justify-between">
@@ -731,7 +731,7 @@ export default function ChatApp() {
       )}
 
       {showSuggested && (
-        <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">
+        <div className="ssol-day fixed inset-0 z-10 flex items-end justify-center bg-black/40 sm:items-center">
           <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-[15px] font-medium text-foreground">추천 질문</p>

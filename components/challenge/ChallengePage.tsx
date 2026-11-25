@@ -12,6 +12,7 @@ import { loadPhoto, loadThumb, savePhoto } from "@/lib/challenge/photos";
 import PhotoCropper from "./PhotoCropper";
 import StampSlam from "./StampSlam";
 import CardScreen from "./CardScreen";
+import SkyDecor from "@/components/app/SkyDecor";
 
 // 갓생러모임 — 쏠 작심삼일 챌린지(요청문 v1.9.4 3·9·13장). 글자는 보통 글자(손글씨는 카드·도장 쾅에만, 13-1장).
 // 위에서부터: 이름표·제목 → 1·2·3일차 도장 → "오늘은 N일차" → 안내 → (시작 전) 3일 계획 → 오늘의 행동 → 사진 네모 → 한 줄 메모 →
@@ -53,18 +54,18 @@ function Stamps({ c, stamped, dim }: { c: Challenge | null; stamped: number; dim
         const on = d <= stamped;
         const ck = c?.checkins.find((x) => x.n === d);
         return (
-          <div key={d} className="w-[60px] text-center text-[12.5px] text-[#bcd0ea]">
-            <div className={`mx-auto mb-1 grid h-[60px] w-[60px] place-items-center rounded-full text-[19px] font-bold ${on ? "bg-[#f3b04c] text-[#3b2208]" : "border-2 border-dashed border-[#5b79a6] text-[#86a0c4]"}`}>
+          <div key={d} className="w-[60px] text-center text-[12.5px] text-night-sub">
+            <div className={`mx-auto mb-1 grid h-[60px] w-[60px] place-items-center rounded-full text-[19px] font-bold ${on ? "bg-night-amber text-night-on-amber" : "border-2 border-dashed border-night-border text-night-dim"}`}>
               {on ? (
                 <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
-                  <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke="#3b2208" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M5.5 12.5 L10 17 L18.5 7.5" fill="none" stroke="var(--night-on-amber)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               ) : (
                 d
               )}
             </div>
             {d}일차
-            {ck && <span className="block text-[11px] text-[#93a9c9]">{shortDate(ck.day)}</span>}
+            {ck && <span className="block text-[11px] text-night-dim">{shortDate(ck.day)}</span>}
           </div>
         );
       })}
@@ -78,26 +79,26 @@ function HistoryRows({ c }: { c: Challenge }) {
       {c.checkins.map((ck) => {
         const thumb = loadThumb(c.id, ck.n);
         return (
-          <li key={ck.n} className="flex items-center gap-3 rounded-xl bg-[rgba(8,20,42,.5)] p-2">
+          <li key={ck.n} className="flex items-center gap-3 rounded-xl bg-night-panel p-2">
             {thumb ? (
               // eslint-disable-next-line @next/next/no-img-element -- 이 기기에 둔 작은 사진(data 주소)
               <img src={thumb} alt={`${ck.n}일차 사진`} className="h-12 w-12 flex-none rounded-lg object-cover" />
             ) : (
-              <span className="grid h-12 w-12 flex-none place-items-center rounded-lg bg-[rgba(243,176,76,.18)] text-[12px] text-[#f3b04c]">{ck.n}일</span>
+              <span className="grid h-12 w-12 flex-none place-items-center rounded-lg bg-[rgba(243,176,76,.18)] text-[12px] text-night-amber">{ck.n}일</span>
             )}
             <span className="min-w-0 text-[13px] leading-5">
-              <span className="text-[#f3b04c]">
+              <span className="text-night-amber">
                 {ck.n}일차 · {shortDate(ck.day)}
               </span>
               {/* 이용자 메모는 글자 그대로(HTML로 해석하지 않음 — React가 그대로 넣는다) */}
-              <span className="block truncate text-[#d6e2f3]">{ck.memo || ck.action}</span>
+              <span className="block truncate text-night-soft">{ck.memo || ck.action}</span>
             </span>
           </li>
         );
       })}
       {c.checkins.length >= 3 && (
-        <li className="rounded-xl bg-[rgba(243,176,76,.12)] px-3 py-2 text-[13px] text-[#ffd36b]">
-          3일차 챌린지 완료 <span className="text-[#d6e2f3]">/ 3일을 모두 채웠어요</span>
+        <li className="rounded-xl bg-[rgba(243,176,76,.12)] px-3 py-2 text-[13px] text-night-yellow">
+          3일차 챌린지 완료 <span className="text-night-soft">/ 3일을 모두 채웠어요</span>
         </li>
       )}
     </ul>
@@ -221,18 +222,19 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
   }
 
   return (
-    <div className="relative h-full overflow-y-auto bg-[linear-gradient(180deg,#0b1d3a_0%,#13325e_100%)] text-[#fdf6e9]">
+    <div className="relative h-full overflow-y-auto ssol-sky text-night-text">
+      <SkyDecor />
       {/* 글꼴 클래스를 한 번 써 둬야 카드에 쓸 손글씨 글꼴 정의가 페이지에 실린다 */}
       <span className={`${gaegu.className} sr-only`} aria-hidden="true">
         쏠
       </span>
-      <div className="px-5 pb-4 pt-6 text-center">
-        <span className="inline-block rounded-full bg-[#f3b04c] px-3 py-0.5 text-[12px] text-[#3b2208]">갓생러모임</span>
+      <div className="relative px-5 pb-4 pt-6 text-center">
+        <span className="inline-block rounded-full bg-night-amber px-3 py-0.5 text-[12px] text-night-on-amber">갓생러모임</span>
         <h1 className="mt-1.5 text-[24px] font-bold leading-snug">쏠 작심삼일 챌린지</h1>
-        {v && v.kind !== "complete" && <p className="mt-0.5 text-[13.5px] text-[#bcd0ea]">3일만 해봐요. 하루 쉬어도 괜찮아요.</p>}
+        {v && v.kind !== "complete" && <p className="mt-0.5 text-[13.5px] text-night-sub">3일만 해봐요. 하루 쉬어도 괜찮아요.</p>}
 
-        {error && <p className="mt-8 text-[14px] text-[#ffd36b]">{error}</p>}
-        {!data && !error && <p className="mt-8 text-[14px] text-[#9db4d3]">불러오는 중…</p>}
+        {error && <p className="mt-8 text-[14px] text-night-yellow">{error}</p>}
+        {!data && !error && <p className="mt-8 text-[14px] text-night-dim">불러오는 중…</p>}
 
         {v && (
           <>
@@ -246,7 +248,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
 
             {v.kind === "pre" && (
               <div className="mt-4 text-left">
-                <p className="text-[13px] text-[#bcd0ea]">요즘 내 마음에 가까운 것</p>
+                <p className="text-[13px] text-night-sub">요즘 내 마음에 가까운 것</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {CHALLENGE_THEMES.map((th) => (
                     <button
@@ -254,7 +256,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                       type="button"
                       aria-pressed={theme === th.key}
                       onClick={() => setTheme(th.key)}
-                      className={`min-h-10 rounded-full border px-3 text-[13.5px] ${theme === th.key ? "border-[#f3b04c] bg-[#f3b04c] text-[#3b2208]" : "border-[#5b79a6] text-[#fdf6e9]"}`}
+                      className={`min-h-10 rounded-full border px-3 text-[13.5px] ${theme === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
                     >
                       {th.label}
                     </button>
@@ -262,20 +264,20 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                 </div>
                 <div className="mt-3 grid gap-2">
                   {t.days.map((d, i) => (
-                    <div key={i} className="rounded-xl bg-[rgba(8,20,42,.5)] px-3 py-2.5 text-[13.5px] leading-snug text-[#d6e2f3]">
-                      <b className="mr-2 font-normal text-[#f3b04c]">{i + 1}일차</b>
+                    <div key={i} className="rounded-xl bg-night-panel px-3 py-2.5 text-[13.5px] leading-snug text-night-soft">
+                      <b className="mr-2 font-normal text-night-amber">{i + 1}일차</b>
                       {d.action}
-                      <span className="mt-0.5 block text-[12px] text-[#9db4d3]">인증샷 아이디어 · {d.photoIdea}</span>
+                      <span className="mt-0.5 block text-[12px] text-night-dim">인증샷 아이디어 · {d.photoIdea}</span>
                     </div>
                   ))}
-                  <div className="rounded-xl bg-[rgba(8,20,42,.35)] px-3 py-2.5 text-[12.5px] leading-5 text-[#bcd0ea]">
-                    <p className="text-[#cfe0f5]">3일 해 보고 마음에 들면</p>
+                  <div className="rounded-xl bg-night-panel px-3 py-2.5 text-[12.5px] leading-5 text-night-sub">
+                    <p className="text-night-soft">3일 해 보고 마음에 들면</p>
                     <p className="mt-1">
-                      <em className="mr-1.5 not-italic text-[#f3b04c]">1주일</em>
+                      <em className="mr-1.5 not-italic text-night-amber">1주일</em>
                       {t.week}
                     </p>
                     <p className="mt-0.5">
-                      <em className="mr-1.5 not-italic text-[#f3b04c]">1달</em>
+                      <em className="mr-1.5 not-italic text-night-amber">1달</em>
                       {t.month}
                     </p>
                   </div>
@@ -284,10 +286,10 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
             )}
 
             {v.kind === "todo" && day && (
-              <div className="mt-4 rounded-2xl bg-[rgba(8,20,42,.66)] p-4 text-left">
-                <p className="text-[16px] text-[#f3b04c]">오늘의 행동</p>
+              <div className="mt-4 rounded-2xl bg-night-panel p-4 text-left">
+                <p className="text-[16px] text-night-amber">오늘의 행동</p>
                 <p className="mt-1 text-[18px] leading-snug">{day.action}</p>
-                <p className="mt-1 text-[12.5px] text-[#9db4d3]">인증샷 아이디어 · {day.photoIdea}</p>
+                <p className="mt-1 text-[12.5px] text-night-dim">인증샷 아이디어 · {day.photoIdea}</p>
 
                 <div className="mt-4">
                   {mode === "photo" &&
@@ -295,7 +297,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                       <>
                         <PhotoCropper img={img} crop={crop} onChange={setCrop} />
                         <div className="mt-1.5 text-center">
-                          <button type="button" onClick={() => fileIn.current?.click()} className="min-h-9 rounded-full border border-[#5b79a6] px-3 text-[12.5px] text-[#cfe0f5]">
+                          <button type="button" onClick={() => fileIn.current?.click()} className="min-h-9 rounded-full border border-night-border px-3 text-[12.5px] text-night-soft">
                             사진 바꾸기
                           </button>
                         </div>
@@ -304,17 +306,17 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                       <button
                         type="button"
                         onClick={() => fileIn.current?.click()}
-                        className="mx-auto flex aspect-square w-[58%] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-[#86a0c4] text-[15px]"
+                        className="mx-auto flex aspect-square w-[58%] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-night-dim text-[15px]"
                       >
                         <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
                           <path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z" />
                           <circle cx="12" cy="13.2" r="3.4" />
                         </svg>
                         사진 찍기
-                        <small className="text-[12px] text-[#9db4d3]">눌러서 사진을 찍거나 골라요</small>
+                        <small className="text-[12px] text-night-dim">눌러서 사진을 찍거나 골라요</small>
                       </button>
                     ))}
-                  {mode === "photo" && !img && <p className="mt-2 text-center text-[12px] text-[#9db4d3]">정사각형으로 잘라서 카드에 넣어요. 사진은 이 기기에서만 써요.</p>}
+                  {mode === "photo" && !img && <p className="mt-2 text-center text-[12px] text-night-dim">정사각형으로 잘라서 카드에 넣어요. 사진은 이 기기에서만 써요.</p>}
                   <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files?.[0] ?? undefined)} />
                   {mode !== "check" ? (
                     <input
@@ -324,15 +326,15 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                       onChange={(e) => setMemo(e.target.value)}
                       placeholder={mode === "photo" ? "사진 밑에 쓸 한 줄 메모 (안 써도 돼요)" : "오늘 한 걸 한 줄로 적어 봐요"}
                       aria-label={mode === "photo" ? "사진 밑에 쓸 한 줄 메모" : "오늘 한 걸 한 줄로"}
-                      className="mt-3 w-full rounded-xl border border-[#5b79a6] bg-[rgba(255,255,255,.06)] px-3 py-2.5 text-[15px] text-[#fdf6e9] outline-none placeholder:text-[#7f97ba] focus:border-[#f3b04c]"
+                      className="mt-3 w-full rounded-xl border border-night-border bg-[rgba(255,255,255,.06)] px-3 py-2.5 text-[15px] text-night-text outline-none placeholder:text-night-dim focus:border-night-amber"
                     />
                   ) : (
-                    <p className="text-center text-[13px] text-[#9db4d3]">했으면 체크하고 넘어가요. 사진이 없는 날도 괜찮아요.</p>
+                    <p className="text-center text-[13px] text-night-dim">했으면 체크하고 넘어가요. 사진이 없는 날도 괜찮아요.</p>
                   )}
-                  {mode !== "check" && <p className="mt-1 text-right text-[11.5px] text-[#7f97ba]">{[...memo].length} / {MEMO_MAX}</p>}
+                  {mode !== "check" && <p className="mt-1 text-right text-[11.5px] text-night-dim">{[...memo].length} / {MEMO_MAX}</p>}
                 </div>
 
-                <p className="mt-3 text-center text-[13px] text-[#9db4d3]">사진이 어려운 날엔</p>
+                <p className="mt-3 text-center text-[13px] text-night-dim">사진이 어려운 날엔</p>
                 <div className="mt-1.5 flex gap-2" role="radiogroup" aria-label="인증 방식">
                   {(
                     [
@@ -347,7 +349,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                       role="radio"
                       aria-checked={mode === m}
                       onClick={() => setMode(m)}
-                      className={`min-h-10 flex-1 rounded-full border text-[13.5px] ${mode === m ? "border-[#f3b04c] bg-[#f3b04c] text-[#3b2208]" : "border-[#5b79a6]"}`}
+                      className={`min-h-10 flex-1 rounded-full border text-[13.5px] ${mode === m ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border"}`}
                     >
                       {label}
                     </button>
@@ -360,12 +362,12 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
               <button type="button" onClick={() => setOverlay({ kind: "complete", cid: c.id })} className="mx-auto mt-4 block w-[64%]">
                 {/* eslint-disable-next-line @next/next/no-img-element -- 바탕 그림 미리보기 */}
                 <img src="/challenge/card-all.webp" alt="3일 모두 완료 카드 보기" className="w-full rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,.4)]" />
-                <span className="mt-2 block text-[13px] text-[#cfe0f5] underline underline-offset-4">완료 카드 만들기</span>
+                <span className="mt-2 block text-[13px] text-night-soft underline underline-offset-4">완료 카드 만들기</span>
               </button>
             )}
 
             {notice && (
-              <p className="mt-3 text-[13.5px] text-[#ffd36b]" role="alert">
+              <p className="mt-3 text-[13.5px] text-night-yellow" role="alert">
                 {notice}
               </p>
             )}
@@ -376,7 +378,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
       {v && (
         <div className="sticky bottom-0 z-10 bg-[linear-gradient(to_top,rgba(13,36,70,.98)_70%,rgba(13,36,70,0))] px-5 pb-3 pt-4">
           {v.button.op === "checkin" ? (
-            <button type="button" onClick={checkin} disabled={!canSave} className="w-full rounded-full bg-[#f3b04c] py-3 text-[17px] font-bold text-[#3b2208] disabled:bg-[#34517c] disabled:text-[#a9bad3]">
+            <button type="button" onClick={checkin} disabled={!canSave} className="w-full rounded-full bg-night-amber py-3 text-[17px] font-bold text-night-on-amber disabled:bg-night-disabled disabled:text-night-disabled-text">
               {busy ? "저장하는 중…" : v.button.label}
             </button>
           ) : (
@@ -384,7 +386,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
               type="button"
               onClick={() => v.button.op && void act(v.button.op as "start" | "restart")}
               disabled={!v.button.enabled || busy}
-              className="w-full rounded-full bg-[#f3b04c] py-3 text-[17px] font-bold text-[#3b2208] disabled:bg-[#34517c] disabled:text-[#a9bad3]"
+              className="w-full rounded-full bg-night-amber py-3 text-[17px] font-bold text-night-on-amber disabled:bg-night-disabled disabled:text-night-disabled-text"
             >
               {v.button.label}
             </button>
@@ -393,20 +395,20 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
       )}
 
       {v && (
-        <div className="px-5 pb-10">
+        <div className="relative px-5 pb-10">
           {c && lastCk && (
-            <button type="button" onClick={() => openCard(lastCk, c.id)} className="mt-1 w-full rounded-full border border-[#5b79a6] bg-[rgba(8,20,42,.55)] py-2.5 text-[14.5px]">
+            <button type="button" onClick={() => openCard(lastCk, c.id)} className="mt-1 w-full rounded-full border border-night-border bg-night-panel py-2.5 text-[14.5px]">
               오늘 카드 다시 보기
             </button>
           )}
           {c && v.kind !== "pre" && data && (
-            <p className="mt-2 text-center text-[12px] text-[#93a9c9]">
+            <p className="mt-2 text-center text-[12px] text-night-dim">
               {dateWithDay(data.today)}
               {dayDiff(data.today, c.startedDay) >= 0 && ` · 시작 후 ${dayDiff(data.today, c.startedDay) + 1}일째`}
             </p>
           )}
 
-          <section className="mt-6 border-t border-[rgba(188,208,234,.2)] text-left">
+          <section className="mt-6 border-t border-night-line text-left">
             <button
               type="button"
               aria-expanded={histOpen}
@@ -415,24 +417,24 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
               className="flex min-h-12 w-full items-center justify-between text-[17px] font-bold"
             >
               그동안의 갓생 챌린지 기록
-              <span aria-hidden="true" className="text-[14px] text-[#9db4d3]">
+              <span aria-hidden="true" className="text-[14px] text-night-dim">
                 {histOpen ? "⌃" : "⌄"}
               </span>
             </button>
             <div id="chal-history" hidden={!histOpen}>
               {(c?.checkins.length ?? 0) === 0 && (data?.history.length ?? 0) === 0 ? (
-                <p className="text-[13.5px] text-[#bcd0ea]">아직 기록이 없어요. 오늘 1일차를 찍어 볼까요?</p>
+                <p className="text-[13.5px] text-night-sub">아직 기록이 없어요. 오늘 1일차를 찍어 볼까요?</p>
               ) : (
                 <>
                   {c && c.checkins.length > 0 && (
                     <>
-                      <p className="mb-1.5 mt-1 text-[12.5px] text-[#f3b04c]">이번 챌린지</p>
+                      <p className="mb-1.5 mt-1 text-[12.5px] text-night-amber">이번 챌린지</p>
                       <HistoryRows c={c} />
                     </>
                   )}
                   {data?.history.map((h) => (
                     <div key={h.id}>
-                      <p className="mb-1.5 mt-4 text-[12.5px] text-[#f3b04c]">
+                      <p className="mb-1.5 mt-4 text-[12.5px] text-night-amber">
                         지난 챌린지 · {themeOf(h.theme).label} ({shortDate(h.checkins[0]?.day ?? h.startedDay)} ~ {shortDate(h.endedDay ?? h.checkins[h.checkins.length - 1]?.day ?? h.startedDay)})
                       </p>
                       <HistoryRows c={h} />

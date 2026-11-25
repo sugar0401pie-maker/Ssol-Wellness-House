@@ -13,6 +13,34 @@
   --ssol-cream: #fdf6ec; /* navy 배경 위 텍스트용 */
   --ssol-muted: #56616c;
   color-scheme: light;
+
+  /* 2026-11-25 화면 분위기(요청문 v1.9.4 12장) — 밤하늘 색은 여기 한 곳에서만 정한다(컴포넌트에는 색 값을 직접 쓰지 않음). 기기 밝기 설정과 상관없이 같은 색. */
+  --sky-top: #091a36;
+  --sky-mid: #16396a;
+  --sky-bottom: #2b5688;
+  --sky-text-bg: linear-gradient(#0a1c38, #15366a 70%, #1c4478); /* 글이 많은 화면(채팅·마이페이지·고민 타파) */
+  --sky-picture-bg: linear-gradient(var(--sky-top), var(--sky-mid) 60%, var(--sky-bottom)); /* 그림 있는 화면(홈·갓생러모임) */
+  --night-deep: #0b1d3a; /* 풍등·카드 화면 바깥 여백 */
+  --moon: rgba(246, 239, 213, 0.92);
+  --star: #dbe7fb;
+  --night-text: #fdf6e9;
+  --night-sub: #bcd0ea;
+  --night-dim: #9db4d3;
+  --night-soft: #cfe0f5;
+  --night-yellow: #ffd36b;
+  --night-amber: #f3b04c;
+  --night-on-amber: #3b2208;
+  --night-border: #5b79a6;
+  --night-line: rgba(188, 208, 234, 0.24);
+  --night-panel: rgba(8, 20, 42, 0.6);
+  --night-input: rgba(8, 20, 42, 0.55);
+  --night-placeholder: #8ea5c7;
+  --night-disabled: #34517c;
+  --night-disabled-text: #a9bad3;
+  --night-banner: #0d2140;
+  --night-error: #ffb4a8;
+  --danger-dot: #e0553d;
+  --stamp-red: #d4553a;
 }
 
 @theme inline {
@@ -25,6 +53,24 @@
   --color-muted: var(--ssol-muted);
   --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
   --font-serif: var(--font-gowun-batang), serif;
+  --font-dodum: var(--font-gowun-dodum), "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --color-night-text: var(--night-text);
+  --color-night-sub: var(--night-sub);
+  --color-night-dim: var(--night-dim);
+  --color-night-soft: var(--night-soft);
+  --color-night-yellow: var(--night-yellow);
+  --color-night-amber: var(--night-amber);
+  --color-night-on-amber: var(--night-on-amber);
+  --color-night-border: var(--night-border);
+  --color-night-line: var(--night-line);
+  --color-night-panel: var(--night-panel);
+  --color-night-input: var(--night-input);
+  --color-night-disabled: var(--night-disabled);
+  --color-night-disabled-text: var(--night-disabled-text);
+  --color-night-banner: var(--night-banner);
+  --color-night-deep: var(--night-deep);
+  --color-danger-dot: var(--danger-dot);
+  --color-stamp-red: var(--stamp-red);
 }
 
 body {
@@ -185,4 +231,93 @@ body {
   .ssol-cloud-tag {
     transition: none;
   }
+}
+
+
+/* ===== 밤하늘 분위기(2026-11-25, 요청문 v1.9.4 12장) =====
+   로그인 뒤 앱 틀(AppFrame)에 .ssol-night를 붙이면, 예전 밝은 색 토큰(--background·--foreground·--ssol-navy …)을 밤하늘 값으로 바꿔
+   기존 화면(채팅·마이페이지·홈)이 한꺼번에 따라온다. 직접 쓴 회색 글자·흰 바탕도 아래에서 밤하늘 값으로 바꾼다.
+   입력이 많은 창(정보 수정·비밀번호·의견·온보딩 등 .ssol-day)과 결제·약관·가입·상담 신청 화면(이 틀 밖)은 대표님 확인 전이라 밝은 색 그대로(12-6장 1번). */
+.ssol-night {
+  --background: transparent;
+  --foreground: var(--night-text);
+  --ssol-navy: var(--night-amber);
+  --ssol-navy-soft: var(--night-panel);
+  --ssol-line: var(--night-line);
+  --ssol-cream: var(--night-text);
+  --ssol-muted: var(--night-sub);
+  color-scheme: dark;
+  color: var(--night-text);
+  background: var(--sky-text-bg);
+  font-family: var(--font-dodum);
+}
+.ssol-day {
+  --background: #f7f3ec;
+  --foreground: #1b2733;
+  --ssol-navy: #033667;
+  --ssol-navy-soft: #e6edf5;
+  --ssol-line: #ddd6ca;
+  --ssol-cream: #fdf6ec;
+  --ssol-muted: #56616c;
+  color-scheme: light;
+  color: var(--foreground);
+  font-family: var(--font-noto-sans-kr), system-ui, sans-serif;
+}
+.ssol-night :is(.bg-white):not(.ssol-day, .ssol-day *) {
+  background-color: var(--night-panel);
+}
+.ssol-night :is(.text-white):not(.ssol-day, .ssol-day *) {
+  color: var(--night-on-amber); /* 호박색 버튼(예전 남색 버튼) 위 글자 */
+}
+.ssol-night :is(.text-slate-700, .text-slate-800, .text-slate-900):not(.ssol-day, .ssol-day *) {
+  color: var(--night-text);
+}
+.ssol-night :is(.text-slate-500, .text-slate-600):not(.ssol-day, .ssol-day *) {
+  color: var(--night-sub);
+}
+.ssol-night :is(.text-slate-300, .text-slate-400):not(.ssol-day, .ssol-day *) {
+  color: var(--night-dim);
+}
+.ssol-night :is(.text-red-500, .text-red-600):not(.ssol-day, .ssol-day *) {
+  color: var(--night-error);
+}
+.ssol-night :is(.border-slate-200, .border-slate-300):not(.ssol-day, .ssol-day *) {
+  border-color: var(--night-line);
+}
+.ssol-night :is(input, textarea, select):not(.ssol-day *) {
+  background-color: var(--night-input);
+  border-color: var(--night-border);
+  color: var(--night-text);
+}
+.ssol-night :is(input, textarea)::placeholder {
+  color: var(--night-placeholder);
+}
+.ssol-night :is(button:disabled.bg-navy):not(.ssol-day *) {
+  background-color: var(--night-disabled);
+  color: var(--night-disabled-text);
+}
+
+/* 그림 있는 화면의 하늘 배경과 달·별(코드로 그림, 그림 파일 없음). 별 두 번째 묶음은 천천히 깜빡인다(움직임 줄이기에서는 멈춤). */
+.ssol-sky {
+  background: var(--sky-picture-bg);
+}
+@keyframes ssol-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ssol-star-b {
+  animation: ssol-twinkle 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ssol-star-b {
+    animation: none;
+  }
+}
+.ssol-home:has(.ssol-banner) .ssol-moon {
+  display: none; /* 홈 위 배너가 보이면 달이 겹쳐 보여서 숨긴다(12-5장 3번) */
 }

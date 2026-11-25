@@ -43,7 +43,7 @@ export default function TrialExpiringReminder({
 }) {
   const copy = variant === "d1" && !hasReport ? D1_NO_REPORT_COPY : COPY[variant];
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-6">
+    <div className="ssol-day fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-6">
       <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-lg">
         <div className="flex items-center justify-end">
           <button

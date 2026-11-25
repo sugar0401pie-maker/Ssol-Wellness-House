@@ -33,7 +33,7 @@ type Scene = 1 | 2 | 3 | 4 | 5;
 type Status = { open?: boolean; flown?: boolean; flownAt?: string | null; name?: string | null };
 type SaveResult = { ok?: boolean; flownAt?: string; reason?: string; message?: string };
 
-const SKY = "#0b2b55"; // 그림 맨 위 하늘 색 — 화면 비율이 달라 남는 위아래·양옆을 같은 색으로 채운다
+const SKY = "var(--night-deep)"; // 그림 맨 위 하늘 색 — 화면 비율이 달라 남는 위아래·양옆을 같은 색으로 채운다
 const INK = "#4a2a0a";
 const SAVE_FAIL = "풍등이 잠시 구름에 걸렸어요. 잠시 후 다시 날려 볼까요?";
 
@@ -234,10 +234,10 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         {/* 장면 1 위쪽: 제목·설명(쓰는 동안만) */}
         {writing && (
           <div className="absolute inset-x-0 text-center" style={{ top: "6.5%", padding: "0 6cqw" }}>
-            <h1 className="font-serif font-bold text-[#fdf6e9]" style={{ fontSize: "5.6cqw", lineHeight: 1.4 }}>
+            <h1 className="font-serif font-bold text-night-text" style={{ fontSize: "5.6cqw", lineHeight: 1.4 }}>
               소원을 적어 풍등을 날려요
             </h1>
-            <p className="text-[#cfe0f5]" style={{ fontSize: "3.5cqw", lineHeight: 1.5, marginTop: "1cqw" }}>
+            <p className="text-night-soft" style={{ fontSize: "3.5cqw", lineHeight: 1.5, marginTop: "1cqw" }}>
               한 줄만 적어도 돼요.
             </p>
           </div>
@@ -287,7 +287,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
           <Link
             href="/home"
             replace
-            className="absolute z-10 rounded-full border text-[#cfe0f5]"
+            className="absolute z-10 rounded-full border text-night-soft"
             style={{ left: "4cqw", top: "4cqw", fontSize: "3.6cqw", padding: "1.6cqw 3.4cqw", background: "rgba(8,20,42,.55)", borderColor: "rgba(188,208,234,.35)" }}
           >
             나중에 할게요
@@ -299,7 +299,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
           <p className="absolute inset-x-0 text-center" style={{ bottom: "7%", padding: "0 6cqw" }} role="status" aria-live="polite">
             <span
               key={caption}
-              className="ssol-pulse-text inline-block rounded-full text-[#fdf6e9]"
+              className="ssol-pulse-text inline-block rounded-full text-night-text"
               style={{ fontSize: "4cqw", padding: "2.2cqw 4.4cqw", background: "rgba(8,20,42,.62)" }}
             >
               {FLYING_CAPTIONS[caption]}
@@ -310,7 +310,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         {/* 끝 화면 문구 */}
         {ended && (
           <div
-            className="absolute break-keep text-center text-[#fdf6e9]"
+            className="absolute break-keep text-center text-night-text"
             role="status"
             aria-live="polite"
             style={{ left: "8%", right: "8%", top: "22%", padding: "5cqw 5cqw", background: "rgba(8,20,42,.62)", borderRadius: "5cqw" }}
@@ -323,7 +323,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             {phase === "already" && (
               <>
                 <p style={{ fontSize: "4.8cqw", lineHeight: 1.6 }}>{altitudeText}</p>
-                <p className="text-[#cfe0f5]" style={{ fontSize: "3.4cqw", lineHeight: 1.5, marginTop: "2.4cqw" }}>
+                <p className="text-night-soft" style={{ fontSize: "3.4cqw", lineHeight: 1.5, marginTop: "2.4cqw" }}>
                   {LANTERN_ALREADY_SUB}
                 </p>
               </>
@@ -335,7 +335,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         {/* 아래 버튼 */}
         {message && writing && (
           <p className="absolute inset-x-0 break-keep text-center" style={{ bottom: "14%", padding: "0 8cqw" }} role="alert">
-            <span className="inline-block rounded-2xl text-[#fdf6e9]" style={{ fontSize: "3.6cqw", padding: "1.6cqw 3.6cqw", background: "rgba(8,20,42,.7)" }}>
+            <span className="inline-block rounded-2xl text-night-text" style={{ fontSize: "3.6cqw", padding: "1.6cqw 3.6cqw", background: "rgba(8,20,42,.7)" }}>
               {message}
             </span>
           </p>
@@ -346,7 +346,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             onClick={release}
             disabled={!wish.trim()}
             className="absolute left-1/2 -translate-x-1/2 rounded-full font-medium disabled:opacity-55"
-            style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "#f3b04c", color: "#3b2208" }}
+            style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "var(--night-amber)", color: "var(--night-on-amber)" }}
           >
             풍등 날리기
           </button>
@@ -356,7 +356,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             href="/home"
             replace
             className="absolute left-1/2 -translate-x-1/2 rounded-full text-center font-medium"
-            style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "#f3b04c", color: "#3b2208" }}
+            style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "var(--night-amber)", color: "var(--night-on-amber)" }}
           >
             홈으로
           </Link>

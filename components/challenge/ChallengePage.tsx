@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { gaegu } from "@/lib/fonts/gaegu";
@@ -244,9 +245,11 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
       </span>
       <div className="relative px-5 pb-4 pt-6 text-center">
         {/* 대표님 2026-11-25: 맨 위 "갓생러모임" 이름표는 뺌(하단 메뉴에 이미 이름이 있음) */}
-        <h1 className="text-[24px] font-bold leading-snug">쏠 작심삼일 챌린지</h1>
+        {/* 대표님 2026-11-25: 제목 자리에 손글씨 그림("쏠 작심삼일 챌린지" 글자가 그림 안 — 제목은 화면 읽기용으로만) */}
+        <h1 className="sr-only">쏠 작심삼일 챌린지</h1>
+        <Image src="/challenge/hero.webp" alt="" aria-hidden="true" width={800} height={800} priority unoptimized className="mx-auto h-auto w-[82%] rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,.35)]" />
         {/* 대표님 2026-11-25 문구 */}
-        <p className="mt-1 break-keep text-[13.5px] leading-5 text-night-sub">
+        <p className="mt-3 break-keep text-[13.5px] leading-5 text-night-sub">
           갓생러가 별 거 있나요?
           <br />
           나와의 약속 3일만 지켜도 당신은 갓생러~!

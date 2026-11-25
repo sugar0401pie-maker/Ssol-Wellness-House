@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { layoutCloud } from "./cloud.ts";
-import { STARTER_GUIDES, SCORES, scoreOf, type Basis } from "./data.ts";
+import { STARTER_EPISODES, STARTER_GUIDES, SCORES, isPublishedOn, scoreOf, type Basis } from "./data.ts";
 
 test("글자 구름: 4가지 기준 모두 겹치지 않고 상자 밖으로 나가지 않는다", () => {
   for (const basis of Object.keys(SCORES) as Basis[]) {
@@ -21,4 +21,12 @@ test("글자 구름: 4가지 기준 모두 겹치지 않고 상자 밖으로 나
 
 test("점수표: 11개 태그 모두 4가지 기준에 1~5점", () => {
   for (const basis of Object.keys(SCORES) as Basis[]) for (const g of STARTER_GUIDES) assert.ok(SCORES[basis][g.tag] >= 1 && SCORES[basis][g.tag] <= 5, `${basis} ${g.tag}`);
+});
+
+test("고민우체국 예약 게시: 날짜가 온 회차만 — 6~10화는 11/26부터 하루에 하나", () => {
+  const shown = (d: string) => STARTER_EPISODES.filter((e) => isPublishedOn(e, d)).map((e) => e.n);
+  assert.deepEqual(shown("2026-11-25"), [1, 2, 3, 4, 5]);
+  assert.deepEqual(shown("2026-11-26"), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(shown("2026-11-30"), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  for (const e of STARTER_EPISODES) assert.ok(e.images && e.images.length >= 2 && e.body && e.body.length > 500, `${e.n}화`);
 });

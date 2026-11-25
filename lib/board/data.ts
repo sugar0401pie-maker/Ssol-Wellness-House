@@ -12,7 +12,7 @@ export const episodeUrl = (n: number) => `${SITE_ORIGIN}/postoffice/${n}`;
 // bodyHtml: 관리자 화면에서 쓴 글이면 본문 HTML(허용 태그만), 아니면 없음(그때는 url에서 가져온다).
 export type Guide = { tag: string; slug: string; title: string; lines: string[]; url: string; updated?: string | null; bodyHtml?: string | null };
 // images: 글 위 캐러셀 그림(표지 + 실제 대화 캡처), body: 앱에 넣어 둔 본문(간단한 서식) — 고민우체국 1~5화(postofficeEpisodes.ts)
-export type Episode = { n: number; title: string; tag: string; summary: string; url: string; published?: string | null; image?: string | null; bodyHtml?: string | null; images?: { src: string; alt: string }[]; body?: string };
+export type Episode = { n: number; title: string; tag: string; summary: string; url: string; published?: string | null; image?: string | null; bodyHtml?: string | null; images?: { src: string; alt: string }[]; body?: string; publishAt?: string };
 
 const g = (tag: string, slug: string, title: string, lines: string[]): Guide => ({ tag, slug, title, lines, url: guideUrl(slug) });
 export const STARTER_GUIDES: Guide[] = [
@@ -31,6 +31,9 @@ export const STARTER_GUIDES: Guide[] = [
 
 // 고민우체국 연재 — 2026-11-25 대표님이 보낸 1~5화(예전 요청문 예시 3편을 대신함).
 export { POSTOFFICE_EPISODES as STARTER_EPISODES } from "./postofficeEpisodes.ts";
+
+// 예약 게시(대표님 2026-11-25: 하루에 하나씩): publishAt(KST 날짜)이 오늘보다 뒤면 아직 안 보인다(목록·읽기·사이트맵 모두).
+export const isPublishedOn = (e: { publishAt?: string }, todayKey: string): boolean => !e.publishAt || e.publishAt <= todayKey;
 
 // 고민우체국 그림(요청문 14-6장 제안): 연재 소개는 해달(대표), 회차 표지는 1화 해달·2화 수달·3화 해달처럼 번갈아(4화부터 표지가 새로 오면 같은 규칙).
 // 공개 사이트에 그림이 올라오면 목록 데이터의 image 주소를 우선 쓴다.

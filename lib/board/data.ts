@@ -49,9 +49,9 @@ export const SCORES: Record<Basis, Record<string, number>> = {
   none: { 재회: 3, 썸: 4, 이직: 5, 퇴사: 5, 소비습관: 4, 주말휴식: 2, 앰비버트: 2, 타로: 2, 별자리: 3, 카톡답장: 4, 단톡방서운함: 1 },
 };
 export const BASIS_SUB: Record<Basis, string> = {
-  worry: '"걱정이 계속 돌아요"에 가까운 고민을 크게 보여 줘요.',
-  delay: '"자꾸 미루게 돼요"에 가까운 고민을 크게 보여 줘요.',
-  energy: '"기운이 바닥이에요"에 가까운 고민을 크게 보여 줘요.',
+  worry: '"걱정이 머릿속을 떠나지 않아요"에 가까운 고민을 크게 보여 줘요.',
+  delay: '"할 일을 자꾸 미뤄요"에 가까운 고민을 크게 보여 줘요.',
+  energy: '"몸도 마음도 기운이 없어요"에 가까운 고민을 크게 보여 줘요.',
   none: "아직 테스트를 안 했다면, 많이 찾는 고민 순서로 보여 줘요.",
 };
 export const scoreOf = (basis: Basis, tag: string): number => SCORES[basis][tag] ?? 2; // 점수표에 없는 새 태그는 중간보다 조금 아래

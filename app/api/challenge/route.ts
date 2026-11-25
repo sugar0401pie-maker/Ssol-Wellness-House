@@ -86,8 +86,9 @@ export async function POST(req: NextRequest) {
       if (!c || s.view.kind !== "todo") return NextResponse.json({ ok: false, reason: "not_today", message: "오늘 인증 끝! 내일 또 만나요~", ...s }, { status: 409 });
       const method = METHODS.includes(body.method as Method) ? (body.method as Method) : null;
       if (!method) return fail("인증 방식을 골라 주세요.", 400);
-      const memo = method === "check" ? null : normalizeMemo(body.memo);
-      if (method === "memo" && !memo) return fail("오늘 한 걸 한 줄로 적어 주세요.", 400);
+      // 대표님 2026-11-25: 한 줄 메모는 꼭(사진은 있으면 같이 — 사진 자체는 서버에 오지 않는다)
+      const memo = normalizeMemo(body.memo);
+      if (!memo) return fail("오늘 한 걸 한 줄로 적어 주세요.", 400);
       const n = s.view.n;
       const action = themeOf(c.theme).days[n - 1].action;
       const ins = await admin.from("challenge_checkins").insert({ challenge_id: c.id, user_id: a.userId, n, day_kst: today, method, memo, action });

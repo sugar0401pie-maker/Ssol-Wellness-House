@@ -199,7 +199,7 @@ export default function SoundBath() {
             사운드 배스
           </h1>
           <p className="text-night-soft" style={{ fontSize: "3.8cqw", lineHeight: 1.45, marginTop: "1.5cqw" }}>
-            보울을 눌러 보세요. 해달이 울려 줘요.
+            작은 소리에 귀를 기울여보세요. 잠시만 나를 위한 시간을 가져보는 거예요.
           </p>
         </div>
         <div className="absolute z-[5] flex" style={{ left: "6cqw", right: "6cqw", top: "40cqw", gap: "2.5cqw" }}>

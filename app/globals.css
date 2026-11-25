@@ -53,7 +53,6 @@
   --color-muted: var(--ssol-muted);
   --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
   --font-serif: var(--font-gowun-batang), serif;
-  --font-dodum: var(--font-gowun-dodum), "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --color-night-text: var(--night-text);
   --color-night-sub: var(--night-sub);
   --color-night-dim: var(--night-dim);
@@ -237,7 +236,8 @@ body {
 /* ===== 밤하늘 분위기(2026-11-25, 요청문 v1.9.4 12장) =====
    로그인 뒤 앱 틀(AppFrame)에 .ssol-night를 붙이면, 예전 밝은 색 토큰(--background·--foreground·--ssol-navy …)을 밤하늘 값으로 바꿔
    기존 화면(채팅·마이페이지·홈)이 한꺼번에 따라온다. 직접 쓴 회색 글자·흰 바탕도 아래에서 밤하늘 값으로 바꾼다.
-   입력이 많은 창(정보 수정·비밀번호·의견·온보딩 등 .ssol-day)과 결제·약관·가입·상담 신청 화면(이 틀 밖)은 대표님 확인 전이라 밝은 색 그대로(12-6장 1번). */
+   입력이 많은 창(정보 수정·비밀번호·의견·온보딩 등 .ssol-day)과 결제·약관·가입·상담 신청 화면(이 틀 밖)은 대표님 확인 전이라 밝은 색 그대로(12-6장 1번).
+   채팅은 대표님 2026-11-25: 기존처럼 흰 바탕이 기본이고, 채팅 위 버튼으로 어두운 화면(밤하늘)으로 바꿀 수 있다(components/chat/ChatThemeFrame.tsx). */
 .ssol-night {
   --background: transparent;
   --foreground: var(--night-text);
@@ -249,7 +249,7 @@ body {
   color-scheme: dark;
   color: var(--night-text);
   background: var(--sky-text-bg);
-  font-family: var(--font-dodum);
+  /* 글꼴은 원래 쏘웰라 글꼴(Noto Sans KR) 그대로 — 대표님 2026-11-25(요청문의 Gowun Dodum은 쓰지 않음) */
 }
 .ssol-day {
   --background: #f7f3ec;

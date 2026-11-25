@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { gaegu } from "@/lib/fonts/gaegu";
-import { CHALLENGE_THEMES, DEFAULT_THEME, isThemeKey, themeOf } from "@/lib/challenge/themes";
+import { CHALLENGE_THEMES, DEFAULT_THEME, isThemeKey, proofLine, themeOf } from "@/lib/challenge/themes";
+import { seaArtFor } from "@/lib/challenge/seaArt";
+import { notoFamily } from "@/lib/challenge/card";
+import TodayCard from "./TodayCard";
 import { MEMO_MAX, dayDiff, shortDate, type Challenge, type Method, type View } from "@/lib/challenge/state";
 import { CROP_DEFAULT, cropRect, type Crop } from "@/lib/challenge/crop";
 import { drawCompleteCard, drawDayCard } from "@/lib/challenge/card";
@@ -110,6 +113,14 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
   // 테스트 결과 마지막 화면에서 /challenge?theme=… 로 오면 그 마음을 미리 고른다(마음 칸은 서버 응답 뒤에만 그려져 첫 그림과 어긋나지 않음).
+  // 테스트에서 넘어왔는지(주소에 theme가 있었는지) — 시작 전 화면에 한 줄로 알려 준다.
+  const [fromTest] = useState<boolean>(() => {
+    try {
+      return typeof window !== "undefined" && isThemeKey(new URLSearchParams(window.location.search).get("theme"));
+    } catch {
+      return false;
+    }
+  });
   const [theme, setTheme] = useState<string>(() => {
     try {
       const q = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("theme");
@@ -118,7 +129,6 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
       return DEFAULT_THEME;
     }
   });
-  const [mode, setMode] = useState<Method>("photo");
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop>(CROP_DEFAULT);
   const [memo, setMemo] = useState("");
@@ -184,12 +194,14 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
   async function checkin() {
     if (!data?.current) return;
     const cid = data.current.id;
-    const photo = mode === "photo" ? croppedCanvas() : null;
-    if (mode === "photo" && !photo) return;
+    // 대표님 2026-11-25: 메모는 꼭, 사진은 있으면 같이 저장(없으면 카드에 바다 친구 그림)
+    const photo = img ? croppedCanvas() : null;
+    const method: Method = photo ? "photo" : "memo";
+    if (!memo.trim()) return;
     setBusy(true);
     setNotice(null);
     try {
-      const d = await call(getToken, { op: "checkin", method: mode, memo: mode === "check" ? null : memo });
+      const d = await call(getToken, { op: "checkin", method, memo });
       if (!d.ok || !d.n) {
         setData(d);
         setNotice(d.message ?? null);
@@ -201,7 +213,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
       const n = d.n as 1 | 2 | 3;
       setImg(null);
       setMemo("");
-      setOverlay({ kind: "slam", n, then: { kind: "card", n, cid, method: mode, memo: d.memo ?? null, day: d.today, autoSave: true, withResult: true } });
+      setOverlay({ kind: "slam", n, then: { kind: "card", n, cid, method, memo: d.memo ?? null, day: d.today, autoSave: true, withResult: true } });
     } catch {
       setNotice("지금은 저장하지 못했어요. 잠시 후 다시 해 주세요.");
     } finally {
@@ -213,9 +225,11 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
   const c = data?.current ?? null;
   const t = themeOf(c?.theme ?? theme);
   const day = v?.dayIndex != null ? t.days[v.dayIndex] : null;
-  const canSave = v?.kind === "todo" && !busy && (mode === "photo" ? !!img : mode === "memo" ? memo.trim().length > 0 : true);
+  const canSave = v?.kind === "todo" && !busy && memo.trim().length > 0;
   const lastCk = c?.checkins[c.checkins.length - 1];
-  const family = gaegu.style.fontFamily;
+  const family = typeof window === "undefined" ? "sans-serif" : notoFamily(); // 카드 메모는 쏘웰라 보통 글꼴(대표님 2026-11-25)
+  const dayCard = (cid: string, ck: { n: number; method: Method; memo: string | null; day: string }) => () =>
+    drawDayCard({ day: ck.n as 1 | 2 | 3, method: ck.method, photoUrl: ck.method === "photo" ? loadPhoto(cid, ck.n) : null, artUrl: seaArtFor(`${cid}:${ck.n}`), memo: ck.memo, dateLabel: shortDate(ck.day) }, family);
 
   function openCard(ck: NonNullable<typeof lastCk>, cid: string) {
     setOverlay({ kind: "card", n: ck.n as 1 | 2 | 3, cid, method: ck.method, memo: ck.memo, day: ck.day, autoSave: false, withResult: false });
@@ -231,7 +245,12 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
       <div className="relative px-5 pb-4 pt-6 text-center">
         <span className="inline-block rounded-full bg-night-amber px-3 py-0.5 text-[12px] text-night-on-amber">갓생러모임</span>
         <h1 className="mt-1.5 text-[24px] font-bold leading-snug">쏠 작심삼일 챌린지</h1>
-        {v && v.kind !== "complete" && <p className="mt-0.5 text-[13.5px] text-night-sub">3일만 해봐요. 하루 쉬어도 괜찮아요.</p>}
+        {/* 대표님 2026-11-25 문구 */}
+        <p className="mt-1 break-keep text-[13.5px] leading-5 text-night-sub">
+          갓생러가 별 거 있나요?
+          <br />
+          나와의 약속 3일만 지켜도 당신은 갓생러~!
+        </p>
 
         {error && <p className="mt-8 text-[14px] text-night-yellow">{error}</p>}
         {!data && !error && <p className="mt-8 text-[14px] text-night-dim">불러오는 중…</p>}
@@ -241,13 +260,14 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
             <Stamps c={c} stamped={v.stamped} dim={v.kind === "pre"} />
             {v.todayLine && <p className="mt-3 text-[24px] font-bold leading-snug">{v.todayLine}</p>}
             {v.msg && (
-              <p className="mx-1 mt-3 break-keep text-[15px] leading-[1.55]" aria-live="polite">
+              <p className="mx-1 mt-2 break-keep text-[13.5px] leading-[1.55] text-night-sub" aria-live="polite">
                 {v.msg}
               </p>
             )}
 
             {v.kind === "pre" && (
               <div className="mt-4 text-left">
+                {fromTest && <p className="mb-2 rounded-xl bg-night-panel px-3 py-2 text-[13px] text-night-yellow">테스트 결과에 맞춘 챌린지를 골라 두었어요. 바꿔도 괜찮아요.</p>}
                 <p className="text-[13px] text-night-sub">요즘 내 마음에 가까운 것</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {CHALLENGE_THEMES.map((th) => (
@@ -267,19 +287,18 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
                     <div key={i} className="rounded-xl bg-night-panel px-3 py-2.5 text-[13.5px] leading-snug text-night-soft">
                       <b className="mr-2 font-normal text-night-amber">{i + 1}일차</b>
                       {d.action}
-                      <span className="mt-0.5 block text-[12px] text-night-dim">인증샷 아이디어 · {d.photoIdea}</span>
+                      <span className="mt-0.5 block text-[12.5px] text-night-sub">{proofLine(t.key, i)}</span>
                     </div>
                   ))}
+                  {/* 대표님 2026-11-25: 이름표(1주일·1달)와 글이 한 줄에 섞여 어색하게 줄바꿈되던 것을 이름표 칸·글 칸으로 나눔 */}
                   <div className="rounded-xl bg-night-panel px-3 py-2.5 text-[12.5px] leading-5 text-night-sub">
                     <p className="text-night-soft">3일 해 보고 마음에 들면</p>
-                    <p className="mt-1">
-                      <em className="mr-1.5 not-italic text-night-amber">1주일</em>
-                      {t.week}
-                    </p>
-                    <p className="mt-0.5">
-                      <em className="mr-1.5 not-italic text-night-amber">1달</em>
-                      {t.month}
-                    </p>
+                    <dl className="mt-1.5 grid grid-cols-[3.2em_minmax(0,1fr)] gap-x-2 gap-y-1">
+                      <dt className="text-night-amber">1주일</dt>
+                      <dd className="break-keep">{t.week}</dd>
+                      <dt className="text-night-amber">1달</dt>
+                      <dd className="break-keep">{t.month}</dd>
+                    </dl>
                   </div>
                 </div>
               </div>
@@ -289,73 +308,59 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
               <div className="mt-4 rounded-2xl bg-night-panel p-4 text-left">
                 <p className="text-[16px] text-night-amber">오늘의 행동</p>
                 <p className="mt-1 text-[18px] leading-snug">{day.action}</p>
-                <p className="mt-1 text-[12.5px] text-night-dim">인증샷 아이디어 · {day.photoIdea}</p>
+                <p className="mt-1 text-[13px] text-night-sub">{proofLine(t.key, v.dayIndex ?? 0)}</p>
 
                 <div className="mt-4">
-                  {mode === "photo" &&
-                    (img ? (
-                      <>
-                        <PhotoCropper img={img} crop={crop} onChange={setCrop} />
-                        <div className="mt-1.5 text-center">
-                          <button type="button" onClick={() => fileIn.current?.click()} className="min-h-9 rounded-full border border-night-border px-3 text-[12.5px] text-night-soft">
-                            사진 바꾸기
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileIn.current?.click()}
-                        className="mx-auto flex aspect-square w-[58%] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-night-dim text-[15px]"
-                      >
-                        <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-                          <path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z" />
-                          <circle cx="12" cy="13.2" r="3.4" />
-                        </svg>
-                        사진 찍기
-                        <small className="text-[12px] text-night-dim">눌러서 사진을 찍거나 골라요</small>
-                      </button>
-                    ))}
-                  {mode === "photo" && !img && <p className="mt-2 text-center text-[12px] text-night-dim">정사각형으로 잘라서 카드에 넣어요. 사진은 이 기기에서만 써요.</p>}
-                  <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files?.[0] ?? undefined)} />
-                  {mode !== "check" ? (
-                    <input
-                      type="text"
-                      value={memo}
-                      maxLength={MEMO_MAX}
-                      onChange={(e) => setMemo(e.target.value)}
-                      placeholder={mode === "photo" ? "사진 밑에 쓸 한 줄 메모 (안 써도 돼요)" : "오늘 한 걸 한 줄로 적어 봐요"}
-                      aria-label={mode === "photo" ? "사진 밑에 쓸 한 줄 메모" : "오늘 한 걸 한 줄로"}
-                      className="mt-3 w-full rounded-xl border border-night-border bg-[rgba(255,255,255,.06)] px-3 py-2.5 text-[15px] text-night-text outline-none placeholder:text-night-dim focus:border-night-amber"
-                    />
+                  {img ? (
+                    <>
+                      <PhotoCropper img={img} crop={crop} onChange={setCrop} />
+                      <div className="mt-1.5 flex justify-center gap-2">
+                        <button type="button" onClick={() => fileIn.current?.click()} className="min-h-9 rounded-full border border-night-border px-3 text-[12.5px] text-night-soft">
+                          사진 바꾸기
+                        </button>
+                        <button type="button" onClick={() => setImg(null)} className="min-h-9 rounded-full border border-night-border px-3 text-[12.5px] text-night-soft">
+                          사진 빼기
+                        </button>
+                      </div>
+                    </>
                   ) : (
-                    <p className="text-center text-[13px] text-night-dim">했으면 체크하고 넘어가요. 사진이 없는 날도 괜찮아요.</p>
-                  )}
-                  {mode !== "check" && <p className="mt-1 text-right text-[11.5px] text-night-dim">{[...memo].length} / {MEMO_MAX}</p>}
-                </div>
-
-                <p className="mt-3 text-center text-[13px] text-night-dim">사진이 어려운 날엔</p>
-                <div className="mt-1.5 flex gap-2" role="radiogroup" aria-label="인증 방식">
-                  {(
-                    [
-                      ["photo", "사진"],
-                      ["memo", "한 줄 메모"],
-                      ["check", "체크만"],
-                    ] as const
-                  ).map(([m, label]) => (
                     <button
-                      key={m}
                       type="button"
-                      role="radio"
-                      aria-checked={mode === m}
-                      onClick={() => setMode(m)}
-                      className={`min-h-10 flex-1 rounded-full border text-[13.5px] ${mode === m ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border"}`}
+                      onClick={() => fileIn.current?.click()}
+                      className="mx-auto flex aspect-square w-[58%] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-night-dim text-[15px]"
                     >
-                      {label}
+                      <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                        <path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z" />
+                        <circle cx="12" cy="13.2" r="3.4" />
+                      </svg>
+                      사진 찍기
+                      <small className="text-[12px] text-night-dim">있으면 넣어요 · 없어도 괜찮아요</small>
                     </button>
-                  ))}
+                  )}
+                  {!img && <p className="mt-2 text-center text-[12px] text-night-dim">사진이 없으면 카드에 바다 친구 그림이 들어가요. 사진은 이 기기에서만 써요.</p>}
+                  <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files?.[0] ?? undefined)} />
+                  <input
+                    type="text"
+                    value={memo}
+                    maxLength={MEMO_MAX}
+                    onChange={(e) => setMemo(e.target.value)}
+                    placeholder="오늘 한 걸 한 줄로 적어 봐요"
+                    aria-label="오늘 한 걸 한 줄로(꼭 적어 주세요)"
+                    aria-required="true"
+                    className="mt-3 w-full rounded-xl border border-night-border bg-[rgba(255,255,255,.06)] px-3 py-2.5 font-sans text-[15px] text-night-text outline-none placeholder:text-night-dim focus:border-night-amber"
+                  />
+                  <p className="mt-1 flex justify-between text-[11.5px] text-night-dim">
+                    <span>한 줄 메모는 꼭 적어 주세요. 카드에 들어가요.</span>
+                    <span>
+                      {[...memo].length} / {MEMO_MAX}
+                    </span>
+                  </p>
                 </div>
               </div>
+            )}
+
+            {v.kind === "doneToday" && c && lastCk && (
+              <TodayCard key={`${c.id}:${lastCk.n}`} make={dayCard(c.id, lastCk)} title={`갓생살기 ${lastCk.n}일차 달성!`} fileName={`ssol-challenge-day${lastCk.n}.png`} shareText={lastCk.memo ?? ""} />
             )}
 
             {v.kind === "complete" && c && (
@@ -396,7 +401,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
 
       {v && (
         <div className="relative px-5 pb-10">
-          {c && lastCk && (
+          {c && lastCk && v.kind !== "doneToday" && (
             <button type="button" onClick={() => openCard(lastCk, c.id)} className="mt-1 w-full rounded-full border border-night-border bg-night-panel py-2.5 text-[14.5px]">
               오늘 카드 다시 보기
             </button>
@@ -455,7 +460,9 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
           autoSave={overlay.autoSave}
           withResult={overlay.withResult}
           fileName={`ssol-challenge-day${overlay.n}.png`}
-          make={() => drawDayCard({ day: overlay.n, method: overlay.method, photoUrl: overlay.method === "photo" ? loadPhoto(overlay.cid, overlay.n) : null, memo: overlay.memo, dateLabel: shortDate(overlay.day) }, family)}
+          make={dayCard(overlay.cid, { n: overlay.n, method: overlay.method, memo: overlay.memo, day: overlay.day })}
+          shareText={overlay.memo ?? ""}
+          resultArt={seaArtFor(`${overlay.cid}:${overlay.n}:result`)}
           onBack={() => setOverlay(null)}
         />
       )}
@@ -466,7 +473,9 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
           autoSave={false}
           withResult={false}
           fileName="ssol-challenge-complete.png"
-          make={() => drawCompleteCard(c.checkins.map((ck) => ({ n: ck.n, thumbUrl: loadThumb(c.id, ck.n), text: ck.memo || ck.action })), family)}
+          make={() => drawCompleteCard(c.checkins.map((ck) => ({ n: ck.n, thumbUrl: ck.method === "photo" ? loadThumb(c.id, ck.n) : null, artUrl: seaArtFor(`${c.id}:${ck.n}`), text: ck.memo || ck.action })), family)}
+          shareText="3일을 모두 채웠어요!"
+          resultArt={seaArtFor(`${c.id}:complete`)}
           onBack={() => setOverlay(null)}
         />
       )}

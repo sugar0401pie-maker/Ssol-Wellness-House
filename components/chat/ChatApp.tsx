@@ -70,6 +70,8 @@ function formatSessionDate(iso: string): string {
   return d.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
 }
 
+const CHAT_DARK_KEY = "ssol.chatDark";
+
 export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -467,18 +469,57 @@ export default function ChatApp() {
     }
   }
 
+  // 2026-11-25 대표님: 채팅은 기존처럼 흰 바탕이 기본, 위 버튼으로 어두운 화면(앱의 밤하늘 색)으로 바꾼다. 이 기기에 기억한다.
+  const [dark, setDark] = useState<boolean>(() => {
+    try {
+      return typeof window !== "undefined" && window.localStorage.getItem(CHAT_DARK_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function toggleDark() {
+    setDark((d) => {
+      try {
+        window.localStorage.setItem(CHAT_DARK_KEY, d ? "0" : "1");
+      } catch {
+        /* 기억은 못 해도 지금 화면은 바뀐다 */
+      }
+      return !d;
+    });
+  }
+
   function requestNewChat() {
     if (messages.length && sessionId.current) void rememberSession(sessionId.current);
     resetChat();
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-white">
+    // 밝은 화면이면 .ssol-day로 앱 틀의 밤하늘 색을 끄고 예전 흰 바탕 그대로(app/globals.css)
+    <div className={`${dark ? "" : "ssol-day "}flex h-full w-full flex-col bg-white`}>
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
         {/* 2026-09-28: owner 확인 후 채팅 헤더를 "쏘웰라"로 변경(첫 화면에서 이 이름으로
             AI를 소개하므로) — 화면 안 대화 로직·API 이름 등은 그대로, 라벨만 바꾼 것. */}
         <p className="text-[15px] font-medium text-foreground">쏘웰라</p>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={toggleDark}
+            aria-pressed={dark}
+            aria-label={dark ? "밝은 화면으로 바꾸기" : "어두운 화면으로 바꾸기"}
+            title={dark ? "밝은 화면" : "어두운 화면"}
+            className="grid h-[34px] w-[34px] place-items-center rounded-full border border-line text-foreground active:bg-background"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {dark ? (
+                <>
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4" />
+                </>
+              ) : (
+                <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+              )}
+            </svg>
+          </button>
           <button
             type="button"
             onClick={openHistory}

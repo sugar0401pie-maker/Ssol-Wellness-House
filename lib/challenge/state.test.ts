@@ -77,3 +77,13 @@ test("메모: 공백 정리, 40자에서 자름, 비면 null · 테마 3가지�
   assert.equal(themeOf("nope").key, "worry");
   assert.equal(themeOf("energy").days[2].action, "오늘 먹은 것 중 제일 맛있는 것 찍기");
 });
+
+test("오늘 찍어 볼 것: 대표님 문구 + 별가루, '인증샷 아이디어'라는 말은 없음", async () => {
+  const { proofLine, CHALLENGE_THEMES } = await import("./themes.ts");
+  const { SPARKLES } = await import("./sparkles.ts");
+  assert.ok(proofLine("worry", 0).startsWith("걱정을 적은 종이를 쓰레기통에 버려 보기 "));
+  assert.ok(proofLine("worry", 1).startsWith("걷다가 만난 하늘 사진 찍어 보기 "));
+  for (const t of CHALLENGE_THEMES) for (const i of [0, 1, 2]) assert.ok(SPARKLES.some((sp) => proofLine(t.key, i).endsWith(sp)));
+  assert.deepEqual(CHALLENGE_THEMES.map((t) => t.label), ["걱정이 머릿속을 떠나지 않아요", "할 일을 자꾸 미뤄요", "몸도 마음도 기운이 없어요"]);
+  assert.ok(SPARKLES.every((sp) => !/[‍‎]/.test(sp)));
+});

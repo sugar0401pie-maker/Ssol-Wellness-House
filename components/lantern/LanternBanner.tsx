@@ -26,7 +26,8 @@ export default function LanternBanner({ getToken = getAccessToken }: { getToken?
         if (cancelled) return;
         const due = !!json.open && !json.flown;
         setShow(due);
-        if (new URLSearchParams(window.location.search).get("entry") !== "1") return;
+        // 다른 이동(예: 테스트에서 넘어온 챌린지로)이 먼저 일어났으면 건드리지 않는다
+        if (window.location.pathname !== "/home" || new URLSearchParams(window.location.search).get("entry") !== "1") return;
         const key = entryRedirectKey(todayKeyKST());
         let moved = false;
         try {

@@ -1,14 +1,23 @@
 "use client";
 // 작심삼일 스토리 카드(세로 1080×1920)를 이 기기에서 그린다(요청문 3-5·14-3장).
-// 바탕 그림에 제목·일차·도장이 이미 있어 코드로 쓰지 않는다. 얹는 것: 사진(x180 y430 720×720) · 메모(x180 y1180 720×220, 없으면 날짜) ·
-// 맨 아래 두 공식 계정 이름(작게). 오늘의 행동·주소는 넣지 않는다(대표님 2026-11-25: 사진과 한 줄 말만 담아 스토리에 올리는 카드).
-// 사진이 없는 날: 한 줄 메모면 사진 칸에 메모를 크게, 체크만이면 큰 체크 도장.
+// 바탕 그림에 제목·일차·도장이 이미 있어 코드로 쓰지 않는다. 얹는 것: 사진(x180 y430 720×720) · 메모(x180 y1180 720×220) ·
+// 맨 아래 공식 계정 이름(작게, @ssol.swhmkt만 — 대표님 2026-11-25). 오늘의 행동·주소는 넣지 않는다(대표님: 사진과 한 줄 말만 담는 카드).
+// 사진이 없는 날은 사진 칸에 바다 친구 그림(lib/challenge/seaArt.ts). 메모 글꼴은 손글씨 말고 쏘웰라 보통 글꼴(Noto Sans KR, 대표님 2026-11-25).
 import type { Method } from "./state";
 
 export const CARD_W = 1080;
 export const CARD_H = 1920;
 const INK = "#5a3a1e";
-export const CARD_ACCOUNTS = "@ssol.swhmkt  @ssol.wellness";
+export const CARD_ACCOUNTS = "@ssol.swhmkt";
+
+// 쏘웰라 보통 글꼴(Noto Sans KR) — next/font가 붙인 실제 글꼴 이름을 CSS 변수에서 읽는다.
+export function notoFamily(): string {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue("--font-noto-sans-kr").trim() || "sans-serif";
+  } catch {
+    return "sans-serif";
+  }
+}
 export const cardArt = (day: 1 | 2 | 3 | "all") => `/challenge/card${day === "all" ? "-all" : day}.webp`;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -86,24 +95,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-function checkStamp(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.save();
-  ctx.fillStyle = "#f3b04c";
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#3b2208";
-  ctx.lineWidth = r * 0.16;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  ctx.moveTo(cx - r * 0.45, cy + r * 0.02);
-  ctx.lineTo(cx - r * 0.1, cy + r * 0.36);
-  ctx.lineTo(cx + r * 0.5, cy - r * 0.34);
-  ctx.stroke();
-  ctx.restore();
-}
-
 function accounts(ctx: CanvasRenderingContext2D, family: string) {
   ctx.save();
   ctx.font = `700 34px ${family}`;
@@ -116,7 +107,7 @@ function accounts(ctx: CanvasRenderingContext2D, family: string) {
   ctx.restore();
 }
 
-export type DayCardInput = { day: 1 | 2 | 3; method: Method; photoUrl: string | null; memo: string | null; dateLabel: string };
+export type DayCardInput = { day: 1 | 2 | 3; method: Method; photoUrl: string | null; artUrl: string; memo: string | null; dateLabel: string };
 
 export async function drawDayCard(input: DayCardInput, family: string): Promise<HTMLCanvasElement> {
   const c = document.createElement("canvas");
@@ -129,30 +120,20 @@ export async function drawDayCard(input: DayCardInput, family: string): Promise<
   ctx.drawImage(await loadImage(cardArt(input.day)), 0, 0, CARD_W, CARD_H);
   const photoBox = { x: 180, y: 430, w: 720, h: 720 };
   const memoBox = { x: 180, y: 1180, w: 720, h: 220 };
+  const img = await loadImage(input.photoUrl ?? input.artUrl);
+  ctx.save();
+  roundRect(ctx, photoBox.x, photoBox.y, photoBox.w, photoBox.h, 28);
+  ctx.clip();
+  ctx.drawImage(img, photoBox.x, photoBox.y, photoBox.w, photoBox.h);
+  ctx.restore();
   ctx.fillStyle = INK;
-  if (input.photoUrl) {
-    const img = await loadImage(input.photoUrl);
-    ctx.save();
-    roundRect(ctx, photoBox.x, photoBox.y, photoBox.w, photoBox.h, 28);
-    ctx.clip();
-    ctx.drawImage(img, photoBox.x, photoBox.y, photoBox.w, photoBox.h);
-    ctx.restore();
-    ctx.fillStyle = INK;
-    drawText(ctx, input.memo || fallbackLine, memoBox, 64, 2, family);
-  } else if (input.method === "memo" && input.memo) {
-    drawText(ctx, input.memo, { x: photoBox.x + 30, y: photoBox.y + 40, w: photoBox.w - 60, h: photoBox.h - 80 }, 96, 5, family);
-    drawText(ctx, fallbackLine, memoBox, 56, 1, family);
-  } else {
-    checkStamp(ctx, CARD_W / 2, photoBox.y + photoBox.h / 2, 220);
-    ctx.fillStyle = INK;
-    drawText(ctx, input.memo || fallbackLine, memoBox, 60, 2, family);
-  }
+  drawText(ctx, input.memo || fallbackLine, memoBox, 58, 2, family);
   accounts(ctx, family);
   return c;
 }
 
 // "3일 모두 완료" 카드(대표님 2026-11-25: 완료 화면에 씀) — 사진 칸 자리에 1·2·3일차를 한 줄씩(작은 사진 + 메모/행동), 메모 칸에 "3일을 모두 채웠어요!".
-export type CompleteItem = { n: number; thumbUrl: string | null; text: string };
+export type CompleteItem = { n: number; thumbUrl: string | null; artUrl: string; text: string };
 export async function drawCompleteCard(items: CompleteItem[], family: string): Promise<HTMLCanvasElement> {
   const c = document.createElement("canvas");
   c.width = CARD_W;
@@ -165,15 +146,13 @@ export async function drawCompleteCard(items: CompleteItem[], family: string): P
   for (const [i, it] of items.slice(0, 3).entries()) {
     const y = 430 + i * rowH;
     const t = 190;
-    if (it.thumbUrl) {
-      const img = await loadImage(it.thumbUrl);
+    {
+      const img = await loadImage(it.thumbUrl ?? it.artUrl);
       ctx.save();
       roundRect(ctx, 190, y + (rowH - t) / 2, t, t, 20);
       ctx.clip();
       ctx.drawImage(img, 190, y + (rowH - t) / 2, t, t);
       ctx.restore();
-    } else {
-      checkStamp(ctx, 190 + t / 2, y + rowH / 2, t * 0.42);
     }
     ctx.fillStyle = "#c8801a";
     ctx.font = `700 46px ${family}`;

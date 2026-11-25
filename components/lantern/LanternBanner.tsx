@@ -51,7 +51,7 @@ export default function LanternBanner({ getToken = getAccessToken }: { getToken?
   // 2026-11-25 대표님: 배너를 손글씨 그림("2027 소원 담아 풍등 날리기", 1200×628)으로 교체 — 글자가 그림 안이라 화면 읽기용 이름을 붙인다.
   return (
     <Link href="/lantern" aria-label="2027 소원 담아 풍등 날리기" className="ssol-banner mb-4 block overflow-hidden rounded-2xl shadow-[0_6px_18px_rgba(0,0,0,.35)]">
-      <Image src="/lantern/banner.webp" alt="2027 소원 담아 풍등 날리기" width={1200} height={628} unoptimized priority className="h-auto w-full" />
+      <Image src="/lantern/banner.webp" alt="2027 소원 담아 풍등 날리기" width={1200} height={400} unoptimized priority className="h-auto w-full" />
     </Link>
   );
 }

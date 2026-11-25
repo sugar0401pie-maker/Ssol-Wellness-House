@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { bannerCopy, type View } from "@/lib/challenge/state";
@@ -30,23 +31,12 @@ export default function ChallengeBanner({ getToken = getAccessToken }: { getToke
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 열 때 한 번
   }, []);
   if (!copy) return null;
+  // 2026-11-25 대표님: 배너를 손글씨 그림("쏠 작심삼일 챌린지")으로 교체. 챌린지 상태(오늘은 N일차 등)는 그림 왼쪽 아래에 작게 얹는다.
   return (
-    <Link
-      href="/challenge"
-      aria-label={`${copy.title}. ${copy.desc}`}
-      className="ssol-banner mb-4 flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-night-text"
-      style={{ borderColor: "rgba(143,188,235,.5)", background: "linear-gradient(100deg, rgba(91,121,166,.45), rgba(91,121,166,0) 70%), #0d2140" }}
-    >
-      <svg viewBox="0 0 24 24" className="h-8 w-8 flex-none" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" fill="var(--night-amber)" />
-        <path d="M6.5 12.5 L10.5 16.5 L17.5 8" fill="none" stroke="var(--night-on-amber)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      <span className="min-w-0 flex-1">
-        <b className="block text-[15px] font-bold leading-5">{copy.title}</b>
-        <small className="mt-0.5 block text-[13px] leading-5 text-night-soft">{copy.desc}</small>
-      </span>
-      <span className="text-[20px] leading-none text-night-sub" aria-hidden="true">
-        ›
+    <Link href="/challenge" aria-label={`쏠 작심삼일 챌린지. ${copy.title}. ${copy.desc}`} className="ssol-banner relative mb-4 block overflow-hidden rounded-2xl shadow-[0_6px_18px_rgba(0,0,0,.35)]">
+      <Image src="/challenge/banner.webp" alt="" aria-hidden="true" width={1200} height={400} unoptimized priority className="h-auto w-full" />
+      <span className="absolute bottom-[7%] left-[5%] max-w-[46%] rounded-full bg-[rgba(8,20,42,.72)] px-2.5 py-1 text-[11.5px] font-bold leading-4 text-night-yellow" aria-hidden="true">
+        {copy.title}
       </span>
     </Link>
   );

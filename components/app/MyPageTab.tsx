@@ -406,7 +406,7 @@ export default function MyPageTab() {
                 src="/soundbath/banner.webp"
                 alt="소근소근 사운드배스 해보실래요? 마음이 편해지는 해달의 사운드배스"
                 width={1200}
-                height={628}
+                height={400}
                 unoptimized
                 className="h-auto w-full"
               />

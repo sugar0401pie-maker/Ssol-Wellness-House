@@ -3,14 +3,13 @@ import { getUserIdFast, getUserIdFromAuthHeader } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
-import { screenExplicit } from "@/lib/safety/explicit";
 import { loadGreetingName } from "@/lib/profile/greetingName";
 import { isLanternOpen, lanternEventKey, lanternPeriod, normalizeWish } from "@/lib/lantern/config";
 
 // 풍등 날리기(홈 화면 개편 요청문 v1.9.4 2장, 2026-11-25). 이벤트 기간(새해까지)에 한 번만 날린다(대표님 2026-11-25 — 처음엔 하루 한 번).
 // GET: 이벤트 중인지·이미 날렸는지(날린 시각 — 화면이 "지금 몇 km 상공" 계산에 씀)·인사 이름 · POST: 소원 저장(서버 날짜만 믿는다).
 // 소원 글은 계정에 연결해 저장하고 다른 이용자에게 보이지 않는다(sky_lantern_wishes). 이용권은 필요 없다.
-// 소원에 위기·폭력의 직접 표현이 있으면 저장은 그대로 하고 끝 화면에 '도움받을 곳' 링크를 함께 보여 준다(채팅 안전 경로와 같은 판단 lib/safety/explicit.ts).
+// 소원 글에는 위기 표현 확인·도움 안내를 붙이지 않는다(대표님 2026-11-25 — 비임상 웰니스 앱, 이벤트 글에 안전 장치를 과하게 얹지 않음).
 export const runtime = "nodejs";
 
 function status() {
@@ -43,11 +42,9 @@ export async function POST(req: NextRequest) {
   if (!wish) return NextResponse.json({ ok: false, reason: "invalid", message: "소원을 40자 안에서 한 줄로 적어 주세요." }, { status: 400 });
   const s = status();
   if (!s.open) return NextResponse.json({ ok: false, reason: "closed", message: "지금은 풍등 날리기 기간이 아니에요." }, { status: 403 });
-  const ex = screenExplicit(wish);
-  const helpHint = ex.level === "urgent" || ex.violence !== null;
   const { data, error } = await createAdminClient()
     .from("sky_lantern_wishes")
-    .insert({ user_id: userId, event_key: s.eventKey, day_kst: s.today, wish, help_hint: helpHint })
+    .insert({ user_id: userId, event_key: s.eventKey, day_kst: s.today, wish })
     .select("created_at")
     .single();
   if (error) {
@@ -55,5 +52,5 @@ export async function POST(req: NextRequest) {
     console.error("풍등 소원 저장 실패:", error.code);
     return NextResponse.json({ ok: false, reason: "error", message: "풍등이 잠시 구름에 걸렸어요. 잠시 후 다시 날려 볼까요?" }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, help: helpHint, flownAt: (data as { created_at: string }).created_at });
+  return NextResponse.json({ ok: true, flownAt: (data as { created_at: string }).created_at });
 }

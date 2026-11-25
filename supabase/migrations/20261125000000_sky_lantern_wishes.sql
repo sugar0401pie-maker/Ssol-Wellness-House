@@ -1,7 +1,6 @@
 -- 풍등 날리기 소원 글 — 2026-11-25 홈 화면 개편 요청문 v1.9.4 2장(대표님: "유저가 쓰는 내용은 모두 DB에 남도록").
 -- 로그인한 이용자가 소원을 한 줄(40자) 적어 풍등을 날린다. 이벤트 기간(새해까지)에 한 번만(대표님 2026-11-25) — event_key로 묶는다.
 -- 다른 이용자에게는 보이지 않는다. 계정을 지우면 함께 지워진다(auth.users on delete cascade + 탈퇴 처리 목록). 서버(service_role)만 읽고 쓴다.
--- help_hint: 소원 글에 위기·폭력의 직접 표현이 있어 끝 화면에 '도움받을 곳'을 함께 보여 준 경우(lib/safety/explicit.ts) — 운영 확인용.
 -- 앞서 보여 드린 '하루 한 번' 판을 이미 실행했어도 이 SQL을 그대로 다시 실행하면 된다(있으면 고치고, 없으면 만든다).
 
 begin;
@@ -13,7 +12,6 @@ create table if not exists public.sky_lantern_wishes (
   day_kst     date not null,                               -- 날린 날(KST)
   wish        text not null check (char_length(wish) between 1 and 40),
   color       text,
-  help_hint   boolean not null default false,
   created_at  timestamptz not null default now()
 );
 

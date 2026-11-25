@@ -25,12 +25,13 @@ import { altitudeKm, pickAltitudeLine, renderAltitudeLine } from "@/lib/lantern/
 // 그림 안에 풍등이 그려져 있어서(풍등만 따로 둔 그림은 기획자가 나중에 전달) 소원 글자는 그림 속 풍등 자리를 따라 옮긴다:
 //   장면 1·2에서는 풍등을 따라가고, 장면 3에서 흐려진다(대표님). 끝 화면에 "소원은 천천히 흐려져요"는 쓰지 않는다(대표님: 어차피 DB에 남음).
 // 새해까지 한 번만(대표님) — 이미 날린 사람에게는 "○○님의 풍등은 지금 … km 상공에 가고 있어요"(높이는 날린 시각부터 계속 올라감, lib/lantern/altitude.ts).
+// 소원 글에는 위기 표현 확인·도움 안내를 붙이지 않는다(대표님 2026-11-25 — 채팅이 아닌 이벤트 글에 안전 장치를 과하게 얹지 않음).
 // 움직임 줄이기를 켠 기기에서는 장면 2~4를 건너뛴다. 풍등 색 고르기는 꺼 둠(풍등만 따로 둔 그림이 오기 전까지).
 
 type Phase = "loading" | "compose" | "flying" | "done" | "already" | "closed";
 type Scene = 1 | 2 | 3 | 4 | 5;
 type Status = { open?: boolean; flown?: boolean; flownAt?: string | null; name?: string | null };
-type SaveResult = { ok?: boolean; help?: boolean; flownAt?: string; reason?: string; message?: string };
+type SaveResult = { ok?: boolean; flownAt?: string; reason?: string; message?: string };
 
 const SKY = "#0b2b55"; // 그림 맨 위 하늘 색 — 화면 비율이 달라 남는 위아래·양옆을 같은 색으로 채운다
 const INK = "#4a2a0a";
@@ -66,7 +67,6 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
   const [scene, setScene] = useState<Scene>(1);
   const [wish, setWish] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [help, setHelp] = useState(false);
   const [caption, setCaption] = useState(0);
   const [name, setName] = useState<string | null>(null);
   const [flownAt, setFlownAt] = useState<string | null>(null);
@@ -134,7 +134,6 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
     if (!f.animDone || !f.saved?.ok) return;
     clearTimers();
     setFlownAt(f.saved.flownAt ?? null);
-    setHelp(!!f.saved.help);
     setScene(5);
     setPhase("done");
   }
@@ -239,7 +238,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
               소원을 적어 풍등을 날려요
             </h1>
             <p className="text-[#cfe0f5]" style={{ fontSize: "3.5cqw", lineHeight: 1.5, marginTop: "1cqw" }}>
-              한 줄만 적어도 돼요. 소원은 하늘로 올라가면 흐려져요.
+              한 줄만 적어도 돼요.
             </p>
           </div>
         )}
@@ -255,7 +254,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
               value={wish}
               maxLength={WISH_MAX}
               rows={3}
-              placeholder="오늘 바라는 걸 한 줄로 적어 보세요"
+              placeholder={"2027년을 맞이하는\n내 다짐과 소원을\n편하게 적어보세요"} // 대표님 2026-11-25 문구·줄바꿈
               onChange={(e) => {
                 setWish(e.target.value.replace(/\n/g, ""));
                 if (message) setMessage(null);
@@ -330,11 +329,6 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
               </>
             )}
             {phase === "closed" && <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>지금은 풍등 날리기 기간이 아니에요.</p>}
-            {phase === "done" && help && (
-              <Link href="/help" className="inline-block text-[#cfe0f5] underline underline-offset-4" style={{ fontSize: "3.6cqw", marginTop: "3cqw" }}>
-                마음이 많이 힘들 땐 이야기할 수 있는 곳도 있어요
-              </Link>
-            )}
           </div>
         )}
 

@@ -10,7 +10,7 @@ describe("검색엔진 안내 주소", () => {
   });
 
   test("로그인 뒤 화면·내 정보·결제 결과·서버 주소는 막혀 있다", () => {
-    for (const p of ["/api/chat", "/home", "/chat", "/mypage", "/report/abc", "/session-reserve", "/pricing/success", "/pricing/fail"]) {
+    for (const p of ["/api/chat", "/home", "/chat", "/mypage", "/report/abc", "/session-reserve", "/pricing/success", "/pricing/fail", "/challenge", "/worry", "/worry/guide/x", "/lantern", "/soundbath"]) {
       assert.equal(isBlocked(p), true, `${p}가 열려 있음`);
     }
   });
@@ -21,5 +21,9 @@ describe("검색엔진 안내 주소", () => {
 
   test("/about(요약 소개)은 robots로 막지 않는다 — 막으면 canonical 신호를 못 읽는다", () => {
     assert.equal(isBlocked("/about"), false);
+  });
+
+  test("고민 타파 공개 게시판(/board)과 글은 열려 있다", () => {
+    for (const p of ["/board", "/board/guide/is-this-ssom", "/board/post/1"]) assert.equal(isBlocked(p), false, p);
   });
 });

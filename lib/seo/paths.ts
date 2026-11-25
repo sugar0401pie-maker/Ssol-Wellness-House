@@ -8,8 +8,9 @@ export const MAIN_SITE_ABOUT_URL = "https://www.ssolwellnesshouse.com/about.html
 export const SHARE_IMAGE = { url: "/og-image.jpg", width: 1200, height: 600, alt: "이유 없이 '그냥' 힘드신가요? 웰니스 상담 쏘웰라" };
 
 // 로그인 없이 볼 수 있는 페이지만. 홈("/")은 로그아웃 상태에서 소개 화면을 보여 준다.
-export const PUBLIC_PATHS = ["/", "/signup", "/legal"] as const;
+// 2026-11-25: 고민 타파 공개 게시판(/board) 추가 — 글 주소는 sitemap.ts가 목록에서 덧붙인다.
+export const PUBLIC_PATHS = ["/", "/signup", "/legal", "/board"] as const;
 
 // 로그인 뒤의 화면·내 정보·결제 결과·서버 주소. 이 안에는 개인 데이터가 있어 검색엔진이 들어오지 않게 한다.
 // (막는 것은 "수집하지 마세요"라는 안내일 뿐이고, 실제 보호는 로그인·서버 권한 검사가 맡는다.)
-export const PRIVATE_PATHS = ["/api/", "/home", "/chat", "/mypage", "/report/", "/session-reserve", "/pricing/success", "/pricing/fail", "/admin"] as const;
+export const PRIVATE_PATHS = ["/api/", "/home", "/chat", "/mypage", "/report/", "/session-reserve", "/pricing/success", "/pricing/fail", "/admin", "/challenge", "/worry", "/lantern", "/soundbath"] as const; // 2026-11-25: 갓생러모임·앱 안 고민 타파·풍등·사운드 배스(로그인 뒤)

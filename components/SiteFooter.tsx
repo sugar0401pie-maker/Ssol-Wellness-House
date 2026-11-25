@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // 2026-09-25 owner 요청: quiz.ssolwellnesshouse.com 하단과 같은 사업자 정보 푸터를
 // 이 앱에도 넣는다. 로그인 전 화면(LoginScreen)과 약관 페이지(app/legal)에서 재사용한다.
 // extra(2026-11-24): 마이페이지에서만 같은 줄 끝에 붙이는 링크('고객의 의견'·'도움받을 곳' — 대표님 요청).
@@ -22,7 +24,12 @@ export default function SiteFooter({ extra }: { extra?: React.ReactNode } = {}) 
             2026-11-23 대표님 요청으로 약관 링크와 같은 줄에 둔다. */}
         <a href="/about" className="text-navy underline">
           쏘웰라 소개
-        </a>
+        </a>{" "}
+        ·{" "}
+        {/* 2026-11-25 대표님 요청: 고민 타파를 쏘웰라 소개처럼 로그인 없이 보이는 게시판으로(/board). */}
+        <Link href="/board" className="text-navy underline">
+          고민 타파
+        </Link>
         {extra}
       </p>
       {/* 항목마다 줄바꿈 단위를 묶어(nowrap) 좁은 화면에서 "통신판매업신고번호"처럼 단어 중간에서 끊기지 않게 한다. */}

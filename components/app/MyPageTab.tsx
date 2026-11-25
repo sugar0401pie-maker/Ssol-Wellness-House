@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import HelpResources from "@/components/help/HelpResources";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
@@ -398,6 +399,19 @@ export default function MyPageTab() {
               상담 예약 신청하기
             </button>
           </SectionRow>
+          {/* 2026-11-25(요청문 v1.9.4 13-5·14-5장): "웰니스 상담 신청하기" 바로 아래 사운드 배스 배너 — 손글씨 그림을 그대로(글자가 그림 안이라 대체 글 필수). 줄을 펼치지 않아도 늘 보인다. */}
+          <div className="px-4 pb-4 pt-1">
+            <Link href="/soundbath" className="block overflow-hidden rounded-2xl">
+              <Image
+                src="/soundbath/banner.webp"
+                alt="소근소근 사운드배스 해보실래요? 마음이 편해지는 해달의 사운드배스"
+                width={1200}
+                height={628}
+                unoptimized
+                className="h-auto w-full"
+              />
+            </Link>
+          </div>
         </div>
       )}
 

@@ -140,3 +140,15 @@ body {
     transform: translate(-3px, 1px);
   }
 }
+
+/* 사운드 배스 물결(2026-11-25, 요청문 14-4장 — 약 2.6초). 움직임 줄이기에서는 컴포넌트가 그리지 않는다. */
+@keyframes ssol-ripple {
+  from {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}

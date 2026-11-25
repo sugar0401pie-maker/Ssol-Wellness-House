@@ -2,7 +2,7 @@
 // 누구나(로그인) 소원을 한 줄 적어 이벤트 기간에 한 번 날린다(대표님 2026-11-25: 새해까지 한 번만 — 처음에는 하루 한 번이었음). 이용권은 필요 없다. 챌린지와는 별개(v1.9.1). 금빛 풍등 없음.
 
 // 이벤트 기간(요청문 0장 4번 기본값). 서버는 환경 변수 SW_LANTERN_START·SW_LANTERN_END(YYYY-MM-DD, KST)로 바꿀 수 있다.
-export const LANTERN_DEFAULT_START = "2026-11-26";
+export const LANTERN_DEFAULT_START = "2026-11-25"; // 대표님 2026-11-25 "풍등 지금 열리게" — 원래 11-26
 export const LANTERN_DEFAULT_END = "2026-12-31";
 export const WISH_MAX = 40; // 한글 40자(글자 단위)
 

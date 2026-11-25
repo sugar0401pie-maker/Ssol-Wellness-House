@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isLanternOpen, lanternPeriod, normalizeWish, WISH_MAX } from "./config.ts";
+import { FLYING_CAPTIONS, CAPTION_MS, SCENE_MS, isLanternOpen, lanternEventKey, lanternPeriod, normalizeWish, WISH_MAX } from "./config.ts";
 
 test("이벤트 기간: 기본 11/26~12/31(양끝 포함), 환경 변수로 바꿀 수 있고 형식이 틀리면 기본값", () => {
   const p = lanternPeriod();
@@ -18,4 +18,15 @@ test("소원 글: 공백 정리, 비었거나 40자를 넘으면 받지 않음(�
   assert.equal(normalizeWish(123), null);
   assert.equal(normalizeWish("가".repeat(WISH_MAX)), "가".repeat(WISH_MAX));
   assert.equal(normalizeWish("가".repeat(WISH_MAX + 1)), null);
+});
+
+test("한 번만 날리는 단위는 이벤트 시작일로 정해진다(기간을 새로 정하면 다시 날릴 수 있음)", () => {
+  assert.equal(lanternEventKey(lanternPeriod()), "lantern-2026-11-26");
+  assert.equal(lanternEventKey({ start: "2027-01-01" }), "lantern-2027-01-01");
+});
+
+test("날리는 동안 안내 문구: 2초마다, 장면이 끝날 때까지 한 바퀴를 다 보여 줄 만큼", () => {
+  assert.equal(CAPTION_MS, 2000);
+  assert.equal(FLYING_CAPTIONS[0], "소중한 마음을 풍등에 담고 있어요…");
+  assert.ok(FLYING_CAPTIONS.length * CAPTION_MS <= SCENE_MS[2] + SCENE_MS[3] + SCENE_MS[4]);
 });

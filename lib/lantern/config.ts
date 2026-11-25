@@ -1,5 +1,5 @@
 // 풍등 날리기(홈 화면 개편 요청문 v1.9.4 2장·14-2장, 2026-11-25) — 순수 설정·판단. 클라이언트도 쓰므로 "server-only"를 넣지 않는다.
-// 누구나(로그인) 소원을 한 줄 적어 하루 한 번(KST) 날린다. 이용권은 필요 없다. 챌린지와는 별개(v1.9.1). 금빛 풍등 없음.
+// 누구나(로그인) 소원을 한 줄 적어 이벤트 기간에 한 번 날린다(대표님 2026-11-25: 새해까지 한 번만 — 처음에는 하루 한 번이었음). 이용권은 필요 없다. 챌린지와는 별개(v1.9.1). 금빛 풍등 없음.
 
 // 이벤트 기간(요청문 0장 4번 기본값). 서버는 환경 변수 SW_LANTERN_START·SW_LANTERN_END(YYYY-MM-DD, KST)로 바꿀 수 있다.
 export const LANTERN_DEFAULT_START = "2026-11-26";
@@ -14,6 +14,8 @@ export function lanternPeriod(env: { SW_LANTERN_START?: string; SW_LANTERN_END?:
 }
 // todayKey = KST 날짜("YYYY-MM-DD"). 시작일·종료일 모두 포함.
 export const isLanternOpen = (todayKey: string, p: { start: string; end: string }): boolean => todayKey >= p.start && todayKey <= p.end;
+// 한 번만 날리는 단위 — 기간 시작일로 이름을 붙여, 다음 이벤트(기간을 새로 정하면)에는 다시 날릴 수 있다.
+export const lanternEventKey = (p: { start: string }): string => `lantern-${p.start}`;
 
 // 소원 글: 앞뒤 공백을 빼고 줄바꿈·여러 칸 띄움은 한 칸으로. 비었거나 40자를 넘으면 null.
 export function normalizeWish(input: unknown): string | null {
@@ -42,4 +44,14 @@ export const WISH_BOX = {
 // 장면 시간(ms): 2 → 3 → 4, 그다음 끝 화면(장면 5).
 export const SCENE_MS = { 2: 1500, 3: 1500, 4: 5000 } as const;
 export const LANTERN_DONE_TEXT = "풍등이 잘 날아갔어요!"; // 요청문 14-2장(작은 글씨 "소원은 천천히 흐려져요"는 쓰지 않음 — 대표님 2026-11-25)
-export const LANTERN_ALREADY_TEXT = "오늘 풍등은 벌써 날렸어요. 내일 또 올려 보내요.";
+export const LANTERN_ALREADY_SUB = "풍등은 새해까지 한 번 날릴 수 있어요."; // 위 문장이 이미 "올라가고 있어요"라 겹치지 않게 짧게
+
+// 날리기를 누른 뒤 장면이 이어지는 동안(저장도 이때 함께 한다) 2초마다 바뀌는 안내(대표님 2026-11-25 — 앞의 두 문장은 대표님 문구).
+// 저장이 장면보다 늦게 끝나면 장면 4에 머문 채 계속 돌아간다.
+export const FLYING_CAPTIONS = [
+  "소중한 마음을 풍등에 담고 있어요…",
+  "풍등에 열심히 소원을 적고 있어요…",
+  "바람을 타고 풍등이 높이 올라가요…",
+  "별들에게 소원을 전하러 가고 있어요…",
+] as const;
+export const CAPTION_MS = 2000;

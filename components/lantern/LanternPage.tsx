@@ -6,7 +6,9 @@ import Link from "next/link";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import {
-  LANTERN_ALREADY_TEXT,
+  CAPTION_MS,
+  FLYING_CAPTIONS,
+  LANTERN_ALREADY_SUB,
   LANTERN_DONE_TEXT,
   LANTERN_SCENES,
   SCENE_MS,
@@ -14,19 +16,25 @@ import {
   WISH_MAX,
   normalizeWish,
 } from "@/lib/lantern/config";
+import { altitudeKm, pickAltitudeLine, renderAltitudeLine } from "@/lib/lantern/altitude";
 
 // 풍등 날리기 화면(2026-11-25, 요청문 v1.9.4 2장·14-2장).
 // 장면 1(풍등 안에 소원 쓰기) → 날리기 → 장면 2(1.5초) → 3(1.5초) → 4(5초) → 장면 5(박수) + "풍등이 잘 날아갔어요!" + 홈으로.
+// 저장은 장면이 이어지는 동안 함께 한다(대표님 2026-11-25) — 그동안 아래에 "소중한 마음을 풍등에 담고 있어요…" 같은 안내가 2초마다 바뀐다.
+//   저장이 장면보다 늦으면 장면 4에 머문 채 안내가 계속 돌고, 저장이 실패하면 장면 1로 돌아와 다시 날릴 수 있다(쓴 소원은 그대로).
 // 그림 안에 풍등이 그려져 있어서(풍등만 따로 둔 그림은 기획자가 나중에 전달) 소원 글자는 그림 속 풍등 자리를 따라 옮긴다:
-//   장면 1·2에서는 풍등을 따라가고, 장면 3에서 흐려진다(대표님 2026-11-25). 끝 화면에 "소원은 천천히 흐려져요"는 쓰지 않는다(대표님: 어차피 DB에 남음).
-// 소원은 날리기를 누르는 순간 서버에 먼저 저장하고(하루 한 번, KST), 저장이 된 뒤에 장면을 이어 간다.
-// 움직임 줄이기를 켠 기기에서는 장면 2~4를 건너뛰고 끝 화면만 보여 준다. 풍등 색 고르기는 꺼 둠(풍등만 따로 둔 그림이 오기 전까지).
+//   장면 1·2에서는 풍등을 따라가고, 장면 3에서 흐려진다(대표님). 끝 화면에 "소원은 천천히 흐려져요"는 쓰지 않는다(대표님: 어차피 DB에 남음).
+// 새해까지 한 번만(대표님) — 이미 날린 사람에게는 "○○님의 풍등은 지금 … km 상공에 가고 있어요"(높이는 날린 시각부터 계속 올라감, lib/lantern/altitude.ts).
+// 움직임 줄이기를 켠 기기에서는 장면 2~4를 건너뛴다. 풍등 색 고르기는 꺼 둠(풍등만 따로 둔 그림이 오기 전까지).
 
-type Phase = "loading" | "compose" | "sending" | "flying" | "done" | "already" | "closed";
+type Phase = "loading" | "compose" | "flying" | "done" | "already" | "closed";
 type Scene = 1 | 2 | 3 | 4 | 5;
+type Status = { open?: boolean; flown?: boolean; flownAt?: string | null; name?: string | null };
+type SaveResult = { ok?: boolean; help?: boolean; flownAt?: string; reason?: string; message?: string };
 
 const SKY = "#0b2b55"; // 그림 맨 위 하늘 색 — 화면 비율이 달라 남는 위아래·양옆을 같은 색으로 채운다
 const INK = "#4a2a0a";
+const SAVE_FAIL = "풍등이 잠시 구름에 걸렸어요. 잠시 후 다시 날려 볼까요?";
 
 function wishBoxStyle(scene: Scene): React.CSSProperties {
   const box = scene <= 1 ? WISH_BOX[1] : scene === 2 ? WISH_BOX[2] : WISH_BOX[3];
@@ -59,90 +67,150 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
   const [wish, setWish] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [caption, setCaption] = useState(0);
+  const [name, setName] = useState<string | null>(null);
+  const [flownAt, setFlownAt] = useState<string | null>(null);
+  const [lineRand, setLineRand] = useState(0);
+  const [now, setNow] = useState(0);
   const timers = useRef<number[]>([]);
+  const flight = useRef({ animDone: false, saved: null as SaveResult | null });
+
+  function clearTimers() {
+    timers.current.forEach((t) => {
+      window.clearTimeout(t);
+      window.clearInterval(t);
+    });
+    timers.current = [];
+  }
+
+  function showAlready(at: string | null) {
+    clearTimers();
+    setFlownAt(at);
+    setLineRand(Math.random()); // 열 때마다 다른 문장(그 높이에 맞는 것 중에서)
+    setNow(Date.now());
+    setScene(5);
+    setPhase("already");
+  }
+
+  async function loadStatus(): Promise<Status | null> {
+    const token = await getToken();
+    if (!token) return null;
+    const res = await fetch("/api/lantern", { headers: authHeaders(token), cache: "no-store" });
+    return (await res.json()) as Status;
+  }
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const token = await getToken();
-      if (!token) return void (!cancelled && setPhase("compose"));
-      try {
-        const res = await fetch("/api/lantern", { headers: authHeaders(token), cache: "no-store" });
-        const json = (await res.json()) as { open?: boolean; flownToday?: boolean };
+    loadStatus()
+      .then((s) => {
         if (cancelled) return;
-        if (json.flownToday) {
-          setScene(5);
-          setPhase("already");
-        } else if (json.open === false) {
+        if (s?.name) setName(s.name);
+        if (s?.flown) showAlready(s.flownAt ?? null);
+        else if (s?.open === false) {
           setScene(5);
           setPhase("closed");
         } else setPhase("compose");
-      } catch {
+      })
+      .catch(() => {
         if (!cancelled) setPhase("compose"); // 상태를 못 읽어도 쓰기는 열어 둔다(저장할 때 서버가 다시 판단)
-      }
-    })();
-    const list = timers.current;
+      });
     return () => {
       cancelled = true;
-      list.forEach((t) => window.clearTimeout(t));
+      clearTimers();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 열 때 한 번만 읽는다
   }, []);
 
-  function fly() {
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      setScene(5);
-      setPhase("done");
-      return;
-    }
-    setPhase("flying");
-    setScene(2);
-    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
-    at(SCENE_MS[2], () => setScene(3));
-    at(SCENE_MS[2] + SCENE_MS[3], () => setScene(4));
-    at(SCENE_MS[2] + SCENE_MS[3] + SCENE_MS[4], () => {
-      setScene(5);
-      setPhase("done");
-    });
+  // 이미 날린 화면: 높이 숫자가 보는 동안에도 올라가게 1초마다 다시 그린다.
+  useEffect(() => {
+    if (phase !== "already") return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [phase]);
+
+  // 장면이 끝났고 저장도 끝났으면 끝 화면.
+  function tryFinish() {
+    const f = flight.current;
+    if (!f.animDone || !f.saved?.ok) return;
+    clearTimers();
+    setFlownAt(f.saved.flownAt ?? null);
+    setHelp(!!f.saved.help);
+    setScene(5);
+    setPhase("done");
   }
 
-  async function release() {
+  // 저장이 안 됐을 때 — 날던 장면을 멈추고 상황에 맞는 화면으로.
+  function abortFlight(r: SaveResult | null) {
+    clearTimers();
+    if (r?.reason === "already") {
+      loadStatus()
+        .then((s) => showAlready(s?.flownAt ?? null))
+        .catch(() => showAlready(null));
+    } else if (r?.reason === "closed") {
+      setScene(5);
+      setPhase("closed");
+    } else {
+      setScene(1);
+      setPhase("compose");
+      setMessage(r?.message ?? SAVE_FAIL);
+    }
+  }
+
+  async function save(w: string) {
+    let r: SaveResult | null = null;
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("login");
+      const res = await fetch("/api/lantern", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ wish: w }) });
+      r = (await res.json().catch(() => ({}))) as SaveResult;
+    } catch {
+      r = null;
+    }
+    if (r?.ok) {
+      flight.current.saved = r;
+      tryFinish();
+    } else abortFlight(r);
+  }
+
+  function release() {
     const w = normalizeWish(wish);
     if (!w) {
       setMessage("소원을 한 줄 적어 주세요.");
       return;
     }
-    setPhase("sending");
+    clearTimers();
+    flight.current = { animDone: false, saved: null };
+    setWish(w);
     setMessage(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("login");
-      const res = await fetch("/api/lantern", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ wish: w }) });
-      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; help?: boolean; reason?: string; message?: string };
-      if (json.ok) {
-        setWish(w);
-        setHelp(!!json.help);
-        fly();
-      } else if (json.reason === "already") {
-        setScene(5);
-        setPhase("already");
-      } else if (json.reason === "closed") {
-        setScene(5);
-        setPhase("closed");
-      } else {
-        setPhase("compose");
-        setMessage(json.message ?? "지금은 풍등을 날리지 못했어요. 잠시 후 다시 해 주세요.");
-      }
-    } catch {
-      setPhase("compose");
-      setMessage("지금은 풍등을 날리지 못했어요. 잠시 후 다시 해 주세요.");
+    setCaption(0);
+    setPhase("flying");
+    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
+    timers.current.push(window.setInterval(() => setCaption((i) => (i + 1) % FLYING_CAPTIONS.length), CAPTION_MS));
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      flight.current.animDone = true; // 장면 1에 머문 채 안내만 보여 주고, 저장되면 바로 끝 화면
+    } else {
+      setScene(2);
+      at(SCENE_MS[2], () => setScene(3));
+      at(SCENE_MS[2] + SCENE_MS[3], () => setScene(4));
+      at(SCENE_MS[2] + SCENE_MS[3] + SCENE_MS[4], () => {
+        flight.current.animDone = true;
+        tryFinish(); // 저장이 아직이면 장면 4에서 안내가 계속 돈다
+      });
     }
+    void save(w);
   }
 
-  const writing = phase === "compose" || phase === "sending";
+  const writing = phase === "compose";
   const ended = phase === "done" || phase === "already" || phase === "closed";
   const count = [...wish].length;
+  const altitudeText =
+    phase === "already" && now > 0
+      ? (() => {
+          const km = flownAt ? altitudeKm(flownAt, now) : 1;
+          return renderAltitudeLine(pickAltitudeLine(km, lineRand), km, name);
+        })()
+      : "";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center" style={{ background: SKY }}>
@@ -187,7 +255,6 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
               value={wish}
               maxLength={WISH_MAX}
               rows={3}
-              disabled={phase === "sending"}
               placeholder="오늘 바라는 걸 한 줄로 적어 보세요"
               onChange={(e) => {
                 setWish(e.target.value.replace(/\n/g, ""));
@@ -207,7 +274,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         ) : (
           (phase === "flying" || phase === "done") && (
             <p
-              className="pointer-events-none absolute text-center break-keep"
+              className="pointer-events-none absolute break-keep text-center"
               aria-hidden="true"
               style={{ ...wishBoxStyle(scene), fontSize: "5.4cqw", lineHeight: 1.5, color: INK, textShadow: "0 0 2cqw rgba(255,236,190,.9)" }}
             >
@@ -228,6 +295,19 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
           </Link>
         )}
 
+        {/* 날리는 동안(저장 중) 2초마다 바뀌는 안내 */}
+        {phase === "flying" && (
+          <p className="absolute inset-x-0 text-center" style={{ bottom: "7%", padding: "0 6cqw" }} role="status" aria-live="polite">
+            <span
+              key={caption}
+              className="ssol-pulse-text inline-block rounded-full text-[#fdf6e9]"
+              style={{ fontSize: "4cqw", padding: "2.2cqw 4.4cqw", background: "rgba(8,20,42,.62)" }}
+            >
+              {FLYING_CAPTIONS[caption]}
+            </span>
+          </p>
+        )}
+
         {/* 끝 화면 문구 */}
         {ended && (
           <div
@@ -236,15 +316,22 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             aria-live="polite"
             style={{ left: "8%", right: "8%", top: "22%", padding: "5cqw 5cqw", background: "rgba(8,20,42,.62)", borderRadius: "5cqw" }}
           >
-            {phase === "done" ? (
+            {phase === "done" && (
               <p className="font-serif font-bold" style={{ fontSize: "7.2cqw", lineHeight: 1.35 }}>
                 {LANTERN_DONE_TEXT}
               </p>
-            ) : (
-              <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>{phase === "already" ? LANTERN_ALREADY_TEXT : "지금은 풍등 날리기 기간이 아니에요."}</p>
             )}
+            {phase === "already" && (
+              <>
+                <p style={{ fontSize: "4.8cqw", lineHeight: 1.6 }}>{altitudeText}</p>
+                <p className="text-[#cfe0f5]" style={{ fontSize: "3.4cqw", lineHeight: 1.5, marginTop: "2.4cqw" }}>
+                  {LANTERN_ALREADY_SUB}
+                </p>
+              </>
+            )}
+            {phase === "closed" && <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>지금은 풍등 날리기 기간이 아니에요.</p>}
             {phase === "done" && help && (
-              <Link href="/help" className="inline-block underline underline-offset-4 text-[#cfe0f5]" style={{ fontSize: "3.6cqw", marginTop: "3cqw" }}>
+              <Link href="/help" className="inline-block text-[#cfe0f5] underline underline-offset-4" style={{ fontSize: "3.6cqw", marginTop: "3cqw" }}>
                 마음이 많이 힘들 땐 이야기할 수 있는 곳도 있어요
               </Link>
             )}
@@ -253,8 +340,8 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
 
         {/* 아래 버튼 */}
         {message && writing && (
-          <p className="absolute inset-x-0 text-center" style={{ bottom: "14%", padding: "0 8cqw" }} role="alert">
-            <span className="inline-block rounded-full text-[#fdf6e9]" style={{ fontSize: "3.6cqw", padding: "1.6cqw 3.6cqw", background: "rgba(8,20,42,.7)" }}>
+          <p className="absolute inset-x-0 break-keep text-center" style={{ bottom: "14%", padding: "0 8cqw" }} role="alert">
+            <span className="inline-block rounded-2xl text-[#fdf6e9]" style={{ fontSize: "3.6cqw", padding: "1.6cqw 3.6cqw", background: "rgba(8,20,42,.7)" }}>
               {message}
             </span>
           </p>
@@ -263,11 +350,11 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
           <button
             type="button"
             onClick={release}
-            disabled={phase === "sending" || !wish.trim()}
+            disabled={!wish.trim()}
             className="absolute left-1/2 -translate-x-1/2 rounded-full font-medium disabled:opacity-55"
             style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "#f3b04c", color: "#3b2208" }}
           >
-            {phase === "sending" ? "날리는 중…" : "풍등 날리기"}
+            풍등 날리기
           </button>
         )}
         {ended && (

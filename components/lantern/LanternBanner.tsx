@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 
-// 홈 맨 위 풍등 배너(2026-11-25, 요청문 v1.9.4 8-2장 배너 ①) — 이벤트 기간이고 오늘 아직 안 날렸을 때만 보인다.
+// 홈 맨 위 풍등 배너(2026-11-25, 요청문 v1.9.4 8-2장 배너 ①) — 이벤트 기간이고 아직 안 날렸을 때만 보인다(새해까지 한 번).
 // 상태를 못 읽으면 보이지 않는다(홈의 다른 내용을 막지 않게). 배너 바탕은 불투명.
 export default function LanternBanner({ getToken = getAccessToken }: { getToken?: () => Promise<string | null> } = {}) {
   const [show, setShow] = useState(false);
@@ -17,8 +17,8 @@ export default function LanternBanner({ getToken = getAccessToken }: { getToken?
       try {
         const res = await fetch("/api/lantern", { headers: authHeaders(token), cache: "no-store" });
         if (!res.ok) return;
-        const json = (await res.json()) as { open?: boolean; flownToday?: boolean };
-        if (!cancelled) setShow(!!json.open && !json.flownToday);
+        const json = (await res.json()) as { open?: boolean; flown?: boolean };
+        if (!cancelled) setShow(!!json.open && !json.flown);
       } catch {
         /* 배너 없이 홈만 보인다 */
       }

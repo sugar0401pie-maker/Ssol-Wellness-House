@@ -243,8 +243,8 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
         쏠
       </span>
       <div className="relative px-5 pb-4 pt-6 text-center">
-        <span className="inline-block rounded-full bg-night-amber px-3 py-0.5 text-[12px] text-night-on-amber">갓생러모임</span>
-        <h1 className="mt-1.5 text-[24px] font-bold leading-snug">쏠 작심삼일 챌린지</h1>
+        {/* 대표님 2026-11-25: 맨 위 "갓생러모임" 이름표는 뺌(하단 메뉴에 이미 이름이 있음) */}
+        <h1 className="text-[24px] font-bold leading-snug">쏠 작심삼일 챌린지</h1>
         {/* 대표님 2026-11-25 문구 */}
         <p className="mt-1 break-keep text-[13.5px] leading-5 text-night-sub">
           갓생러가 별 거 있나요?

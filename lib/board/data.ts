@@ -11,7 +11,8 @@ export const episodeUrl = (n: number) => `${SITE_ORIGIN}/postoffice/${n}`;
 
 // bodyHtml: 관리자 화면에서 쓴 글이면 본문 HTML(허용 태그만), 아니면 없음(그때는 url에서 가져온다).
 export type Guide = { tag: string; slug: string; title: string; lines: string[]; url: string; updated?: string | null; bodyHtml?: string | null };
-export type Episode = { n: number; title: string; tag: string; summary: string; url: string; published?: string | null; image?: string | null; bodyHtml?: string | null };
+// images: 글 위 캐러셀 그림(표지 + 실제 대화 캡처), body: 앱에 넣어 둔 본문(간단한 서식) — 고민우체국 1~5화(postofficeEpisodes.ts)
+export type Episode = { n: number; title: string; tag: string; summary: string; url: string; published?: string | null; image?: string | null; bodyHtml?: string | null; images?: { src: string; alt: string }[]; body?: string };
 
 const g = (tag: string, slug: string, title: string, lines: string[]): Guide => ({ tag, slug, title, lines, url: guideUrl(slug) });
 export const STARTER_GUIDES: Guide[] = [
@@ -28,12 +29,8 @@ export const STARTER_GUIDES: Guide[] = [
   g("단톡방서운함", "group-chat-hurt", "단톡방에서 내 말에만 답이 늦어 서운할 때", ["서운한 마음과 확인된 사실을 나눠 보기", "답이 늦은 이유는 지금은 알 수 없는 경우가 많아요", "말한다면 탓하기보다 내 마음을 가볍게 말하기"]),
 ];
 
-// 연재 예시 3편(요청문 10-5장 — 인스타툰 번외 제목을 빌린 예시, 실제 연재 글과 순서는 대표님이 정함).
-export const STARTER_EPISODES: Episode[] = [
-  { n: 1, tag: "썸", title: "이거 썸 맞아? 답장은 빠른데 만나자는 말은 없었다", summary: "매일 인사는 오가는데 약속 얘기는 없는 거북 때문에 헷갈리는 펭귄. 조개의 질문으로 '있었던 일'과 '내 해석'을 나눠 적고, 상대 마음을 짐작하는 대신 대답하기 쉬운 약속 한 줄을 보낸다.", url: episodeUrl(1) },
-  { n: 2, tag: "이직", title: "이직할까 말까, 오늘도 생각만 하다 퇴근했다", summary: "점심마다 채용 공고를 여는 거북. 조개의 질문으로 '회사가 싫은 건지, 일이 싫은 건지, 쉬고 싶은 건지'를 나눠 적고, 오늘은 결정하지 않고 확인할 것 세 가지만 정한다.", url: episodeUrl(2) },
-  { n: 3, tag: "퇴사", title: "퇴사하고 싶다는 말을, 오늘은 속으로만 일곱 번 했다", summary: "일요일 저녁부터 마음이 무거운 펭귄. 조개의 질문으로 지치는 순간과 괜찮은 순간을 나눠 적고, 큰 결정은 서두르지 않은 채 점심 한 시간을 지키는 작은 변화부터 해 본다.", url: episodeUrl(3) },
-];
+// 고민우체국 연재 — 2026-11-25 대표님이 보낸 1~5화(예전 요청문 예시 3편을 대신함).
+export { POSTOFFICE_EPISODES as STARTER_EPISODES } from "./postofficeEpisodes.ts";
 
 // 고민우체국 그림(요청문 14-6장 제안): 연재 소개는 해달(대표), 회차 표지는 1화 해달·2화 수달·3화 해달처럼 번갈아(4화부터 표지가 새로 오면 같은 규칙).
 // 공개 사이트에 그림이 올라오면 목록 데이터의 image 주소를 우선 쓴다.

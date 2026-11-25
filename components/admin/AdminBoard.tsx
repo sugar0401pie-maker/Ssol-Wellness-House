@@ -96,11 +96,11 @@ export default function AdminBoard({ onNeedPassword }: { onNeedPassword: () => v
             <span className={`ml-2 flex-none text-[11.5px] ${r.published ? "text-navy" : "text-slate-400"}`}>{r.published ? "공개" : "숨김"}</span>
           </button>
         ))}
-        {[...guidesTodo.map((g) => ({ key: g.slug, label: `#${g.tag} · ${g.title}`, f: { ...EMPTY, kind: "guide" as const, slug: g.slug, tag: g.tag, title: g.title, lines: [g.lines[0] ?? "", g.lines[1] ?? "", g.lines[2] ?? ""] as [string, string, string] } })),
-          ...postsTodo.map((e) => ({ key: `p${e.n}`, label: `고민우체국 ${e.n}화 · ${e.title}`, f: { ...EMPTY, kind: "post" as const, n: String(e.n), tag: e.tag, title: e.title, summary: e.summary } }))].map((x) => (
+        {[...guidesTodo.map((g) => ({ note: "본문 없음 · 이어서 쓰기", key: g.slug, label: `#${g.tag} · ${g.title}`, f: { ...EMPTY, kind: "guide" as const, slug: g.slug, tag: g.tag, title: g.title, lines: [g.lines[0] ?? "", g.lines[1] ?? "", g.lines[2] ?? ""] as [string, string, string] } })),
+          ...postsTodo.map((e) => ({ note: "앱에 넣어 둔 글 · 고치기", key: `p${e.n}`, label: `고민우체국 ${e.n}화 · ${e.title}`, f: { ...EMPTY, kind: "post" as const, n: String(e.n), tag: e.tag, title: e.title, summary: e.summary, body: e.body ?? "" } }))].map((x) => (
           <button key={x.key} type="button" onClick={() => { setForm(x.f); setMsg(""); }} className="flex w-full items-center justify-between rounded-[10px] border border-dashed border-line px-3 py-2 text-left text-slate-500">
             <span className="min-w-0 truncate">{x.label}</span>
-            <span className="ml-2 flex-none text-[11.5px]">본문 없음 · 이어서 쓰기</span>
+            <span className="ml-2 flex-none text-[11.5px]">{x.note}</span>
           </button>
         ))}
         <button type="button" onClick={() => { setForm(EMPTY); setMsg(""); }} className="w-full rounded-[10px] bg-navy-soft px-3 py-2 text-[13px] font-medium text-navy">+ 새 글</button>

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import ImageCarousel from "./ImageCarousel";
 import Link from "next/link";
 import {
   episodeCover,
@@ -24,9 +25,11 @@ export default function ReaderView({
   isPublic: boolean;
 }) {
   const url = g?.url ?? e?.url ?? "";
-  const cover = e ? (e.image ?? episodeCover(e.n)) : null;
+  const carousel = e?.images && e.images.length > 0 ? e.images : null;
+  const cover = e && !carousel ? (e.image ?? episodeCover(e.n)) : null;
   return (
     <>
+      {carousel && <ImageCarousel images={carousel} label={`고민우체국 ${e?.n}화 그림`} />}
       {cover && (
         <Image
           src={cover}

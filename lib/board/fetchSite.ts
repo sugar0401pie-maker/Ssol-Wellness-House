@@ -2,6 +2,7 @@ import "server-only";
 import { GUIDE_INDEX_URL, POST_INDEX_URL, STARTER_EPISODES, STARTER_GUIDES, episodeUrl, guideUrl, type Episode, type Guide } from "./data";
 import { extractMain, isAllowedUrl, sanitizeHtml } from "./sanitize";
 import { loadDbPosts } from "./posts";
+import { renderBody } from "./markdown";
 
 // 공개 사이트에서 고민 가이드·고민우체국을 가져온다(요청문 10-2장). 우리 도메인만, 30분 캐시(Next fetch), 실패하면 마지막으로 가져온 내용 + stale 표시.
 // 공개 목록이 아직 없으면(404) 처음 목록(data.ts)을 쓰고 안내는 띄우지 않는다 — 사이트가 "안 열린" 게 아니라 "아직 안 올린" 것이라서.
@@ -81,7 +82,11 @@ export async function loadGuides(): Promise<Got<Guide[]>> {
 }
 export async function loadEpisodes(): Promise<Got<Episode[]>> {
   const [base, db] = await Promise.all([list(POST_INDEX_URL, parseEpisodes, STARTER_EPISODES), loadDbPosts()]);
-  return { ...base, data: merge(base.data, db.episodes, (e) => e.n, db.hiddenNs as Set<string | number>).sort((a, b) => a.n - b.n) };
+  // 앱에 넣어 둔 회차(고민우체국 1~5화)는 본문을 바로 그린다. 관리자 화면에서 같은 회차를 고쳐도 캐러셀 그림은 앱에 넣어 둔 것을 쓴다.
+  const withBody = base.data.map((e) => (e.body !== undefined && e.bodyHtml === undefined ? { ...e, bodyHtml: e.body.trim() ? sanitizeHtml(renderBody(e.body), e.url) : null } : e));
+  const imagesByN = new Map(withBody.map((e) => [e.n, e.images]));
+  const mine = db.episodes.map((e) => ({ ...e, images: e.images ?? imagesByN.get(e.n) }));
+  return { ...base, data: merge(withBody, mine, (e) => e.n, db.hiddenNs as Set<string | number>).sort((a, b) => a.n - b.n) };
 }
 
 // 글 한 편의 본문 — 관리자 글이면 그 본문, 아니면 주소에서 가져온다.

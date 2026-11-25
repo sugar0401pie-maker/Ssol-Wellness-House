@@ -6,21 +6,53 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 function inline(s: string): string {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2">$1</a>');
 }
 
+// 한 줄씩 읽어 묶는다 — 소제목 바로 아래 줄, 목록 바로 위 문장처럼 빈 줄이 없어도 나뉜다(고민우체국 글 형식).
+type Kind = "p" | "ul" | "ol" | "quote";
 export function renderBody(src: string): string {
-  const blocks = src.replace(/\r\n?/g, "\n").trim().split(/\n\s*\n/);
-  return blocks
-    .map((b) => {
-      const lines = b.split("\n").map((l) => l.trimEnd());
-      if (lines.length === 1 && /^###\s+/.test(lines[0])) return `<h3>${inline(lines[0].replace(/^###\s+/, ""))}</h3>`;
-      if (lines.length === 1 && /^##\s+/.test(lines[0])) return `<h2>${inline(lines[0].replace(/^##\s+/, ""))}</h2>`;
-      if (lines.every((l) => /^[-*]\s+/.test(l))) return `<ul>${lines.map((l) => `<li>${inline(l.replace(/^[-*]\s+/, ""))}</li>`).join("")}</ul>`;
-      if (lines.every((l) => /^\d+[.)]\s+/.test(l))) return `<ol>${lines.map((l) => `<li>${inline(l.replace(/^\d+[.)]\s+/, ""))}</li>`).join("")}</ol>`;
-      if (lines.every((l) => /^>\s?/.test(l))) return `<blockquote><p>${lines.map((l) => inline(l.replace(/^>\s?/, ""))).join("<br>")}</p></blockquote>`;
-      return `<p>${lines.map(inline).join("<br>")}</p>`;
-    })
-    .filter((h) => h !== "<p></p>")
-    .join("");
+  const out: string[] = [];
+  let kind: Kind | null = null;
+  let buf: string[] = [];
+  const flush = () => {
+    if (!kind || buf.length === 0) {
+      kind = null;
+      buf = [];
+      return;
+    }
+    if (kind === "p") out.push(`<p>${buf.map(inline).join("<br>")}</p>`);
+    if (kind === "ul") out.push(`<ul>${buf.map((l) => `<li>${inline(l)}</li>`).join("")}</ul>`);
+    if (kind === "ol") out.push(`<ol>${buf.map((l) => `<li>${inline(l)}</li>`).join("")}</ol>`);
+    if (kind === "quote") {
+      const paras = buf.join("\n").split(/\n\s*\n/).map((p) => p.split("\n").map(inline).join("<br>"));
+      out.push(`<blockquote>${paras.filter(Boolean).map((p) => `<p>${p}</p>`).join("")}</blockquote>`);
+    }
+    kind = null;
+    buf = [];
+  };
+  const push = (k: Kind, text: string) => {
+    if (kind !== k) flush();
+    kind = k;
+    buf.push(text);
+  };
+  for (const raw of src.replace(/\r\n?/g, "\n").split("\n")) {
+    const l = raw.trimEnd();
+    if (!l.trim()) {
+      if (kind === "quote") buf.push("");
+      else flush();
+      continue;
+    }
+    let m: RegExpMatchArray | null;
+    if ((m = l.match(/^(#{1,3})\s+(.*)$/))) {
+      flush();
+      out.push(m[1].length === 3 ? `<h3>${inline(m[2])}</h3>` : `<h2>${inline(m[2])}</h2>`);
+    } else if ((m = l.match(/^>\s?(.*)$/))) push("quote", m[1]);
+    else if ((m = l.match(/^[-*]\s+(.*)$/))) push("ul", m[1]);
+    else if ((m = l.match(/^\d+[.)]\s+(.*)$/))) push("ol", m[1]);
+    else push("p", l.trim());
+  }
+  flush();
+  return out.join("");
 }

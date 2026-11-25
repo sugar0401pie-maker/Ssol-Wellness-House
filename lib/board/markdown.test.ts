@@ -15,3 +15,8 @@ test("붙여 넣은 HTML·스크립트는 글자로만 보이고, 링크는 우�
   assert.ok(html.includes('<a href="https://app.ssolwellnesshouse.com/board" target="_blank" rel="noopener noreferrer">좋은</a>'));
   assert.ok(html.includes("<a>나쁜</a>"));
 });
+
+test("빈 줄 없이 이어진 소제목·문장·목록, 인용 안 빈 줄, 기울임", () => {
+  const html = renderBody("## 소제목\n같은 문단 문장\n1. **첫째:** 하나\n2. 둘\n> **나** 질문\n>\n> 다음 문단\n*재구성한 편지예요.*");
+  assert.equal(html, "<h2>소제목</h2><p>같은 문단 문장</p><ol><li><strong>첫째:</strong> 하나</li><li>둘</li></ol><blockquote><p><strong>나</strong> 질문</p><p>다음 문단</p></blockquote><p><em>재구성한 편지예요.</em></p>");
+});

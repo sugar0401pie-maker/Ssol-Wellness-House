@@ -4,6 +4,7 @@ import SiteFooter from "@/components/SiteFooter";
 import { MAIN_SITE_ABOUT_URL, SHARE_IMAGE } from "@/lib/seo/paths";
 import * as C from "@/lib/about/content";
 import { MAIN_LINKS } from "@/lib/about/links";
+import ConcernList from "@/components/about/ConcernList";
 import MoreLinks from "@/components/about/MoreLinks";
 import { FaqItem, H2, H3, Label, LabeledList, P, Table, TextLink } from "@/components/about/ui";
 
@@ -64,13 +65,7 @@ export default function AboutPage() {
 
         <H2>이런 고민을 이야기할 수 있어요</H2>
         <P>{C.CONCERNS_INTRO}</P>
-        <ul className="mt-3 space-y-1.5 text-[14px] leading-6 text-slate-600">
-          {C.CONCERN_EXAMPLES.map(([area, quote]) => (
-            <li key={area}>
-              <span className="font-medium text-foreground">{area}</span> “{quote}”
-            </li>
-          ))}
-        </ul>
+        <ConcernList items={C.CONCERN_EXAMPLES} shown={C.CONCERN_SHOWN} />
         <P>{C.CONCERNS_OUTRO}</P>
 
         <H2>어떻게 대화가 흘러가나요</H2>

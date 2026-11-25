@@ -14,6 +14,26 @@ import { HELP_RESOURCES } from "@/lib/safety/safetyReplyData";
 // 안내 문구의 '마들랜' 링크 — 도움받을 곳 목록과 같은 주소를 쓴다(한 곳만 고치면 되게).
 const MADLAN_URL = HELP_RESOURCES.find((r) => r.res_id === "HR-06")?.url ?? "https://pf.kakao.com/_DAxbYG";
 import MyInfoEditModal, { type MyInfo } from "./MyInfoEditModal";
+import { MYPAGE_PANEL_PATH, isVerifiedRecently, type MyPagePanel } from "@/lib/mypage/panels";
+
+// 비밀번호를 다시 확인한 때(이 탭에서만 — sessionStorage). 정보 수정·탈퇴 주소를 바로 열 때 확인 화면을 건너뛸지 본다.
+const VERIFIED_KEY = "ssol.infoVerifiedAt";
+function readVerifiedAt(): number | null {
+  try {
+    const v = Number(window.sessionStorage.getItem(VERIFIED_KEY));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+const verifiedRecently = () => isVerifiedRecently(readVerifiedAt(), Date.now());
+function markVerified() {
+  try {
+    window.sessionStorage.setItem(VERIFIED_KEY, String(Date.now()));
+  } catch {
+    /* 저장소를 못 쓰면 다음에 다시 확인 */
+  }
+}
 import type { TestGroup } from "@/lib/mypage/testTypes";
 import SiteFooter from "@/components/SiteFooter";
 
@@ -87,7 +107,7 @@ function GroupRow({ title, open, onToggle, children }: { title: string; open: bo
   );
 }
 
-export default function MyPageTab() {
+export default function MyPageTab({ panel = null }: { panel?: MyPagePanel | null } = {}) {
   const router = useRouter();
   const [data, setData] = useState<MyPageData | null>(null);
   // 2026-10-17: 테스트 종류별 결과 그룹(디저트·점성술·앞으로 추가될 테스트). null이면 아직/불러오지 못함.
@@ -99,11 +119,19 @@ export default function MyPageTab() {
   const helpOpenedRef = useRef(false);
 
   // 내 정보 확인 — 2026-09-25: 개별 필드 편집 대신, 비밀번호 재확인 후 통합 수정 화면을 연다.
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [showInfoEdit, setShowInfoEdit] = useState(false);
-
   // 고객의 의견 — 2026-10-01 신설: 건의/제안을 받아 접수만 해둔다(owner가 수동 확인).
-  const [showFeedback, setShowFeedback] = useState(false);
+  // 2026-11-25 대표님 "마이페이지 팝업도 다 주소 나눠줘": 팝업은 각자 주소(lib/mypage/panels.ts)이고, 어느 팝업이 떠 있는지는 주소(panel)가 정한다.
+  // 열기는 그 주소로 이동, 닫기는 /mypage로(뒤로 가기로 다시 열리지 않게 replace).
+  const openPanel = (p: MyPagePanel) => router.push(MYPAGE_PANEL_PATH[p]);
+  const closePanel = (to: string = "/mypage") => router.replace(to);
+  const showFeedback = panel === "feedback";
+  const showPasswordConfirm = panel === "verify";
+  // 정보 수정·탈퇴 주소로 바로 들어왔으면 이 탭에서 10분 안에 비밀번호를 확인했는지 본다(카카오·네이버 계정은 비밀번호가 없어 바로).
+  const needsVerify = (panel === "info" || panel === "withdraw") && !!data && data.hasPassword !== false && !verifiedRecently();
+  const showInfoEdit = (panel === "info" || panel === "withdraw") && !!data && !needsVerify;
+  useEffect(() => {
+    if (needsVerify) router.replace(MYPAGE_PANEL_PATH.verify);
+  }, [needsVerify, router]);
 
   // 2026-11-18: 채팅의 "마이페이지로 가기" 버튼(/mypage#help)으로 들어오면 '도움받을 곳'으로 바로 이동한다.
   // 위쪽 내용이 데이터를 불러온 뒤 늘어나므로, 데이터가 바뀐 뒤에도 한 번 더 맞춘다.
@@ -257,8 +285,7 @@ export default function MyPageTab() {
                   // 재확인 단계를 통과할 방법이 없었다(항상 실패) — 그런 계정은 비밀번호 확인
                   // 없이 바로 수정 화면으로 보낸다. 세션이 이미 그 provider의 최근 로그인으로
                   // 확인된 상태라, 이메일/비밀번호 계정과 동등한 수준의 확인이라고 본다.
-                  if (data && !data.hasPassword) setShowInfoEdit(true);
-                  else setShowPasswordConfirm(true);
+                  openPanel(data && !data.hasPassword ? "info" : "verify");
                 }}
                 className="mt-3 h-10 rounded-xl bg-navy px-4 text-[14px] font-medium text-white"
               >
@@ -450,7 +477,7 @@ export default function MyPageTab() {
           extra={
             <>
               {" · "}
-              <button type="button" onClick={() => setShowFeedback(true)} className="text-navy underline">
+              <button type="button" onClick={() => openPanel("feedback")} className="text-navy underline">
                 고객의 의견
               </button>
               {" · "}
@@ -469,22 +496,28 @@ export default function MyPageTab() {
         />
       </div>
 
-      {showFeedback && <CustomerFeedbackModal onClose={() => setShowFeedback(false)} />}
+      {showFeedback && <CustomerFeedbackModal onClose={() => closePanel()} />}
 
 
       {showPasswordConfirm && data?.email && (
         <PasswordConfirmModal
           email={data.email}
           onConfirmed={() => {
-            setShowPasswordConfirm(false);
-            setShowInfoEdit(true);
+            markVerified();
+            closePanel(MYPAGE_PANEL_PATH.info);
           }}
-          onCancel={() => setShowPasswordConfirm(false)}
+          onCancel={() => closePanel()}
         />
       )}
 
       {showInfoEdit && data && (
-        <MyInfoEditModal info={data} onClose={() => setShowInfoEdit(false)} onSaved={applyInfoUpdate} />
+        <MyInfoEditModal
+          info={data}
+          onClose={() => closePanel()}
+          onSaved={applyInfoUpdate}
+          withdrawOpen={panel === "withdraw"}
+          onWithdrawOpenChange={(o) => (o ? openPanel("withdraw") : closePanel(MYPAGE_PANEL_PATH.info))}
+        />
       )}
     </div>
   );

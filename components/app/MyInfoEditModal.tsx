@@ -26,10 +26,15 @@ export default function MyInfoEditModal({
   info,
   onClose,
   onSaved,
+  withdrawOpen,
+  onWithdrawOpenChange,
 }: {
   info: MyInfo;
   onClose: () => void;
   onSaved: (next: Partial<MyInfo>) => void;
+  // 2026-11-25: 회원 탈퇴 팝업은 자기 주소(/mypage/info/withdraw)라 열림 여부를 밖(주소)에서 받는다. 안 주면 예전처럼 안에서 연다.
+  withdrawOpen?: boolean;
+  onWithdrawOpenChange?: (open: boolean) => void;
 }) {
   const [displayName, setDisplayName] = useState(info.displayName ?? "");
   const [nickname, setNickname] = useState(info.nickname ?? "");
@@ -42,7 +47,9 @@ export default function MyInfoEditModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [showWithdraw, setShowWithdraw] = useState(false); // 2026-11-19 회원 탈퇴 팝업
+  const [localWithdraw, setLocalWithdraw] = useState(false); // 2026-11-19 회원 탈퇴 팝업
+  const showWithdraw = withdrawOpen ?? localWithdraw;
+  const setShowWithdraw = (o: boolean) => (onWithdrawOpenChange ? onWithdrawOpenChange(o) : setLocalWithdraw(o));
 
   const [emailStep, setEmailStep] = useState<"idle" | "entering" | "verifying">("idle");
   const [newEmailInput, setNewEmailInput] = useState("");

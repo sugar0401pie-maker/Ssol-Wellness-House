@@ -81,7 +81,8 @@ export default function ReaderView({
         </p>
       )}
 
-      {e && (
+      {/* 캐러셀이 있는 회차는 묶음 그림만 쓴다(대표님 2026-11-25 — 다른 그림을 덧붙이지 않음) */}
+      {e && !carousel && (
         <Image
           src={episodeCut(e.n)}
           alt="답장을 쓰는 우체부"

@@ -455,7 +455,7 @@ export default function ChatApp() {
     saveActiveSessionId(null);
   }
 
-  // 2026-11-24 대표님 결정: "이번 대화를 기억해 둘까요?"를 묻지 않고, 새 대화를 시작할 때 지금 대화를 자동으로 기억한다(약관 개정 예고 2항 — 이전 대화 이어가기·맞춤 제안).
+  // 2026-11-24 대표님 결정: "이번 대화를 기억해 둘까요?"를 묻지 않고, 새 대화를 시작할 때 지금 대화를 자동으로 기억한다(약관 제17조 2항 — 이전 대화 이어가기·맞춤 제안).
   // 위기·폭력 메시지는 서버 요약에서 빠진다(lib/memory/summarize.ts). 저장은 뒤에서 하고(keepalive) 새 대화는 바로 시작한다 — 실패해도 새 대화에는 영향 없음.
   async function rememberSession(id: string) {
     try {

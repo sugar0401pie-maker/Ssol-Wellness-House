@@ -11,13 +11,18 @@ import {
   FLYING_CAPTIONS,
   LANTERN_ALREADY_SUB,
   LANTERN_DONE_TEXT,
-  LANTERN_SCENES,
+  lanternSetFor,
+  type LanternSet,
   SCENE_MS,
   WISH_BOX,
   WISH_MAX,
   normalizeWish,
 } from "@/lib/lantern/config";
-import { altitudeKm, pickAltitudeLine, renderAltitudeLine } from "@/lib/lantern/altitude";
+import {
+  altitudeKm,
+  pickAltitudeLine,
+  renderAltitudeLine,
+} from "@/lib/lantern/altitude";
 
 // 풍등 날리기 화면(2026-11-25, 요청문 v1.9.4 2장·14-2장).
 // 장면 1(풍등 안에 소원 쓰기) → 날리기 → 장면 2(1.5초) → 3(1.5초) → 4(5초) → 장면 5(박수) + "풍등이 잘 날아갔어요!" + 홈으로.
@@ -31,15 +36,26 @@ import { altitudeKm, pickAltitudeLine, renderAltitudeLine } from "@/lib/lantern/
 
 type Phase = "loading" | "compose" | "flying" | "done" | "already" | "closed";
 type Scene = 1 | 2 | 3 | 4 | 5;
-type Status = { open?: boolean; flown?: boolean; flownAt?: string | null; name?: string | null };
-type SaveResult = { ok?: boolean; flownAt?: string; reason?: string; message?: string };
+type Status = {
+  open?: boolean;
+  flown?: boolean;
+  flownAt?: string | null;
+  name?: string | null;
+};
+type SaveResult = {
+  ok?: boolean;
+  flownAt?: string;
+  reason?: string;
+  message?: string;
+};
 
 const SKY = "var(--night-deep)"; // 그림 맨 위 하늘 색 — 화면 비율이 달라 남는 위아래·양옆을 같은 색으로 채운다
 const INK = "#4a2a0a";
 const SAVE_FAIL = "풍등이 잠시 구름에 걸렸어요. 잠시 후 다시 날려 볼까요?";
 
 function wishBoxStyle(scene: Scene): React.CSSProperties {
-  const box = scene <= 1 ? WISH_BOX[1] : scene === 2 ? WISH_BOX[2] : WISH_BOX[3];
+  const box =
+    scene <= 1 ? WISH_BOX[1] : scene === 2 ? WISH_BOX[2] : WISH_BOX[3];
   return {
     left: `${box.cx}%`,
     top: `${box.cy}%`,
@@ -51,9 +67,13 @@ function wishBoxStyle(scene: Scene): React.CSSProperties {
 }
 
 // 장면 3·4는 같은 크기 그림이라, 카메라가 올라가는 느낌을 살짝 확대돼 있다가 제자리로 돌아오는 움직임으로 낸다(14-2장 제안).
-function sceneStyle(n: Scene, scene: Scene): React.CSSProperties {
+function sceneStyle(
+  n: Scene,
+  scene: Scene,
+  allowDrift = true,
+): React.CSSProperties {
   const active = n === scene;
-  const drift = n === 3 || n === 4;
+  const drift = allowDrift && (n === 3 || n === 4); // 풍등이 따로인 묶음은 풍등 자리가 어긋나지 않게 확대 연출을 뺀다
   return {
     opacity: active ? 1 : 0,
     transform: drift && !active ? "scale(1.05)" : "scale(1)",
@@ -63,8 +83,12 @@ function sceneStyle(n: Scene, scene: Scene): React.CSSProperties {
 }
 
 // getToken: 화면 확인용으로 바꿔 끼울 수 있게 둔 자리(실제 화면은 기본값 — 로그인 세션의 토큰).
-export default function LanternPage({ getToken = getAccessToken }: { getToken?: () => Promise<string | null> } = {}) {
+export default function LanternPage({
+  getToken = getAccessToken,
+}: { getToken?: () => Promise<string | null> } = {}) {
   const [phase, setPhase] = useState<Phase>("loading");
+  // 그림 묶음(수달·해달 / 펭귄·비버) — 열 때마다 무작위(대표님 2026-11-25)
+  const [art, setArt] = useState<LanternSet | null>(null);
   const [scene, setScene] = useState<Scene>(1);
   const [wish, setWish] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -96,7 +120,10 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
   async function loadStatus(): Promise<Status | null> {
     const token = await getToken();
     if (!token) return null;
-    const res = await fetch("/api/lantern", { headers: authHeaders(token), cache: "no-store" });
+    const res = await fetch("/api/lantern", {
+      headers: authHeaders(token),
+      cache: "no-store",
+    });
     return (await res.json()) as Status;
   }
 
@@ -105,6 +132,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
     loadStatus()
       .then((s) => {
         if (cancelled) return;
+        setArt(lanternSetFor(Math.random()));
         if (s?.name) setName(s.name);
         if (s?.flown) showAlready(s.flownAt ?? null);
         else if (s?.open === false) {
@@ -113,7 +141,9 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         } else setPhase("compose");
       })
       .catch(() => {
-        if (!cancelled) setPhase("compose"); // 상태를 못 읽어도 쓰기는 열어 둔다(저장할 때 서버가 다시 판단)
+        if (cancelled) return;
+        setArt(lanternSetFor(Math.random()));
+        setPhase("compose"); // 상태를 못 읽어도 쓰기는 열어 둔다(저장할 때 서버가 다시 판단)
       });
     return () => {
       cancelled = true;
@@ -163,7 +193,11 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
     try {
       const token = await getToken();
       if (!token) throw new Error("login");
-      const res = await fetch("/api/lantern", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ wish: w }) });
+      const res = await fetch("/api/lantern", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ wish: w }),
+      });
       r = (await res.json().catch(() => ({}))) as SaveResult;
     } catch {
       r = null;
@@ -186,9 +220,17 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
     setMessage(null);
     setCaption(0);
     setPhase("flying");
-    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
-    timers.current.push(window.setInterval(() => setCaption((i) => (i + 1) % FLYING_CAPTIONS.length), CAPTION_MS));
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const at = (ms: number, fn: () => void) =>
+      timers.current.push(window.setTimeout(fn, ms));
+    timers.current.push(
+      window.setInterval(
+        () => setCaption((i) => (i + 1) % FLYING_CAPTIONS.length),
+        CAPTION_MS,
+      ),
+    );
+    const reduce = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     if (reduce) {
       flight.current.animDone = true; // 장면 1에 머문 채 안내만 보여 주고, 저장되면 바로 끝 화면
     } else {
@@ -214,13 +256,58 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         })()
       : "";
 
+  // 풍등 안 소원 입력칸(두 그림 묶음이 같이 쓴다) — size·small은 글자 크기(풍등 폭 또는 화면 폭 기준)
+  const wishInput = (size: string, small: string) => (
+    <>
+      <label htmlFor="wish" className="sr-only">
+        소원 입력
+      </label>
+      <textarea
+        id="wish"
+        value={wish}
+        maxLength={WISH_MAX}
+        rows={3}
+        placeholder={"2027년을 맞이하는\n내 다짐과 소원을\n편하게 적어보세요"} // 대표님 2026-11-25 문구·줄바꿈
+        onChange={(e) => {
+          setWish(e.target.value.replace(/\n/g, ""));
+          if (message) setMessage(null);
+        }}
+        onKeyDown={(e) => {
+          // 한 줄 소원이라 줄바꿈은 막는다(보내기는 버튼으로만 — 한글 조합 중 Enter 오작동 방지)
+          if (e.key === "Enter") e.preventDefault();
+        }}
+        className="block w-full resize-none break-keep bg-transparent text-center outline-none placeholder:text-[#a3804f]"
+        style={{
+          fontSize: size,
+          lineHeight: 1.5,
+          color: INK,
+          textShadow: "0 0 2cqw rgba(255,236,190,.9)",
+        }}
+      />
+      <p
+        className="text-center"
+        style={{ fontSize: small, color: "#8a5a2b", marginTop: "2cqw" }}
+        aria-live="polite"
+      >
+        {count} / {WISH_MAX}자까지
+      </p>
+    </>
+  );
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ background: SKY }}>
+    <div
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ background: SKY }}
+    >
       <div
         className="relative overflow-hidden font-sans"
-        style={{ width: "min(100vw, 50dvh)", aspectRatio: "1 / 2", containerType: "inline-size" }}
+        style={{
+          width: "min(100vw, 50dvh)",
+          aspectRatio: "1 / 2",
+          containerType: "inline-size",
+        }}
       >
-        {LANTERN_SCENES.map((s) => (
+        {(art?.scenes ?? []).map((s) => (
           <Image
             key={s.n}
             src={s.src}
@@ -230,55 +317,105 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             unoptimized
             loading="eager"
             className="object-cover"
-            style={sceneStyle(s.n, scene)}
+            style={sceneStyle(s.n, scene, !art?.lantern)}
           />
         ))}
 
         {/* 장면 1 위쪽: 제목·설명(쓰는 동안만) */}
         {writing && (
-          <div className="absolute inset-x-0 text-center" style={{ top: "6.5%", padding: "0 6cqw" }}>
-            <h1 className="font-serif font-bold text-night-text" style={{ fontSize: "5.6cqw", lineHeight: 1.4 }}>
+          <div
+            className="absolute inset-x-0 text-center"
+            style={{ top: "6.5%", padding: "0 6cqw" }}
+          >
+            <h1
+              className="font-serif font-bold text-night-text"
+              style={{ fontSize: "5.6cqw", lineHeight: 1.4 }}
+            >
               소원을 적어 풍등을 날려요
             </h1>
-            <p className="text-night-soft" style={{ fontSize: "3.5cqw", lineHeight: 1.5, marginTop: "1cqw" }}>
+            <p
+              className="text-night-soft"
+              style={{ fontSize: "3.5cqw", lineHeight: 1.5, marginTop: "1cqw" }}
+            >
               한 줄만 적어도 돼요.
             </p>
           </div>
         )}
 
-        {/* 소원 글자 — 쓰는 동안은 풍등 안의 진짜 입력창, 날리면 같은 자리의 글자가 풍등을 따라 올라가다 흐려진다 */}
-        {writing ? (
+        {/* 소원 글자 — 쓰는 동안은 풍등 안의 진짜 입력창, 날리면 같은 자리의 글자가 풍등을 따라 올라가다 장면 3에서 흐려진다 */}
+        {art?.lantern ? (
+          // 펭귄·비버: 풍등 그림과 소원 글자가 한 묶음으로 움직인다(글자 크기는 풍등 폭에 맞춰 함께 줄어듦)
+          (writing || phase === "flying") &&
+          scene <= 4 && (
+            <div
+              className="absolute"
+              style={{
+                left: `${art.lantern.frames[scene as 1 | 2 | 3 | 4].left}%`,
+                top: `${art.lantern.frames[scene as 1 | 2 | 3 | 4].top}%`,
+                width: `${art.lantern.frames[scene as 1 | 2 | 3 | 4].width}%`,
+                aspectRatio: "2 / 3",
+                containerType: "inline-size",
+                transition:
+                  phase === "flying"
+                    ? `left ${scene === 4 ? SCENE_MS[4] : SCENE_MS[2]}ms ease-in-out, top ${scene === 4 ? SCENE_MS[4] : SCENE_MS[2]}ms ease-in-out, width ${scene === 4 ? SCENE_MS[4] : SCENE_MS[2]}ms ease-in-out`
+                    : undefined,
+              }}
+            >
+              <Image
+                src={art.lantern.src}
+                alt=""
+                aria-hidden="true"
+                fill
+                unoptimized
+                loading="eager"
+                className="pointer-events-none object-contain"
+              />
+              <div
+                className="absolute flex flex-col items-center justify-center"
+                style={{
+                  left: `${art.lantern.wishBox.left}%`,
+                  top: `${art.lantern.wishBox.top}%`,
+                  width: `${art.lantern.wishBox.width}%`,
+                  height: `${art.lantern.wishBox.height}%`,
+                }}
+              >
+                {writing ? (
+                  wishInput("7.6cqw", "5cqw")
+                ) : (
+                  <p
+                    className="pointer-events-none break-keep text-center"
+                    aria-hidden="true"
+                    style={{
+                      fontSize: "7.6cqw",
+                      lineHeight: 1.5,
+                      color: INK,
+                      textShadow: "0 0 4cqw rgba(255,236,190,.9)",
+                      opacity: scene <= 2 ? 1 : 0,
+                      transition: "opacity 1200ms ease-in",
+                    }}
+                  >
+                    {wish}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        ) : writing ? (
           <div className="absolute" style={wishBoxStyle(1)}>
-            <label htmlFor="wish" className="sr-only">
-              소원 입력
-            </label>
-            <textarea
-              id="wish"
-              value={wish}
-              maxLength={WISH_MAX}
-              rows={3}
-              placeholder={"2027년을 맞이하는\n내 다짐과 소원을\n편하게 적어보세요"} // 대표님 2026-11-25 문구·줄바꿈
-              onChange={(e) => {
-                setWish(e.target.value.replace(/\n/g, ""));
-                if (message) setMessage(null);
-              }}
-              onKeyDown={(e) => {
-                // 한 줄 소원이라 줄바꿈은 막는다(보내기는 버튼으로만 — 한글 조합 중 Enter 오작동 방지)
-                if (e.key === "Enter") e.preventDefault();
-              }}
-              className="block w-full resize-none break-keep bg-transparent text-center outline-none placeholder:text-[#a3804f]"
-              style={{ fontSize: "5.4cqw", lineHeight: 1.5, color: INK, textShadow: "0 0 2cqw rgba(255,236,190,.9)" }}
-            />
-            <p className="text-center" style={{ fontSize: "3.2cqw", color: "#8a5a2b", marginTop: "2cqw" }} aria-live="polite">
-              {count} / {WISH_MAX}자까지
-            </p>
+            {wishInput("5.4cqw", "3.2cqw")}
           </div>
         ) : (
           (phase === "flying" || phase === "done") && (
             <p
               className="pointer-events-none absolute break-keep text-center"
               aria-hidden="true"
-              style={{ ...wishBoxStyle(scene), fontSize: "5.4cqw", lineHeight: 1.5, color: INK, textShadow: "0 0 2cqw rgba(255,236,190,.9)" }}
+              style={{
+                ...wishBoxStyle(scene),
+                fontSize: "5.4cqw",
+                lineHeight: 1.5,
+                color: INK,
+                textShadow: "0 0 2cqw rgba(255,236,190,.9)",
+              }}
             >
               {wish}
             </p>
@@ -291,7 +428,14 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             href="/home"
             replace
             className="absolute z-10 rounded-full border text-night-soft"
-            style={{ left: "4cqw", top: "4cqw", fontSize: "3.6cqw", padding: "1.6cqw 3.4cqw", background: "rgba(8,20,42,.55)", borderColor: "rgba(188,208,234,.35)" }}
+            style={{
+              left: "4cqw",
+              top: "4cqw",
+              fontSize: "3.6cqw",
+              padding: "1.6cqw 3.4cqw",
+              background: "rgba(8,20,42,.55)",
+              borderColor: "rgba(188,208,234,.35)",
+            }}
           >
             나중에 할게요
           </Link>
@@ -299,11 +443,20 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
 
         {/* 날리는 동안(저장 중) 2초마다 바뀌는 안내 */}
         {phase === "flying" && (
-          <p className="absolute inset-x-0 text-center" style={{ bottom: "7%", padding: "0 6cqw" }} role="status" aria-live="polite">
+          <p
+            className="absolute inset-x-0 text-center"
+            style={{ bottom: "7%", padding: "0 6cqw" }}
+            role="status"
+            aria-live="polite"
+          >
             <span
               key={caption}
               className="ssol-pulse-text inline-block rounded-full text-night-text"
-              style={{ fontSize: "4cqw", padding: "2.2cqw 4.4cqw", background: "rgba(8,20,42,.62)" }}
+              style={{
+                fontSize: "4cqw",
+                padding: "2.2cqw 4.4cqw",
+                background: "rgba(8,20,42,.62)",
+              }}
             >
               {FLYING_CAPTIONS[caption]}
             </span>
@@ -316,27 +469,69 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             className="absolute break-keep text-center text-night-text"
             role="status"
             aria-live="polite"
-            style={{ left: "9%", right: "9%", top: `${CELEBRATE_TEXT_BOTTOM}%`, padding: "3.4cqw 4cqw", background: "rgba(8,20,42,.55)", borderRadius: "4cqw" }}
+            style={{
+              left: "9%",
+              right: "9%",
+              top: `${art?.celebrateTextBottom ?? CELEBRATE_TEXT_BOTTOM}%`,
+              padding: "3.4cqw 4cqw",
+              background: "rgba(8,20,42,.55)",
+              borderRadius: "4cqw",
+            }}
           >
-            {phase === "done" && <span className="sr-only">{LANTERN_DONE_TEXT}</span>}
-            <p style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>{altitudeText}</p>
+            {phase === "done" && (
+              <span className="sr-only">{LANTERN_DONE_TEXT}</span>
+            )}
+            <p style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>
+              {altitudeText}
+            </p>
             {phase === "already" && (
-              <p className="text-night-soft" style={{ fontSize: "3.3cqw", lineHeight: 1.5, marginTop: "1.6cqw" }}>
+              <p
+                className="text-night-soft"
+                style={{
+                  fontSize: "3.3cqw",
+                  lineHeight: 1.5,
+                  marginTop: "1.6cqw",
+                }}
+              >
                 {LANTERN_ALREADY_SUB}
               </p>
             )}
           </div>
         )}
         {phase === "closed" && (
-          <div className="absolute break-keep text-center text-night-text" role="status" style={{ left: "8%", right: "8%", top: "22%", padding: "5cqw", background: "rgba(8,20,42,.62)", borderRadius: "5cqw" }}>
-            <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>지금은 풍등 날리기 기간이 아니에요.</p>
+          <div
+            className="absolute break-keep text-center text-night-text"
+            role="status"
+            style={{
+              left: "8%",
+              right: "8%",
+              top: "22%",
+              padding: "5cqw",
+              background: "rgba(8,20,42,.62)",
+              borderRadius: "5cqw",
+            }}
+          >
+            <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>
+              지금은 풍등 날리기 기간이 아니에요.
+            </p>
           </div>
         )}
 
         {/* 아래 버튼 */}
         {message && writing && (
-          <p className="absolute inset-x-0 break-keep text-center" style={{ bottom: "14%", padding: "0 8cqw" }} role="alert">
-            <span className="inline-block rounded-2xl text-night-text" style={{ fontSize: "3.6cqw", padding: "1.6cqw 3.6cqw", background: "rgba(8,20,42,.7)" }}>
+          <p
+            className="absolute inset-x-0 break-keep text-center"
+            style={{ bottom: "14%", padding: "0 8cqw" }}
+            role="alert"
+          >
+            <span
+              className="inline-block rounded-2xl text-night-text"
+              style={{
+                fontSize: "3.6cqw",
+                padding: "1.6cqw 3.6cqw",
+                background: "rgba(8,20,42,.7)",
+              }}
+            >
               {message}
             </span>
           </p>
@@ -347,7 +542,14 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             onClick={release}
             disabled={!wish.trim()}
             className="absolute left-1/2 -translate-x-1/2 rounded-full font-medium disabled:opacity-55"
-            style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "var(--night-amber)", color: "var(--night-on-amber)" }}
+            style={{
+              bottom: "5%",
+              width: "74%",
+              fontSize: "4.6cqw",
+              padding: "3.2cqw 0",
+              background: "var(--night-amber)",
+              color: "var(--night-on-amber)",
+            }}
           >
             풍등 날리기
           </button>
@@ -357,7 +559,14 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
             href="/home"
             replace
             className="absolute left-1/2 -translate-x-1/2 rounded-full text-center font-medium"
-            style={{ bottom: "5%", width: "74%", fontSize: "4.6cqw", padding: "3.2cqw 0", background: "var(--night-amber)", color: "var(--night-on-amber)" }}
+            style={{
+              bottom: "5%",
+              width: "74%",
+              fontSize: "4.6cqw",
+              padding: "3.2cqw 0",
+              background: "var(--night-amber)",
+              color: "var(--night-on-amber)",
+            }}
           >
             홈으로
           </Link>

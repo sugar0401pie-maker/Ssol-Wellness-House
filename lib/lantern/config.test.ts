@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FLYING_CAPTIONS, CAPTION_MS, SCENE_MS, isLanternOpen, lanternEventKey, lanternPeriod, normalizeWish, WISH_MAX } from "./config.ts";
+import { LANTERN_SETS, lanternSetFor, FLYING_CAPTIONS, CAPTION_MS, SCENE_MS, isLanternOpen, lanternEventKey, lanternPeriod, normalizeWish, WISH_MAX } from "./config.ts";
 
 test("이벤트 기간: 기본 11/25~12/31(양끝 포함), 환경 변수로 바꿀 수 있고 형식이 틀리면 기본값", () => {
   const p = lanternPeriod();
@@ -29,4 +29,15 @@ test("날리는 동안 안내 문구: 2초마다, 장면이 끝날 때까지 한
   assert.equal(CAPTION_MS, 2000);
   assert.equal(FLYING_CAPTIONS[0], "소중한 마음을 풍등에 담고 있어요…");
   assert.ok(FLYING_CAPTIONS.length * CAPTION_MS <= SCENE_MS[2] + SCENE_MS[3] + SCENE_MS[4]);
+});
+
+test("그림 묶음 두 가지(수달·해달 / 펭귄·비버)를 무작위로 — 펭귄 묶음은 풍등이 따로 있어 장면마다 위로 올라간다", () => {
+  assert.deepEqual(LANTERN_SETS.map((x) => x.key), ["otter", "penguin"]);
+  assert.equal(lanternSetFor(0).key, "otter");
+  assert.equal(lanternSetFor(0.99).key, "penguin");
+  assert.equal(lanternSetFor(1).key, "penguin");
+  const p = LANTERN_SETS[1].lantern!;
+  assert.ok(p.frames[1].top > p.frames[2].top && p.frames[2].top > p.frames[3].top && p.frames[3].top > p.frames[4].top);
+  assert.ok(p.frames[4].width < p.frames[1].width);
+  for (const s of LANTERN_SETS) assert.equal(s.scenes.length, 5);
 });

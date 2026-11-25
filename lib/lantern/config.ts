@@ -62,3 +62,39 @@ export const FLYING_CAPTIONS = [
   "별들에게 소원을 전하러 가고 있어요…",
 ] as const;
 export const CAPTION_MS = 2000;
+
+// ===== 그림 묶음 두 가지(대표님 2026-11-25: 사람들에게 무작위로) =====
+// otter: 수달·해달 — 풍등이 그림 안에 그려져 있어 소원 글자를 그림 속 풍등 자리(WISH_BOX)에 맞춰 옮긴다.
+// penguin: 펭귄·비버 — 풍등이 따로 있는 그림(투명 풍등 + 풍등 없는 장면 4장). 풍등과 소원 글자가 한 묶음으로 함께 올라간다(제작 측 layout.json 좌표).
+export type LanternFrame = { left: number; top: number; width: number }; // 그림(1080×2160)에 대한 %, 높이는 풍등 그림 비율(2:3)로
+export type LanternSet = {
+  key: "otter" | "penguin";
+  scenes: { n: 1 | 2 | 3 | 4 | 5; src: string; alt: string }[];
+  lantern: { src: string; frames: Record<1 | 2 | 3 | 4, LanternFrame>; wishBox: { left: number; top: number; width: number; height: number } } | null;
+  celebrateTextBottom: number; // 축하 그림 글자 상자 바로 아래(그림 높이의 %)
+};
+
+const px = (left: number, top: number, width: number): LanternFrame => ({ left: (left / 1080) * 100, top: (top / 2160) * 100, width: (width / 1080) * 100 });
+
+export const LANTERN_SETS: LanternSet[] = [
+  { key: "otter", scenes: [...LANTERN_SCENES], lantern: null, celebrateTextBottom: CELEBRATE_TEXT_BOTTOM },
+  {
+    key: "penguin",
+    scenes: [
+      { n: 1, src: "/lantern/p/scene1.webp", alt: "펭귄과 비버가 풍등을 함께 들고 하늘을 올려다봐요" },
+      { n: 2, src: "/lantern/p/scene2.webp", alt: "두 친구가 손을 놓자 풍등이 살짝 떠올라요" },
+      { n: 3, src: "/lantern/p/scene3.webp", alt: "풍등이 더 높이 올라가요" },
+      { n: 4, src: "/lantern/p/scene4.webp", alt: "풍등이 하늘 멀리 작아져요" },
+      { n: 5, src: "/lantern/p/celebrate.webp", alt: "펭귄과 비버가 박수를 쳐요. 2027년의 소원을 담은 풍등이 잘 날아갔어요!" },
+    ],
+    lantern: {
+      src: "/lantern/p/lantern.webp",
+      frames: { 1: px(290, 921, 500), 2: px(290, 801, 500), 3: px(320, 490, 440), 4: px(420, 150, 240) },
+      // 풍등 그림 안 %(제작 측 제안은 가운데 절반 25/23/50/50 — 한글 소원이 너무 좁게 꺾여 종이 안에서 조금 넓힘)
+      wishBox: { left: 10, top: 18, width: 80, height: 62 },
+    },
+    celebrateTextBottom: 46,
+  },
+];
+
+export const lanternSetFor = (rand: number): LanternSet => LANTERN_SETS[Math.min(LANTERN_SETS.length - 1, Math.floor(Math.max(0, rand) * LANTERN_SETS.length))];

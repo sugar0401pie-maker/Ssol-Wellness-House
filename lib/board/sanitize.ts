@@ -1,7 +1,7 @@
 // 공개 사이트 글을 앱에 보여 줄 때 허용한 태그만 남긴다(요청문 10-2장: 제목·문단·목록·강조·링크·이미지). 외부 글을 그대로 HTML로 넣지 않는다.
 // 스크립트·스타일·iframe 등은 내용째 지우고, 모든 속성을 버린 뒤 a의 href(우리 사이트 https만)와 img의 src(우리 사이트만)·alt만 다시 붙인다.
 // 가져올 수 있는 주소도 우리 도메인만(isAllowedUrl). 순수 함수 — 서버에서 쓰고 테스트한다.
-export const ALLOWED_HOSTS = ["www.ssolwellnesshouse.com", "ssolwellnesshouse.com"];
+export const ALLOWED_HOSTS = ["www.ssolwellnesshouse.com", "ssolwellnesshouse.com", "app.ssolwellnesshouse.com"];
 
 export function isAllowedUrl(u: string, base?: string): boolean {
   return resolveAllowed(u, base) !== null;

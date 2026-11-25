@@ -1,6 +1,7 @@
 import "server-only";
 import { GUIDE_INDEX_URL, POST_INDEX_URL, STARTER_EPISODES, STARTER_GUIDES, episodeUrl, guideUrl, type Episode, type Guide } from "./data";
 import { extractMain, isAllowedUrl, sanitizeHtml } from "./sanitize";
+import { loadDbPosts } from "./posts";
 
 // 공개 사이트에서 고민 가이드·고민우체국을 가져온다(요청문 10-2장). 우리 도메인만, 30분 캐시(Next fetch), 실패하면 마지막으로 가져온 내용 + stale 표시.
 // 공개 목록이 아직 없으면(404) 처음 목록(data.ts)을 쓰고 안내는 띄우지 않는다 — 사이트가 "안 열린" 게 아니라 "아직 안 올린" 것이라서.
@@ -66,8 +67,28 @@ async function list<T>(url: string, parse: (b: unknown) => T[], starter: T[]): P
   return { data: starter, stale: r.status === "error", source: "starter" };
 }
 
-export const loadGuides = () => list(GUIDE_INDEX_URL, parseGuides, STARTER_GUIDES);
-export const loadEpisodes = () => list(POST_INDEX_URL, parseEpisodes, STARTER_EPISODES);
+// 2026-11-25 대표님: 글은 관리자 화면에서 쓴다 — 관리자 글(board_posts)이 같은 주소 이름·회차의 처음 목록·공개 사이트 글을 덮고, 숨긴 글은 빠진다.
+function merge<T>(base: T[], mine: T[], key: (x: T) => string | number, hidden: Set<string | number>): T[] {
+  const out = new Map<string | number, T>();
+  for (const x of base) if (!hidden.has(key(x))) out.set(key(x), x);
+  for (const x of mine) out.set(key(x), x);
+  return [...out.values()];
+}
+
+export async function loadGuides(): Promise<Got<Guide[]>> {
+  const [base, db] = await Promise.all([list(GUIDE_INDEX_URL, parseGuides, STARTER_GUIDES), loadDbPosts()]);
+  return { ...base, data: merge(base.data, db.guides, (g) => g.slug, db.hiddenSlugs as Set<string | number>) };
+}
+export async function loadEpisodes(): Promise<Got<Episode[]>> {
+  const [base, db] = await Promise.all([list(POST_INDEX_URL, parseEpisodes, STARTER_EPISODES), loadDbPosts()]);
+  return { ...base, data: merge(base.data, db.episodes, (e) => e.n, db.hiddenNs as Set<string | number>).sort((a, b) => a.n - b.n) };
+}
+
+// 글 한 편의 본문 — 관리자 글이면 그 본문, 아니면 주소에서 가져온다.
+export async function articleFor(item: { url: string; bodyHtml?: string | null }): Promise<{ html: string | null; stale: boolean }> {
+  if (item.bodyHtml !== undefined) return { html: item.bodyHtml, stale: false };
+  return loadArticle(item.url);
+}
 
 // 글 본문 — 허용한 태그만 남긴 HTML. 아직 안 올린 글이면 html: null.
 export async function loadArticle(url: string): Promise<{ html: string | null; stale: boolean }> {

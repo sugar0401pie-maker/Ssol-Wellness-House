@@ -9,8 +9,9 @@ export const POST_INDEX_URL = `${SITE_ORIGIN}/postoffice/index.json`;
 export const guideUrl = (slug: string) => `${SITE_ORIGIN}/guide/${slug}`;
 export const episodeUrl = (n: number) => `${SITE_ORIGIN}/postoffice/${n}`;
 
-export type Guide = { tag: string; slug: string; title: string; lines: string[]; url: string; updated?: string | null };
-export type Episode = { n: number; title: string; tag: string; summary: string; url: string; published?: string | null; image?: string | null };
+// bodyHtml: 관리자 화면에서 쓴 글이면 본문 HTML(허용 태그만), 아니면 없음(그때는 url에서 가져온다).
+export type Guide = { tag: string; slug: string; title: string; lines: string[]; url: string; updated?: string | null; bodyHtml?: string | null };
+export type Episode = { n: number; title: string; tag: string; summary: string; url: string; published?: string | null; image?: string | null; bodyHtml?: string | null };
 
 const g = (tag: string, slug: string, title: string, lines: string[]): Guide => ({ tag, slug, title, lines, url: guideUrl(slug) });
 export const STARTER_GUIDES: Guide[] = [

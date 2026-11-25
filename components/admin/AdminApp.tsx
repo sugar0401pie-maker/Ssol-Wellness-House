@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken, getBrowserClient } from "@/lib/supabase/browser";
+import AdminBoard from "./AdminBoard";
 import { signInWithOAuth, signOut } from "@/lib/supabase/authClient";
 import type { Dashboard } from "@/lib/admin/dashboard";
 import type { AccountHit } from "@/lib/admin/data";
@@ -207,6 +208,8 @@ function Panels({ onNeedPassword }: { onNeedPassword: () => void }) {
     <div className="space-y-8">
       <DashboardView dash={dash} err={dashErr} reload={load} />
       <Downloads onNeedPassword={onNeedPassword} />
+      {/* 2026-11-25: 고민 타파 글 쓰기 */}
+      <AdminBoard onNeedPassword={onNeedPassword} />
     </div>
   );
 }

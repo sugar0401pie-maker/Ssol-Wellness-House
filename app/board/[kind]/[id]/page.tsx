@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import PublicBoardShell from "@/components/board/PublicBoardShell";
 import ReaderView from "@/components/board/ReaderView";
-import { loadArticle, loadEpisodes, loadGuides } from "@/lib/board/fetchSite";
+import { articleFor, loadEpisodes, loadGuides } from "@/lib/board/fetchSite";
 
 // 고민 타파 공개 게시판의 글 읽기(/board/guide/<slug> · /board/post/<회차>) — 앱 안 읽기 화면과 같은 구성(ReaderView).
 export const revalidate = 1800;
@@ -12,12 +12,12 @@ async function find(kind: string, id: string) {
   if (kind === "guide") {
     const list = await loadGuides();
     const guide = list.data.find((g) => g.slug === id);
-    return guide ? { guide, url: guide.url, stale: list.stale } : null;
+    return guide ? { guide, url: guide.url, bodyHtml: guide.bodyHtml, stale: list.stale } : null;
   }
   if (kind === "post") {
     const list = await loadEpisodes();
     const episode = list.data.find((e) => String(e.n) === id);
-    return episode ? { episode, url: episode.url, stale: list.stale } : null;
+    return episode ? { episode, url: episode.url, bodyHtml: episode.bodyHtml, stale: list.stale } : null;
   }
   return null;
 }
@@ -35,7 +35,7 @@ export default async function PublicRead({ params }: { params: Promise<{ kind: s
   const { kind, id } = await params;
   const f = await find(kind, id);
   if (!f) notFound();
-  const a = await loadArticle(f.url);
+  const a = await articleFor(f);
   return (
     <PublicBoardShell>
       <div className="px-5 pb-8 pt-3">

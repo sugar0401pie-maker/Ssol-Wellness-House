@@ -62,7 +62,7 @@ export function LatestInsightCard({ name, variant = "mypage" }: { name?: string 
   return (
     <div className="border-b border-line px-4 py-4">
       <div className="rounded-2xl bg-navy-soft p-4">
-        <p className="mb-1.5 text-[12px] text-slate-500">최근 대화에서 쏘웰라가 알게 된 마음</p>
+        {/* 2026-11-25 대표님: 위 작은 제목(최근 대화에서 쏘웰라가 알게 된 마음)은 뺌 — 바로 "○○님과 나눈 최근 대화를 보면…"으로 시작 */}
         <p className="mb-1 text-[14px] leading-6 text-slate-600">{variant === "board" ? boardInsightLeadIn(name ?? serverName) : insightLeadIn(name ?? serverName)}</p>
         <InsightText text={latest.text} size="text-[15px]" />
         <Link href="/mypage/insights" className="mt-3 inline-block rounded-full bg-navy px-3.5 py-1.5 text-[13px] font-medium text-white">

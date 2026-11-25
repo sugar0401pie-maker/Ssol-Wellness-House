@@ -71,6 +71,7 @@ function formatSessionDate(iso: string): string {
 }
 
 const CHAT_DARK_KEY = "ssol.chatDark";
+const SHOW_ONBOARDING_PROMPT = false;
 
 export default function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -209,7 +210,8 @@ export default function ChatApp() {
             nickname: json.nickname,
             title: json.title,
             // 2026-11-24 대표님 결정: 온보딩은 팝업 없이, 쓰기 시작한 지 3일차부터 여기서 권유만 한다.
-            showPrompt: onboardingPromptDue({ needsOnboarding: !json.completed || allOnboardingAnswersBlank(json.answers), useDay: json.useDay ?? null }),
+            // 2026-11-25 대표님: 온보딩 질문을 고치는 동안 채팅의 온보딩 권유를 잠시 끈다(다시 켜려면 SHOW_ONBOARDING_PROMPT = true).
+            showPrompt: SHOW_ONBOARDING_PROMPT && onboardingPromptDue({ needsOnboarding: !json.completed || allOnboardingAnswersBlank(json.answers), useDay: json.useDay ?? null }),
           });
         }
       } catch {

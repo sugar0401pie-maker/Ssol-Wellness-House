@@ -7,6 +7,7 @@ import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import {
   CAPTION_MS,
+  CELEBRATE_TEXT_BOTTOM,
   FLYING_CAPTIONS,
   LANTERN_ALREADY_SUB,
   LANTERN_DONE_TEXT,
@@ -107,7 +108,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         if (s?.name) setName(s.name);
         if (s?.flown) showAlready(s.flownAt ?? null);
         else if (s?.open === false) {
-          setScene(5);
+          setScene(1); // 축하 그림(장면 5)에는 "날아갔어요" 글자가 있어서 기간이 아닐 때는 첫 장면
           setPhase("closed");
         } else setPhase("compose");
       })
@@ -123,7 +124,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
 
   // 이미 날린 화면: 높이 숫자가 보는 동안에도 올라가게 1초마다 다시 그린다.
   useEffect(() => {
-    if (phase !== "already") return;
+    if (phase !== "already" && phase !== "done") return;
     const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, [phase]);
@@ -134,6 +135,8 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
     if (!f.animDone || !f.saved?.ok) return;
     clearTimers();
     setFlownAt(f.saved.flownAt ?? null);
+    setLineRand(Math.random());
+    setNow(Date.now());
     setScene(5);
     setPhase("done");
   }
@@ -146,7 +149,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
         .then((s) => showAlready(s?.flownAt ?? null))
         .catch(() => showAlready(null));
     } else if (r?.reason === "closed") {
-      setScene(5);
+      setScene(1);
       setPhase("closed");
     } else {
       setScene(1);
@@ -204,7 +207,7 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
   const ended = phase === "done" || phase === "already" || phase === "closed";
   const count = [...wish].length;
   const altitudeText =
-    phase === "already" && now > 0
+    (phase === "already" || phase === "done") && now > 0
       ? (() => {
           const km = flownAt ? altitudeKm(flownAt, now) : 1;
           return renderAltitudeLine(pickAltitudeLine(km, lineRand), km, name);
@@ -307,28 +310,26 @@ export default function LanternPage({ getToken = getAccessToken }: { getToken?: 
           </p>
         )}
 
-        {/* 끝 화면 문구 */}
-        {ended && (
+        {/* 끝 화면 문구 — 날린 뒤·이미 날렸을 때는 축하 그림(손글씨 "2027년의 소원을 담은 풍등이 잘 날아갔어요!") 글자 상자 바로 아래에 "지금 몇 km 상공"(대표님 2026-11-25) */}
+        {(phase === "done" || phase === "already") && (
           <div
             className="absolute break-keep text-center text-night-text"
             role="status"
             aria-live="polite"
-            style={{ left: "8%", right: "8%", top: "22%", padding: "5cqw 5cqw", background: "rgba(8,20,42,.62)", borderRadius: "5cqw" }}
+            style={{ left: "9%", right: "9%", top: `${CELEBRATE_TEXT_BOTTOM}%`, padding: "3.4cqw 4cqw", background: "rgba(8,20,42,.55)", borderRadius: "4cqw" }}
           >
-            {phase === "done" && (
-              <p className="font-serif font-bold" style={{ fontSize: "7.2cqw", lineHeight: 1.35 }}>
-                {LANTERN_DONE_TEXT}
+            {phase === "done" && <span className="sr-only">{LANTERN_DONE_TEXT}</span>}
+            <p style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>{altitudeText}</p>
+            {phase === "already" && (
+              <p className="text-night-soft" style={{ fontSize: "3.3cqw", lineHeight: 1.5, marginTop: "1.6cqw" }}>
+                {LANTERN_ALREADY_SUB}
               </p>
             )}
-            {phase === "already" && (
-              <>
-                <p style={{ fontSize: "4.8cqw", lineHeight: 1.6 }}>{altitudeText}</p>
-                <p className="text-night-soft" style={{ fontSize: "3.4cqw", lineHeight: 1.5, marginTop: "2.4cqw" }}>
-                  {LANTERN_ALREADY_SUB}
-                </p>
-              </>
-            )}
-            {phase === "closed" && <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>지금은 풍등 날리기 기간이 아니에요.</p>}
+          </div>
+        )}
+        {phase === "closed" && (
+          <div className="absolute break-keep text-center text-night-text" role="status" style={{ left: "8%", right: "8%", top: "22%", padding: "5cqw", background: "rgba(8,20,42,.62)", borderRadius: "5cqw" }}>
+            <p style={{ fontSize: "4.6cqw", lineHeight: 1.6 }}>지금은 풍등 날리기 기간이 아니에요.</p>
           </div>
         )}
 

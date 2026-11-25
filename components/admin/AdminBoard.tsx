@@ -150,7 +150,7 @@ export default function AdminBoard({ onNeedPassword }: { onNeedPassword: () => v
           태그(쉼표·줄바꿈으로 나눠요, 최대 40개 · 지금 {parseTags(form.tags).length}개)
           <textarea className={input} rows={4} value={form.tags} onChange={(e) => set({ tags: e.target.value })} placeholder="예: 썸, 카톡답장, 연애고민 …" />
         </label>
-        <p className="text-[11.5px] leading-5 text-slate-400">태그를 누르면 같은 태그가 달린 글이 모여 보여요. 비우면 기본 태그(공통 10개 + 종류)만 달려요. 글마다 &lsquo;프로 갓생러들의 비밀, 쏘웰라 AI&rsquo;와 쏠 타로 하우스 문구는 저절로 붙어요.</p>
+        <p className="text-[11.5px] leading-5 text-slate-400">태그를 누르면 같은 태그가 달린 글이 모여 보여요. 비우면 기본 태그(공통 10개 + 종류)만 달려요. 글마다 쏘웰라·쏠 타로 하우스 광고 문구가 돌아가며 저절로 붙어요(lib/board/promo.ts).</p>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.published} onChange={(e) => set({ published: e.target.checked })} /> 공개(체크를 풀면 숨겨져요)</label>
         <button type="button" disabled={busy} onClick={() => void save()} className="w-full rounded-[10px] bg-navy px-4 py-2.5 text-[14px] font-medium text-white disabled:opacity-50">{busy ? "저장하는 중…" : form.id ? "고친 내용 저장" : "새 글 저장"}</button>
         {msg && <p className="text-[12.5px] leading-5 text-slate-600">{msg}</p>}

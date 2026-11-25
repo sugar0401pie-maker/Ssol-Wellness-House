@@ -1,16 +1,12 @@
 import Image from "next/image";
 import ImageCarousel from "./ImageCarousel";
-import {
-  SOWELLA_PROMO,
-  TAROT_NAME,
-  TAROT_PROMO,
-  TAROT_URL,
-} from "@/lib/board/promo";
+import { TAROT_NAME, TAROT_URL, promoFor, promoIndex } from "@/lib/board/promo";
 import { tagHref } from "@/lib/board/tags";
 import Link from "next/link";
 import {
   episodeCover,
   episodeCut,
+  STARTER_GUIDES,
   type Episode,
   type Guide,
 } from "@/lib/board/data";
@@ -32,6 +28,15 @@ export default function ReaderView({
   isPublic: boolean;
 }) {
   const url = g?.url ?? e?.url ?? "";
+  const promo = promoFor(
+    g
+      ? promoIndex(
+          "guide",
+          g.slug,
+          STARTER_GUIDES.map((x) => x.slug),
+        )
+      : promoIndex("post", e?.n ?? 0),
+  );
   const carousel = e?.images && e.images.length > 0 ? e.images : null;
   const cover = e && !carousel ? (e.image ?? episodeCover(e.n)) : null;
   return (
@@ -120,10 +125,13 @@ export default function ReaderView({
         이 글은 자기이해를 돕는 일반 정보예요. 의료적 진단이나 심리 치료를
         대신하지 않아요.
       </p>
-      {/* 글마다 꼭 들어가는 두 문구(대표님 2026-11-25) + 태그 40개 */}
+      {/* 글마다 쏘웰라·쏠 타로 하우스 광고 문구(대표님 2026-11-25 — 운영 광고 문구를 글마다 다르게 돌려 가며) + 태그 40개 */}
       <section className="mt-6 rounded-2xl border border-night-line bg-night-panel p-4">
-        <p className="text-[16px] font-bold text-night-yellow">
-          {SOWELLA_PROMO}
+        <p className="text-[16px] font-bold leading-snug text-night-yellow">
+          {promo.sowella.headline}
+        </p>
+        <p className="mt-1 text-[13px] leading-5 text-night-sub">
+          {promo.sowella.desc}
         </p>
         <a
           href={TAROT_URL}
@@ -135,7 +143,10 @@ export default function ReaderView({
             {TAROT_NAME}
           </span>
           <span className="block text-[14px] font-bold leading-snug">
-            {TAROT_PROMO}
+            {promo.tarot.headline}
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-5 text-night-sub">
+            {promo.tarot.desc}
           </span>
         </a>
       </section>

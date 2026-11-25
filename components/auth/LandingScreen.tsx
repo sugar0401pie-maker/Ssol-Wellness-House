@@ -7,19 +7,34 @@ import SiteFooter from "@/components/SiteFooter";
 
 // 2026-09-28: owner가 전달한 디자인 시안(ssol-app-handoff.md 2절)의 "첫 화면(로그아웃 상태 /)".
 // 로그인 폼 없이 헤드라인+CTA만 보여주고, 실제 로그인/회원가입은 여기서 이동한 별도 화면에서 한다.
-// 헤드라인 9개는 시안 원문 그대로이며, 직전과 같은 문구가 연달아 나오지 않게 sessionStorage에
-// 마지막으로 보여준 index를 저장해 둔다.
+// 2026-11-25 대표님: 헤드라인을 무거운 문구(불안해서 잠못이루는… 등 시안 9개) 대신 가벼운 일상 고민으로 바꿈 — 열 때마다 무작위.
+// 목록은 대표님이 보내 준 표 그대로(고민우체국 1~10화 고민 + 아직 안 만든 고민 제안). "입맛도 슬럼프"는 표의 비고(식사 이야기라 보류 권함)대로 뺐다.
+// 쉼표가 있으면 쉼표 뒤에서 줄을 바꾼다(lineBreak). 직전과 같은 문구가 연달아 나오지 않게 sessionStorage에 마지막 index를 둔다.
 const HEADLINES = [
-  "딱 터놓고 말 할\n누군가가 필요하세요?",
-  "말하기 어려운\n고민이 있으신가요?",
-  "해결책을 찾지 못해\n힘드신가요?",
-  "이유 없이 '그냥'\n힘드신가요?",
-  "삶이 버겁고\n지치셨나요?",
-  "불안해서 잠못이루는\n날이 있으신가요?",
-  "이유없는 불안때문에\n힘드신가요?",
-  "정리가 안되고 정신없는\n나날이 계속되나요?",
-  "내가 뭘 하고 있나\n싶은 생각이 드시나요?",
+  "나 디테일에 집착하는데 이거 설마 처녀자리라서 그런 거야?",
+  "MBTI는 I인데 사람 만나는 게 좋아, 사실 난 E인 걸까?",
+  "나 T라서 조심해서 말하는데 사람들이 자꾸 상처받는 것 같아",
+  "썸 타는 사람이 카톡 답장을 3시간째 안 해, 기다려 말아?",
+  "주말에 누워서 폰만 보다가 일요일 밤에 허무해",
+  "회사 옮길까 그냥 다닐까, 오늘도 생각만 하다 퇴근했어",
+  "단톡방에서 내 말에만 답장이 늦는 것 같아서 서운해",
+  "이번 달도 통장이 텅 비었어, 소비 습관 어떡하지",
+  "퇴근하고 뭐라도 배워야 할 것 같은데 뭘 해야 할지 모르겠어",
+  "타로도 믿고 사주도 믿는데 이런 얘기 어디 가서 하지?",
+  "이거 썸 맞아? 친구들 말고 누구한테 물어보지?",
+  "친구 생일 선물, 이 정도면 너무 성의 없어 보일까?",
+  "별자리 풀이가 너무 나 같은데, 이 얘기 들어줄 사람?",
+  "나 내년에 역마살 대박이라는데, 어디로 이직하면 될까?",
+  "거절을 못 해서 약속이 자꾸 늘어나",
+  "월요일 생각하면 일요일 저녁부터 기분이 가라앉아",
+  "회의에서 한마디도 못 하고 나왔어, 나만 이래?",
+  "작심삼일만 백 번째, 나 의지가 약한 걸까?",
+  "연애 안 한 지 오래됐는데, 조급해해야 하나?",
+  "엄마 잔소리에 또 욱했어, 나 왜 이러지",
+  "나 J인데 계획이 틀어지면 하루를 다 망친 기분이야",
+  "집에 오면 아무것도 하기 싫어서 씻는 것도 미뤄",
 ];
+const lineBreak = (s: string): string => s.replace(/, /, ",\n").replace(/\? /, "?\n");
 
 const LAST_HEADLINE_KEY = "ssol_landing_headline_index";
 
@@ -53,7 +68,7 @@ export default function LandingScreen({ onStart }: { onStart: () => void }) {
     // (ChatApp.tsx의 세션 복원 effect에서도 쓴 것과 같은 패턴, CLAUDE.md 2026-09-28 기록 참고).
     void Promise.resolve().then(() => setHeadlineIndex(pickHeadlineIndex()));
   }, []);
-  const headline = HEADLINES[headlineIndex];
+  const headline = lineBreak(HEADLINES[headlineIndex]);
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-y-auto bg-background px-6 py-6">
@@ -68,7 +83,7 @@ export default function LandingScreen({ onStart }: { onStart: () => void }) {
 
       <div className="flex flex-1 flex-col items-center justify-center text-center">
         <Image src="/logo-mark.png" alt="쏠 웰니스 하우스" width={84} height={22} className="h-auto w-[84px]" />
-        <p className="mt-6 whitespace-pre-line font-serif text-[22px] font-bold leading-8 text-foreground">
+        <p className="mt-6 whitespace-pre-line break-keep font-serif text-[22px] font-bold leading-8 text-foreground">
           {headline}
         </p>
         <p className="mt-4 text-[14px] leading-6 text-muted">

@@ -15,6 +15,10 @@ export function lanternPeriod(env: { SW_LANTERN_START?: string; SW_LANTERN_END?:
 // todayKey = KST 날짜("YYYY-MM-DD"). 시작일·종료일 모두 포함.
 export const isLanternOpen = (todayKey: string, p: { start: string; end: string }): boolean => todayKey >= p.start && todayKey <= p.end;
 // 한 번만 날리는 단위 — 기간 시작일로 이름을 붙여, 다음 이벤트(기간을 새로 정하면)에는 다시 날릴 수 있다.
+// 앱을 "/"로 열었을 때 그날 첫 번째면 풍등 화면으로 먼저 보낼지(요청문 8-3장 — 하루 한 번, "나중에 할게요"로 건너뜀).
+export const LANTERN_ENTRY_REDIRECT = true;
+export const entryRedirectKey = (todayKey: string): string => `ssol.lanternEntry.${todayKey}`;
+
 export const lanternEventKey = (p: { start: string }): string => `lantern-${p.start}`;
 
 // 소원 글: 앞뒤 공백을 빼고 줄바꿈·여러 칸 띄움은 한 칸으로. 비었거나 40자를 넘으면 null.

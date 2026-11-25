@@ -3,9 +3,8 @@
 import AppLoading from "./AppLoading";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import OnboardingFlow from "./OnboardingFlow";
+import BottomNav from "./BottomNav";
 import OAuthProfileGate from "./OAuthProfileGate";
 import OAuthProfileReminder from "./OAuthProfileReminder";
 import TrialExpiringReminder, { type TrialExpiringVariant } from "./TrialExpiringReminder";
@@ -39,11 +38,6 @@ const SHOW_ONBOARDING_GATE = false;
 // 대신 탭 전환은 실제 페이지 이동이라 채팅 화면(components/chat/ChatApp.tsx)은 페이지를
 // 벗어나면 언마운트된다 — "탭 바꿔도 대화 안 사라지게" 하려고 ChatApp이 활성 세션 id를
 // localStorage에 저장해두고 다시 마운트될 때 그 대화를 자동으로 불러오는 방식으로 바꿨다.
-const TABS = [
-  { href: "/home", label: "홈" },
-  { href: "/chat", label: "채팅" },
-  { href: "/mypage", label: "마이페이지" },
-];
 
 type OnboardingInfo = {
   completed: boolean;
@@ -52,7 +46,6 @@ type OnboardingInfo = {
 };
 
 export default function AppFrame({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   // 2026-09-24: 로그인 후 "자기소개" 온보딩을 반드시 먼저 마치도록 한다 — 안 했으면 이
   // 모달이 화면 전체를 덮어서, 어느 탭으로도 못 빠져나가고 반드시 답해야 한다.
   // 2026-09-28 owner 요청으로 변경: 이제 "닫기"로 일단 건너뛸 수 있다 — dismissed는 이
@@ -224,17 +217,8 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <nav className="grid grid-cols-3 border-t border-line bg-white pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5">
-        {TABS.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={`py-1.5 text-center text-[13px] font-medium ${pathname === t.href || pathname.startsWith(`${t.href}/`) ? "text-navy" : "text-slate-400"}`}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      {/* 2026-11-25: 하단 메뉴 5개(요청문 v1.9.4 9-1장) — components/app/BottomNav.tsx */}
+      <BottomNav />
 
       {showOauthReminder && (
         <OAuthProfileReminder

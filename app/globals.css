@@ -109,3 +109,34 @@ body {
     animation: none;
   }
 }
+
+/* 작심삼일 도장 쾅(2026-11-25, 요청문 3-5-1장) — 도장 자국이 커졌다 자리잡고, 화면이 한 번 흔들린다. 움직임 줄이기에서는 쓰지 않는다(컴포넌트가 끔). */
+@keyframes ssol-stamp-pop {
+  0% {
+    transform: rotate(-10deg) scale(1.9);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-10deg) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes ssol-shake {
+  /* 가운데 맞춤은 translate 속성(Tailwind)이 따로 하므로 여기서는 흔들림만 더한다 */
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-6px, 2px);
+  }
+  50% {
+    transform: translate(5px, -2px);
+  }
+  75% {
+    transform: translate(-3px, 1px);
+  }
+}

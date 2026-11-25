@@ -10,6 +10,9 @@ export const WITHDRAW_DELETE_TABLES = [
   "user_memory", "user_onboarding", "wellness_profiles", "counselor_inquiries", "customer_feedback",
   "ai_usage_log", // 2026-11-23: AI 토큰 수 기록(내용 없음)도 그 사람 몫은 지운다
   "sky_lantern_wishes", // 2026-11-25: 풍등 소원 글
+  "challenge_checkins", // 2026-11-25: 작심삼일 챌린지 저장(메모)
+  "challenges",
+  "challenge_rewards",
 ] as const;
 
 // 남기는 표(지우지 않음 — 시험이 이 목록이 위 목록과 겹치지 않는지 본다).

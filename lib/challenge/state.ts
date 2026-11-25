@@ -43,7 +43,7 @@ export function deriveView(c: Challenge | null, today: string, rewarded: boolean
   if (!c) {
     return {
       kind: "pre", n: 1, stamped: 0, todayLine: "", dayIndex: null,
-      msg: rewarded ? "시작하면 그날이 1일차예요." : "시작하면 그날이 1일차예요. 챌린지 종료 이후에 깜짝 리워드가 있어요!",
+      msg: rewarded ? "시작하면 그날이 1일차예요." : "시작하면 그날이 1일차예요.\n챌린지 종료 이후에 깜짝 리워드가 있어요!" /* 대표님 2026-11-25: 두 문장 줄바꿈 */,
       button: { label: "챌린지 시작", enabled: true, op: "start" },
     };
   }

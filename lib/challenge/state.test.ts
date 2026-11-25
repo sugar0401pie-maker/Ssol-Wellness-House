@@ -14,7 +14,7 @@ test("날짜 계산(KST 날짜 문자열): 월·해 넘김", () => {
 });
 
 test("시작 전: 리워드를 받은 사람에게는 '깜짝 리워드' 줄을 빼요", () => {
-  assert.equal(deriveView(null, T, false).msg, "시작하면 그날이 1일차예요. 챌린지 종료 이후에 깜짝 리워드가 있어요!");
+  assert.equal(deriveView(null, T, false).msg, "시작하면 그날이 1일차예요.\n챌린지 종료 이후에 깜짝 리워드가 있어요!");
   assert.equal(deriveView(null, T, true).msg, "시작하면 그날이 1일차예요.");
   assert.equal(deriveView(null, T, false).button.op, "start");
   assert.equal(deriveView(null, T, false).todayLine, "");

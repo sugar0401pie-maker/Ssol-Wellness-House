@@ -263,7 +263,7 @@ export default function ChallengePage({ getToken = getAccessToken }: { getToken?
             <Stamps c={c} stamped={v.stamped} dim={v.kind === "pre"} />
             {v.todayLine && <p className="mt-3 text-[24px] font-bold leading-snug">{v.todayLine}</p>}
             {v.msg && (
-              <p className="mx-1 mt-2 break-keep text-[13.5px] leading-[1.55] text-night-sub" aria-live="polite">
+              <p className="mx-1 mt-2 whitespace-pre-line break-keep text-[13.5px] leading-[1.55] text-night-sub" aria-live="polite">
                 {v.msg}
               </p>
             )}

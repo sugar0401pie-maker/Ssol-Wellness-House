@@ -128,10 +128,6 @@ export default function ReaderView({
           일상의 고민을 받아서 답변해드려요.
         </p>
       )}
-      <p className="mt-3 text-[12.5px] leading-5 text-night-dim">
-        이 글은 자기이해를 돕는 일반 정보예요. 의료적 진단이나 심리 치료를
-        대신하지 않아요.
-      </p>
       {/* 글마다 쏘웰라·쏠 타로 하우스 광고 문구(대표님 2026-11-25 — 운영 광고 문구를 글마다 다르게 돌려 가며) + 태그 40개 */}
       <section className="mt-6 rounded-2xl border border-night-line bg-night-panel p-4">
         <p className="text-[16px] font-bold leading-snug text-night-yellow">

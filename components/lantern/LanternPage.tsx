@@ -23,13 +23,17 @@ import {
   pickAltitudeLine,
   renderAltitudeLine,
 } from "@/lib/lantern/altitude";
-import { drawLanternCard } from "@/lib/lantern/shareCard";
+import { drawWishCard } from "@/lib/lantern/shareCard";
 import { canvasToBlob, notoFamily } from "@/lib/challenge/card";
 import { downloadBlob, shareToKakao } from "@/lib/challenge/share";
 import { KakaoSymbol } from "@/components/auth/SocialLogos";
 
-// 날린 뒤 화면의 공유·저장(대표님 2026-11-26): 축하 장면 + 지금 높이 한 줄을 그림으로(lib/lantern/shareCard.ts). 소원 글은 넣지 않는다.
+// 날린 뒤 화면(대표님 2026-11-26): 공유하기(카카오톡 — 내가 쓴 소원 화면 그림, lib/lantern/shareCard.ts) · 소원 다시 보기(/lantern/wish, 고쳐서 다시 날릴 수 있음).
+// 그 그림은 풍등을 날리면 자동으로 앨범(내려받기)에 저장된다.
 const SHARE_FILE = "ssol-lantern-2027.png";
+// 문장 고르기용 난수·지금 시각(이벤트 처리 안에서만 부른다 — 화면을 그리는 중에 부르는 게 아님)
+const rand = () => Math.random();
+const nowMs = () => Date.now();
 const SHARE_URL = "https://app.ssolwellnesshouse.com/lantern";
 
 // 풍등 날리기 화면(2026-11-25, 요청문 v1.9.4 2장·14-2장).
@@ -48,6 +52,7 @@ type Status = {
   open?: boolean;
   flown?: boolean;
   flownAt?: string | null;
+  wish?: string | null;
   name?: string | null;
 };
 type SaveResult = {
@@ -91,10 +96,10 @@ function sceneStyle(
 }
 
 // getToken: 화면 확인용으로 바꿔 끼울 수 있게 둔 자리(실제 화면은 기본값 — 로그인 세션의 토큰).
-// 화면마다 주소(대표님 2026-11-25 "화면 바꾸면 무조건 링크 나눠"): 쓰기 /lantern · 날린 뒤(축하·높이) /lantern/done.
+// 화면마다 주소(대표님 2026-11-25 "화면 바꾸면 무조건 링크 나눠"): 쓰기 /lantern · 날린 뒤(축하·높이) /lantern/done · 날린 소원 다시 보기·고치기 /lantern/wish.
 // 날아가는 장면은 쓰기 → 끝 화면으로 이어지는 움직임이라 페이지를 새로 그리지 않고 주소만 바꾼다(history.replaceState — Next.js 라우터와 맞춰짐).
 // /lantern/done으로 바로 들어왔는데 아직 안 날렸으면 쓰기 화면(/lantern)으로.
-function setLanternPath(path: "/lantern" | "/lantern/done") {
+function setLanternPath(path: "/lantern" | "/lantern/done" | "/lantern/wish") {
   try {
     if (window.location.pathname !== path) window.history.replaceState(window.history.state, "", path);
   } catch {
@@ -118,8 +123,11 @@ export default function LanternPage({
   const [now, setNow] = useState(0);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
+  const [savedWish, setSavedWish] = useState<string | null>(null); // 이미 날린 소원(본인 것)
+  const [open, setOpen] = useState(true); // 이벤트 기간인지(지나면 고치기 버튼을 숨김)
+  const [editing, setEditing] = useState(false); // 날린 소원을 고치는 중(/lantern/wish)
   const timers = useRef<number[]>([]);
-  const flight = useRef({ animDone: false, saved: null as SaveResult | null });
+  const flight = useRef({ animDone: false, saved: null as SaveResult | null, wish: "", edit: false });
 
   function clearTimers() {
     timers.current.forEach((t) => {
@@ -132,11 +140,25 @@ export default function LanternPage({
   function showAlready(at: string | null) {
     clearTimers();
     setFlownAt(at);
-    setLineRand(Math.random()); // 열 때마다 다른 문장(그 높이에 맞는 것 중에서)
-    setNow(Date.now());
+    setLineRand(rand()); // 열 때마다 다른 문장(그 높이에 맞는 것 중에서)
+    setNow(nowMs());
     setScene(5);
+    setEditing(false);
     setPhase("already");
     setLanternPath("/lantern/done");
+  }
+
+  // 소원 다시 보기(대표님 2026-11-26): 날린 소원을 쓰던 화면으로 — 고쳐서 다시 날리면 소원만 바뀌고 날린 시각(높이)은 그대로.
+  function startEdit(w: string, at: string | null) {
+    clearTimers();
+    setFlownAt(at);
+    setWish(w);
+    setMessage(null);
+    setShareNote(null);
+    setScene(1);
+    setEditing(true);
+    setPhase("compose");
+    setLanternPath("/lantern/wish");
   }
 
   async function loadStatus(): Promise<Status | null> {
@@ -156,7 +178,13 @@ export default function LanternPage({
         if (cancelled) return;
         setArt(lanternSetFor(Math.random()));
         if (s?.name) setName(s.name);
-        if (s?.flown) showAlready(s.flownAt ?? null);
+        if (s?.open === false) setOpen(false);
+        if (s?.flown) {
+          setSavedWish(s.wish ?? null);
+          // /lantern/wish로 들어왔으면(기간 중) 날린 소원을 쓰던 화면으로, 아니면 날린 뒤 화면
+          if (window.location.pathname === "/lantern/wish" && s.open !== false && s.wish) startEdit(s.wish, s.flownAt ?? null);
+          else showAlready(s.flownAt ?? null);
+        }
         else if (s?.open === false) {
           setScene(1); // 축하 그림(장면 5)에는 "날아갔어요" 글자가 있어서 기간이 아닐 때는 첫 장면
           setPhase("closed");
@@ -191,11 +219,14 @@ export default function LanternPage({
     if (!f.animDone || !f.saved?.ok) return;
     clearTimers();
     setFlownAt(f.saved.flownAt ?? null);
-    setLineRand(Math.random());
-    setNow(Date.now());
+    setLineRand(rand());
+    setNow(nowMs());
     setScene(5);
+    setSavedWish(f.wish);
+    setEditing(false);
     setPhase("done");
     setLanternPath("/lantern/done");
+    void autoSave(f.wish); // 날리면 내가 쓴 소원 그림을 자동으로 저장(대표님 2026-11-26)
   }
 
   // 저장이 안 됐을 때 — 날던 장면을 멈추고 상황에 맞는 화면으로.
@@ -221,7 +252,7 @@ export default function LanternPage({
       const token = await getToken();
       if (!token) throw new Error("login");
       const res = await fetch("/api/lantern", {
-        method: "POST",
+        method: flight.current.edit ? "PATCH" : "POST",
         headers: authHeaders(token),
         body: JSON.stringify({ wish: w }),
       });
@@ -242,7 +273,7 @@ export default function LanternPage({
       return;
     }
     clearTimers();
-    flight.current = { animDone: false, saved: null };
+    flight.current = { animDone: false, saved: null, wish: w, edit: editing };
     setWish(w);
     setMessage(null);
     setCaption(0);
@@ -283,31 +314,26 @@ export default function LanternPage({
         })()
       : "";
 
-  async function makeShareCard(): Promise<Blob> {
-    const celebrate = (art?.scenes ?? []).find((x) => x.n === 5)?.src ?? "/lantern/celebrate.webp";
-    const c = await drawLanternCard({ artUrl: celebrate, line: altitudeText, textTopPct: art?.celebrateTextBottom ?? CELEBRATE_TEXT_BOTTOM }, notoFamily());
-    return canvasToBlob(c);
+  async function makeWishCard(w: string): Promise<Blob> {
+    const set = art ?? lanternSetFor(0);
+    return canvasToBlob(await drawWishCard(set, w, notoFamily()));
   }
-  async function shareCard() {
-    if (shareBusy) return;
-    setShareBusy(true);
-    setShareNote(null);
+  async function autoSave(w: string) {
     try {
-      await shareToKakao(await makeShareCard(), SHARE_FILE, { title: LANTERN_DONE_TEXT, description: altitudeText, url: SHARE_URL });
+      if (downloadBlob(await makeWishCard(w), SHARE_FILE)) setShareNote("앨범에 저장했어요.");
     } catch {
-      setShareNote("지금은 공유하지 못했어요. 잠시 후 다시 해 주세요.");
-    } finally {
-      setShareBusy(false);
+      /* 저장은 못 해도 공유하기로 다시 만들 수 있다 */
     }
   }
-  async function saveCard() {
-    if (shareBusy) return;
+  async function shareCard() {
+    const w = savedWish ?? wish;
+    if (shareBusy || !w) return;
     setShareBusy(true);
     setShareNote(null);
     try {
-      setShareNote(downloadBlob(await makeShareCard(), SHARE_FILE) ? "앨범에 저장했어요." : "저장하지 못했어요. 잠시 후 다시 해 주세요.");
+      await shareToKakao(await makeWishCard(w), SHARE_FILE, { title: LANTERN_DONE_TEXT, description: altitudeText, url: SHARE_URL });
     } catch {
-      setShareNote("저장하지 못했어요. 잠시 후 다시 해 주세요.");
+      setShareNote("지금은 공유하지 못했어요. 잠시 후 다시 해 주세요.");
     } finally {
       setShareBusy(false);
     }
@@ -479,8 +505,29 @@ export default function LanternPage({
           )
         )}
 
+        {/* 소원 고치는 중이면 왼쪽 위는 "돌아가기" — 고치지 않고 날린 뒤 화면으로(소원은 그대로) */}
+        {writing && editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setWish(savedWish ?? "");
+              showAlready(flownAt);
+            }}
+            className="absolute z-10 rounded-full border text-night-soft"
+            style={{
+              left: "4cqw",
+              top: "4cqw",
+              fontSize: "3.6cqw",
+              padding: "1.6cqw 3.4cqw",
+              background: "rgba(8,20,42,.55)",
+              borderColor: "rgba(188,208,234,.35)",
+            }}
+          >
+            돌아가기
+          </button>
+        )}
         {/* 나중에 할게요(쓰는 동안 왼쪽 위) */}
-        {writing && (
+        {writing && !editing && (
           <Link
             href="/home"
             replace
@@ -551,33 +598,6 @@ export default function LanternPage({
                 {LANTERN_ALREADY_SUB}
               </p>
             )}
-            {/* 공유·저장(대표님 2026-11-26) — 친구들 그림을 가리지 않게 높이 글자 바로 아래, 같은 상자 안 */}
-            <div className="grid grid-cols-2" style={{ gap: "2.4cqw", marginTop: "3cqw" }}>
-              <button
-                type="button"
-                onClick={() => void shareCard()}
-                disabled={shareBusy || !altitudeText}
-                className="flex items-center justify-center rounded-full font-medium disabled:opacity-55"
-                style={{ fontSize: "4.2cqw", padding: "3cqw 0", gap: "1.6cqw", background: "#FEE500", color: "#191919" }}
-              >
-                <KakaoSymbol className="h-[4.6cqw] w-[4.6cqw]" />
-                공유하기
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveCard()}
-                disabled={shareBusy || !altitudeText}
-                className="rounded-full font-medium disabled:opacity-55"
-                style={{ fontSize: "4.2cqw", padding: "3cqw 0", background: "rgba(8,20,42,.72)", color: "var(--night-text)", border: "1px solid var(--night-border)" }}
-              >
-                저장하기
-              </button>
-              {shareNote && (
-                <p className="col-span-2 text-center text-night-text" role="status" style={{ fontSize: "3.3cqw" }}>
-                  {shareNote}
-                </p>
-              )}
-            </div>
           </div>
         )}
         {phase === "closed" && (
@@ -636,6 +656,40 @@ export default function LanternPage({
             풍등 날리기
           </button>
         )}
+        {/* 날린 뒤: 공유하기(카카오톡 로고·색) · 소원 다시 보기 — 홈으로 위에(대표님 2026-11-26), 홈으로는 조금 작게 */}
+        {(phase === "done" || phase === "already") && (
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: "12.5%", width: "84%" }}>
+            {shareNote && (
+              <p className="mb-[1.6cqw] text-center text-night-text" role="status" style={{ fontSize: "3.3cqw" }}>
+                <span className="inline-block rounded-full" style={{ padding: "1cqw 3cqw", background: "rgba(8,20,42,.6)" }}>
+                  {shareNote}
+                </span>
+              </p>
+            )}
+            <div className={`grid ${open && savedWish ? "grid-cols-2" : "grid-cols-1"}`} style={{ gap: "2.4cqw" }}>
+              <button
+                type="button"
+                onClick={() => void shareCard()}
+                disabled={shareBusy || !(savedWish ?? wish)}
+                className="flex items-center justify-center rounded-full font-medium disabled:opacity-55"
+                style={{ fontSize: "4.2cqw", padding: "3.1cqw 0", gap: "1.6cqw", background: "#FEE500", color: "#191919" }}
+              >
+                <KakaoSymbol className="h-[4.6cqw] w-[4.6cqw]" />
+                공유하기
+              </button>
+              {open && savedWish && (
+                <button
+                  type="button"
+                  onClick={() => startEdit(savedWish, flownAt)}
+                  className="rounded-full font-medium"
+                  style={{ fontSize: "4.2cqw", padding: "3.1cqw 0", background: "rgba(8,20,42,.72)", color: "var(--night-text)", border: "1px solid var(--night-border)" }}
+                >
+                  소원 다시 보기
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {ended && (
           <Link
             href="/home"
@@ -643,9 +697,9 @@ export default function LanternPage({
             className="absolute left-1/2 -translate-x-1/2 rounded-full text-center font-medium"
             style={{
               bottom: "5%",
-              width: "74%",
-              fontSize: "4.6cqw",
-              padding: "3.2cqw 0",
+              width: "52%",
+              fontSize: "3.8cqw",
+              padding: "2.4cqw 0",
               background: "var(--night-amber)",
               color: "var(--night-on-amber)",
             }}

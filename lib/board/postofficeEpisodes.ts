@@ -1,4 +1,4 @@
-// 고민우체국 1~10화(2026-11-25 대표님 전달 "고민우체국 1-5화·6-10화 글·이미지 묶음 v1"). 6~10화는 예약 게시(publishAt, 하루에 하나 — 대표님). 글 원고(md)의 "1. 본문 초안"에서
+// 고민우체국 1~10화(2026-11-25 대표님 전달 "고민우체국 1-5화·6-10화 글·이미지 묶음 v1"). 6~10화는 예약 게시(publishAt — 6화 11/26부터 5일 간격: 12/1·12/6·12/11·12/16, 대표님 2026-11-26). 글 원고(md)의 "1. 본문 초안"에서
 // 본문과 FAQ만 옮겼다 — 메타 정보·개발 메모·검수 메모·촬영 예정 빈칸·인스타 연결 구역(게시 후 입력)·검수 표기(검수일 미기입)는 뺐고,
 // 요약의 "상담 자격을 가진 전문가 두 명이 검수했어요"도 검수 전이라 뺐다. 대화 캡처는 제목 아래 캐러셀(images — 대표님이 준 대화 캡처만, 2026-11-25 "내가 준 캐러셀 그대로")로, 표지 그림은 image(목록·공유용)로, 캡처를 글자로 옮긴 인용은 본문에 남긴다.
 // 원고 상태는 "초안(CEO·CSO 검수 뒤 게시)" — 관리자 화면에서 같은 회차를 고치면 그 글이 이 내용을 덮는다(그림은 여기 것을 그대로 쓴다).
@@ -142,7 +142,7 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "단톡방",
     "summary": "단톡방에서 내 말에만 반응이 늦어 서운하다면, 늦은 답장이라는 사실과 내가 붙인 해석을 나눠서 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/7",
-    "publishAt": "2026-11-27",
+    "publishAt": "2026-12-01",
     "image": "/postoffice/letters/7/cover.webp",
     "images": [
       {
@@ -166,7 +166,7 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "소비습관",
     "summary": "뭘 샀는지도 모르게 통장이 비어 있다면, 아끼기 전에 내가 언제 사는지부터 같이 봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/8",
-    "publishAt": "2026-11-28",
+    "publishAt": "2026-12-06",
     "image": "/postoffice/letters/8/cover.webp",
     "images": [
       {
@@ -190,7 +190,7 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "자기계발",
     "summary": "퇴근 후 뭐라도 배워야 할 것 같은데 고르지 못하고 있다면, 완벽한 선택 대신 한 달만 해 보는 것부터 시작해요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/9",
-    "publishAt": "2026-11-29",
+    "publishAt": "2026-12-11",
     "image": "/postoffice/letters/9/cover.webp",
     "images": [
       {
@@ -214,7 +214,7 @@ export const POSTOFFICE_EPISODES: Episode[] = [
     "tag": "타로",
     "summary": "타로와 사주를 좋아하는데 말하기 망설여진다면, 숨기지 않고 내 방식대로 설명하는 말을 같이 찾아봐요. 쏘웰라AI의 해달 우체부가 고민 편지에 답해요.",
     "url": "https://app.ssolwellnesshouse.com/board/post/10",
-    "publishAt": "2026-11-30",
+    "publishAt": "2026-12-16",
     "image": "/postoffice/letters/10/cover.webp",
     "images": [
       {

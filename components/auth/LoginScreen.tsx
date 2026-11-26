@@ -375,7 +375,7 @@ export default function LoginScreen({
                   className="mb-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-sm font-medium text-[#191600]"
                 >
                   <KakaoSymbol />
-                  회원가입 없이 10초만에 카카오로 로그인하기
+                  10초만에 카카오로 로그인하기
                 </button>
               )}
               {/* 2026-10-11 owner 요청: 카카오 지름길 아래에 네이버도 같은 모양으로. */}
@@ -386,7 +386,7 @@ export default function LoginScreen({
                   className="mb-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#03C75A] text-sm font-medium text-white"
                 >
                   <NaverSymbol />
-                  회원가입 없이 10초만에 네이버로 로그인하기
+                  10초만에 네이버로 로그인하기
                 </button>
               )}
 

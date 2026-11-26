@@ -18,7 +18,8 @@ type Admin = ReturnType<typeof createAdminClient>;
 const MAX_SHUFFLE = 30;
 
 export async function tarotChallenge(admin: Admin, userId: string): Promise<PlanView | null> {
-  const { data } = await admin.from("tarot_sessions").select("report").eq("user_id", userId).not("report", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  // 대표님 2026-11-26: "테스트에서 받으면 제일 최근에 받은 챌린지" — 다섯 칸이 들어 있는 결과 중 가장 최근 것
+  const { data } = await admin.from("tarot_sessions").select("report").eq("user_id", userId).not("report->challenge", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   const p = tarotPlanFrom(data?.report);
   return p ? tarotPlanView(p) : null;
 }

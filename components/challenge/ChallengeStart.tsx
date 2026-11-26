@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CHALLENGE_THEMES, isThemeKey } from "@/lib/challenge/themes";
-import { ENGINE_KEY, ENGINE_LABEL, TAROT_KEY, nextThemeKey, themePlan, type PlanView } from "@/lib/challenge/planView";
+import {
+  ENGINE_KEY,
+  ENGINE_LABEL,
+  TAROT_KEY,
+  nextThemeKey,
+  themePlan,
+  type PlanView,
+} from "@/lib/challenge/planView";
 import {
   BottomBar,
   ChallengeHero,
@@ -34,8 +41,16 @@ export default function ChallengeStart({ theme }: { theme: string }) {
   const shuffle = Math.max(0, Number(params.get("s") ?? 0) || 0);
   const isTheme = isThemeKey(theme);
   const remoteKey = `${theme}:${shuffle}`;
-  const [remote, setRemote] = useState<{ key: string; plan: PlanView | null } | null>(null);
-  const plan: PlanView | null = isTheme ? themePlan(theme) : remote?.key === remoteKey ? remote.plan : null;
+  const [remote, setRemote] = useState<{
+    key: string;
+    plan: PlanView | null;
+    hasAnswers?: boolean;
+  } | null>(null);
+  const plan: PlanView | null = isTheme
+    ? themePlan(theme)
+    : remote?.key === remoteKey
+      ? remote.plan
+      : null;
   const loadingPlan = !isTheme && remote?.key !== remoteKey;
   const v = data?.view;
 
@@ -50,9 +65,11 @@ export default function ChallengeStart({ theme }: { theme: string }) {
     fetchPlan(theme === TAROT_KEY ? "tarot" : "me", shuffle)
       .then((r) => {
         if (cancelled) return;
-        if (theme === ENGINE_KEY && r.hasAnswers === false) return router.replace(challengePaths.questions(1));
-        if (theme === TAROT_KEY && !r.plan) return router.replace(challengePaths.hub);
-        setRemote({ key: remoteKey, plan: r.plan });
+        if (theme === ENGINE_KEY && r.hasAnswers === false)
+          return router.replace(challengePaths.questions(1));
+        if (theme === TAROT_KEY && !r.plan)
+          return router.replace(challengePaths.hub);
+        setRemote({ key: remoteKey, plan: r.plan, hasAnswers: r.hasAnswers });
       })
       .catch(() => {
         if (!cancelled) setRemote({ key: remoteKey, plan: null });
@@ -70,23 +87,49 @@ export default function ChallengeStart({ theme }: { theme: string }) {
       if (!d.ok) throw new Error(d.message ?? "error");
       // 화면 상태(setData)는 바꾸지 않는다 — 바꾸면 "이미 시작함 → 첫 화면" 이동이 인증 화면 이동보다 먼저 일어난다.
       notifyChallengeChanged();
-      router.push(d.view.kind === "todo" ? challengePaths.day(d.view.n) : challengePaths.hub);
+      router.push(
+        d.view.kind === "todo"
+          ? challengePaths.day(d.view.n)
+          : challengePaths.hub,
+      );
     } catch (e) {
       const m = (e as Error).message;
-      setNotice(m && m !== "error" ? m : "지금은 저장하지 못했어요. 잠시 후 다시 해 주세요.");
+      setNotice(
+        m && m !== "error"
+          ? m
+          : "지금은 저장하지 못했어요. 잠시 후 다시 해 주세요.",
+      );
       setBusy(false);
     }
   }
 
-  // 셔플: 세 가지 마음은 다음 마음으로, 엔진 챌린지는 셔플 번째를 하나 올려 다시 고름(타로 챌린지는 셔플 없음)
+  // 셔플(대표님 2026-11-26 "셔플 버튼을 바로 옆에다가 작게"): 세 가지 마음은 다음 마음으로, 엔진 챌린지는 셔플 번째를 하나 올려 다시 고름,
+  // 타로 챌린지는 질문 3개 답이 있으면 엔진 챌린지로 · 없으면 세 가지 마음으로.
   const shuffleHref = isTheme
     ? challengePaths.start(nextThemeKey(theme))
     : theme === ENGINE_KEY
       ? `${challengePaths.start(ENGINE_KEY)}?s=${shuffle + 1}`
-      : null;
+      : remote?.hasAnswers
+        ? challengePaths.start(ENGINE_KEY)
+        : challengePaths.start(CHALLENGE_THEMES[0].key);
+  const shuffleBtn = (
+    <Link
+      href={shuffleHref}
+      replace
+      aria-label="다른 챌린지로 셔플"
+      className="flex min-h-8 shrink-0 items-center gap-1 rounded-full border border-night-border px-2.5 text-[12px] text-night-soft"
+    >
+      <span aria-hidden="true">↻</span> 셔플
+    </Link>
+  );
 
   return (
-    <ChallengeShell back={{ href: challengePaths.hub, label: "갓생러모임" }}>
+    // 테스트·질문 3개로 받은 챌린지는 갓생러모임 첫 화면이 이 화면으로 바로 보내므로 뒤로 가기 대신 아래 "세 가지 중에서 고를게요"
+    <ChallengeShell
+      back={
+        isTheme ? { href: challengePaths.hub, label: "갓생러모임" } : undefined
+      }
+    >
       <div className="relative px-5 pb-4 pt-2 text-center">
         <ChallengeHero />
         {!v && <Loading error={error} />}
@@ -101,36 +144,47 @@ export default function ChallengeStart({ theme }: { theme: string }) {
                   테스트 결과에 맞춘 챌린지를 골라 두었어요. 바꿔도 괜찮아요.
                 </p>
               )}
-              <p className="text-[13px] text-night-sub">
-                요즘 나에게 제일 필요한 것
-              </p>
-              <div className="mt-1.5 grid grid-cols-3 gap-2">
-                {CHALLENGE_THEMES.map((th) => (
-                  <Link
-                    key={th.key}
-                    href={challengePaths.start(th.key)}
-                    replace
-                    aria-current={theme === th.key ? "page" : undefined}
-                    className={`flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border px-2 text-[13.5px] ${theme === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
-                  >
-                    {th.label}
-                  </Link>
-                ))}
-              </div>
+              {isTheme && (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[13px] text-night-sub">
+                      요즘 나에게 제일 필요한 것
+                    </p>
+                    {shuffleBtn}
+                  </div>
+                  <div className="mt-1.5 grid grid-cols-3 gap-2">
+                    {CHALLENGE_THEMES.map((th) => (
+                      <Link
+                        key={th.key}
+                        href={challengePaths.start(th.key)}
+                        replace
+                        aria-current={theme === th.key ? "page" : undefined}
+                        className={`flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border px-2 text-[13.5px] ${theme === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
+                      >
+                        {th.label}
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
 
               {!isTheme && (
-                <p className="mt-4 text-[13px] text-night-amber">
-                  {theme === TAROT_KEY
-                    ? "타로에서 받은 챌린지"
-                    : plan && plan.label !== ENGINE_LABEL
-                      ? `${ENGINE_LABEL} · ${plan.label}`
-                      : ENGINE_LABEL}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[13px] text-night-amber">
+                    {theme === TAROT_KEY
+                      ? "테스트에서 받은 챌린지"
+                      : plan && plan.label !== ENGINE_LABEL
+                        ? `${ENGINE_LABEL} · ${plan.label}`
+                        : ENGINE_LABEL}
+                  </p>
+                  {!loadingPlan && shuffleBtn}
+                </div>
               )}
               {loadingPlan && <Loading error={null} />}
               {!loadingPlan && !plan && (
                 <p className="mt-3 rounded-xl bg-night-panel px-3 py-2.5 text-[13.5px] text-night-soft">
-                  지금은 나에게 맞는 챌린지를 만들지 못했어요. 위 세 가지 중에서 골라 주세요.
+                  지금은 나에게 맞는 챌린지를 만들지 못했어요. 아래 「세 가지
+                  중에서 고를게요」로 골라 주세요.
                 </p>
               )}
               {plan && (
@@ -171,18 +225,23 @@ export default function ChallengeStart({ theme }: { theme: string }) {
                       </dl>
                     </div>
                   )}
-                  {shuffleHref && (
-                    <Link
-                      href={shuffleHref}
-                      replace
-                      className="mx-auto mt-1 flex min-h-10 items-center gap-1.5 rounded-full border border-night-border px-4 text-[13.5px] text-night-soft"
-                    >
-                      <span aria-hidden="true">↻</span> 다른 챌린지 보기
-                    </Link>
-                  )}
                 </div>
               )}
             </div>
+            {!isTheme && (
+              <Link
+                href={challengePaths.start(CHALLENGE_THEMES[0].key)}
+                className="mt-4 block text-[13px] text-night-sub underline underline-offset-4"
+              >
+                세 가지 중에서 고를게요
+              </Link>
+            )}
+            <Link
+              href={challengePaths.history}
+              className="mt-3 block text-[13px] text-night-dim underline underline-offset-4"
+            >
+              그동안의 갓생 챌린지 기록
+            </Link>
             {notice && (
               <p className="mt-3 text-[13.5px] text-night-yellow" role="alert">
                 {notice}

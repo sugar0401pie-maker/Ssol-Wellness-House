@@ -92,8 +92,15 @@ async function suggestFor(admin: Admin, userId: string): Promise<"tarot" | "me" 
     admin.from("user_onboarding").select("values_ranked,hobbies_ranked,weekends_ranked").eq("user_id", userId).maybeSingle(),
   ]);
   if (tarot) return "tarot";
+  return answered(ob) ? "me" : "questions";
+}
+const answered = (ob: { values_ranked?: unknown; hobbies_ranked?: unknown; weekends_ranked?: unknown } | null) => {
   const has = (v: unknown) => Array.isArray(v) && v.length > 0;
-  return ob && (has(ob.values_ranked) || has(ob.hobbies_ranked) || has(ob.weekends_ranked)) ? "me" : "questions";
+  return !!ob && (has(ob.values_ranked) || has(ob.hobbies_ranked) || has(ob.weekends_ranked));
+};
+async function hasThreeAnswers(admin: Admin, userId: string): Promise<boolean> {
+  const { data } = await admin.from("user_onboarding").select("values_ranked,hobbies_ranked,weekends_ranked").eq("user_id", userId).maybeSingle();
+  return answered(data);
 }
 
 export async function GET(req: NextRequest) {
@@ -107,7 +114,10 @@ export async function GET(req: NextRequest) {
       const { plan, hasAnswers } = await engineChallenge(admin, a.userId, Number(q.get("s") ?? 0) || 0);
       return NextResponse.json({ ok: true, plan, hasAnswers });
     }
-    if (q.get("plan") === TAROT_KEY) return NextResponse.json({ ok: true, plan: await tarotChallenge(admin, a.userId) });
+    if (q.get("plan") === TAROT_KEY) {
+      const [plan, sug] = await Promise.all([tarotChallenge(admin, a.userId), hasThreeAnswers(admin, a.userId)]);
+      return NextResponse.json({ ok: true, plan, hasAnswers: sug }); // hasAnswers: 셔플하면 엔진 챌린지로(없으면 세 가지 마음으로)
+    }
     const s = await loadState(admin, a.userId, todayKeyKST());
     // 시작 전이면 첫 화면에 어떤 길을 먼저 보여 줄지: 타로 계획이 있으면 tarot · 질문 3개 답이 있으면 me · 없으면 질문 3개 권유
     const suggest = s.view.kind === "pre" ? await suggestFor(admin, a.userId) : null;

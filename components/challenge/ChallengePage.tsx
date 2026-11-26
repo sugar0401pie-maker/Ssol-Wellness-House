@@ -74,6 +74,11 @@ export default function ChallengePage() {
 
   const v = data?.view;
   const c = data?.current ?? null;
+  // 대표님 2026-11-26: 테스트(타로)에서 받은 챌린지는 "보기" 없이 그대로 — 시작 전이면 바로 그 챌린지 화면으로. 질문 3개 답이 있으면 나에게 맞춘 챌린지로.
+  const jump = v?.kind === "pre" && (data?.suggest === "tarot" || data?.suggest === "me") ? data.suggest : null;
+  useEffect(() => {
+    if (jump) router.replace(challengePaths.start(jump));
+  }, [jump, router]);
   const plan = planOf(c); // 시작할 때 남긴 계획(엔진·타로) 또는 세 가지 마음
   const day = v?.dayIndex != null ? plan.days[v.dayIndex] : null;
   const lastCk = c?.checkins[c.checkins.length - 1];
@@ -110,20 +115,20 @@ export default function ChallengePage() {
 
             {/* 시작 전: 마음 고르기 — 고르면 그 마음의 시작 화면(3일 계획)으로 */}
             {/* 2026-11-26 대표님: 테스트(타로)에서 받은 챌린지 → 그대로 · 질문 3개 답이 있으면 엔진이 사람마다 · 없으면 질문 3개 권유(건너뛰면 아래 세 가지) */}
-            {v.kind === "pre" && data?.suggest && (
+            {v.kind === "pre" && data?.suggest === "questions" && (
               <Link
-                href={data.suggest === "questions" ? challengePaths.questions(1) : challengePaths.start(data.suggest)}
+                href={challengePaths.questions(1)}
                 className="mt-4 flex min-h-12 items-center justify-between rounded-2xl border border-night-amber bg-night-panel px-4 text-left text-[15px] text-night-text"
               >
-                {data.suggest === "tarot" ? "타로에서 받은 챌린지 보기" : data.suggest === "me" ? "나에게 맞춘 챌린지 보기" : "질문 3개로 나에게 맞는 챌린지 찾기"}
+                질문 3개로 나에게 맞는 챌린지 찾기
                 <span aria-hidden="true" className="text-night-amber">›</span>
               </Link>
             )}
 
-            {v.kind === "pre" && (
+            {v.kind === "pre" && !jump && (
               <div className="mt-4 text-left">
                 <p className="text-[13px] text-night-sub">
-                  요즘 나에게 제일 필요한 것
+                  {data?.suggest === "questions" ? "질문 없이 세 가지 중에서 고를게요" : "요즘 나에게 제일 필요한 것"}
                 </p>
                 {/* 대표님 2026-11-26: 세 개를 타원(알약) 버튼으로 한 줄에 */}
                 <div className="mt-1.5 grid grid-cols-3 gap-2">

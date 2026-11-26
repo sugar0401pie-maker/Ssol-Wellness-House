@@ -9,6 +9,7 @@ export const WITHDRAW_DELETE_TABLES = [
   "chat_messages", "chat_sessions",
   "user_memory", "user_onboarding", "wellness_profiles", "counselor_inquiries", "customer_feedback",
   "ai_usage_log", // 2026-11-23: AI 토큰 수 기록(내용 없음)도 그 사람 몫은 지운다
+  "sky_lantern_wish_edits", // 2026-11-26: 풍등 소원 고치기 전 글·고친 시각(소원보다 먼저)
   "sky_lantern_wishes", // 2026-11-25: 풍등 소원 글
   "challenge_checkins", // 2026-11-25: 작심삼일 챌린지 저장(메모)
   "challenges",

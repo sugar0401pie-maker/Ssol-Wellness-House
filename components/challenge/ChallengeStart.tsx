@@ -77,7 +77,7 @@ export default function ChallengeStart({ theme }: { theme: string }) {
                 </p>
               )}
               <p className="text-[13px] text-night-sub">
-                요즘 내 마음에 가까운 것
+                요즘 나에게 제일 필요한 것
               </p>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {CHALLENGE_THEMES.map((th) => (

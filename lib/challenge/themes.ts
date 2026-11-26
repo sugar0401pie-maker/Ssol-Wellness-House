@@ -11,7 +11,7 @@ export type ChallengeTheme = { key: string; label: string; days: [ChallengeDay, 
 export const CHALLENGE_THEMES: ChallengeTheme[] = [
   {
     key: "worry",
-    label: "걱정이 머릿속을 떠나지 않아요",
+    label: "걱정 줄이기", // 대표님 2026-11-26: 짧게(예전 "걱정이 머릿속을 떠나지 않아요")
     days: [
       { action: "걱정 3개를 종이에 적어 보기", proof: "걱정을 적은 종이를 쓰레기통에 버려 보기" },
       { action: "10분 걷고 하늘 사진 찍기", proof: "걷다가 만난 하늘 사진 찍어 보기" },
@@ -22,7 +22,7 @@ export const CHALLENGE_THEMES: ChallengeTheme[] = [
   },
   {
     key: "delay",
-    label: "할 일을 자꾸 미뤄요",
+    label: "미루지 않기", // 예전 "할 일을 자꾸 미뤄요"
     days: [
       { action: "미루던 일 하나를 5분만 해 보기", proof: "5분 타이머를 켠 화면 찍어 보기" },
       { action: "책상 위 한 칸만 치우기", proof: "깨끗해진 책상 한 칸 찍어 보기" },
@@ -33,7 +33,7 @@ export const CHALLENGE_THEMES: ChallengeTheme[] = [
   },
   {
     key: "energy",
-    label: "몸도 마음도 기운이 없어요",
+    label: "기운 챙기기", // 예전 "몸도 마음도 기운이 없어요"
     days: [
       { action: "물 한 컵 마시고 창문 열기", proof: "물컵이나 창밖 풍경 찍어 보기" },
       { action: "좋아하는 노래 한 곡에 맞춰 5분 스트레칭", proof: "오늘의 노래 화면 찍어 보기" },

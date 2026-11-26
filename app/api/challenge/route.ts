@@ -7,6 +7,7 @@ import { CHALLENGE_DAYS, METHODS, deriveView, keepInHistory, normalizeMemo, star
 import { DEFAULT_THEME, isThemeKey } from "@/lib/challenge/themes";
 import { ENGINE_KEY, TAROT_KEY, planOf, themePlan, type PlanView } from "@/lib/challenge/planView";
 import { engineChallenge, tarotChallenge } from "@/lib/challenge/enginePlan";
+import { safeResultId } from "@/lib/challenge/testEntry";
 import { isLanternOpen, lanternPeriod } from "@/lib/lantern/config";
 import { loadAccessStatus } from "@/lib/billing/loadAccess";
 import { REWARD_DAYS, rewardMinStart } from "@/lib/challenge/reward";
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, plan, hasAnswers });
     }
     if (q.get("plan") === TAROT_KEY) {
-      const [plan, sug] = await Promise.all([tarotChallenge(admin, a.userId), hasThreeAnswers(admin, a.userId)]);
+      const [plan, sug] = await Promise.all([tarotChallenge(admin, a.userId, safeResultId(q.get("result"))), hasThreeAnswers(admin, a.userId)]);
       return NextResponse.json({ ok: true, plan, hasAnswers: sug }); // hasAnswers: 셔플하면 엔진 챌린지로(없으면 세 가지 마음으로)
     }
     const s = await loadState(admin, a.userId, todayKeyKST());
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const a = await auth(req, false);
   if ("error" in a) return a.error;
-  const body = (await req.json().catch(() => null)) as { op?: string; theme?: unknown; shuffle?: unknown; method?: unknown; memo?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { op?: string; theme?: unknown; shuffle?: unknown; result?: unknown; method?: unknown; memo?: unknown } | null;
   const admin = createAdminClient();
   const today = todayKeyKST();
   try {
@@ -148,7 +149,7 @@ export async function POST(req: NextRequest) {
         if (!r.plan) return fail("나에게 맞는 챌린지를 만들지 못했어요. 아래 세 가지 중에서 골라 주세요.", 409);
         plan = r.plan;
       } else if (body.theme === TAROT_KEY) {
-        const t = await tarotChallenge(admin, a.userId);
+        const t = await tarotChallenge(admin, a.userId, safeResultId(body.result));
         if (!t) return fail("타로에서 받은 챌린지를 찾지 못했어요. 아래 세 가지 중에서 골라 주세요.", 409);
         plan = t;
       } else plan = themePlan(isThemeKey(body.theme) ? body.theme : DEFAULT_THEME);

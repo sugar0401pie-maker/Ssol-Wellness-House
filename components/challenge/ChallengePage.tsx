@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CHALLENGE_THEMES, isThemeKey } from "@/lib/challenge/themes";
+import { CHALLENGE_THEMES } from "@/lib/challenge/themes";
+import { entryFromLocation } from "@/lib/challenge/pending";
 import { isStartKey, planOf } from "@/lib/challenge/planView";
 import { dayDiff, shortDate } from "@/lib/challenge/state";
 import { rewardGrantedLine } from "@/lib/challenge/reward";
@@ -41,14 +42,11 @@ export default function ChallengePage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // 예전 주소(/challenge?theme=…, 테스트 결과 화면에서 옴)는 그 마음의 시작 화면으로 옮긴다.
+  // 테스트에서 온 주소는 그 챌린지 화면으로 옮긴다 — 쏠 타로 /challenge?from=tarot&result=… → /challenge/start/tarot?result=…(2026-11-26),
+  // 예전 /challenge?theme=<마음> → 그 마음의 시작 화면.
   useEffect(() => {
-    try {
-      const q = new URLSearchParams(window.location.search).get("theme");
-      if (isThemeKey(q)) router.replace(`${challengePaths.start(q)}?from=test`);
-    } catch {
-      /* 무시 */
-    }
+    const t = entryFromLocation();
+    if (t) router.replace(t);
   }, [router]);
 
   async function restart() {

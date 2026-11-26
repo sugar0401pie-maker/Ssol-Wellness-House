@@ -13,7 +13,7 @@ import { bootstrap } from "@/lib/app/bootstrapClient";
 import type { BootKey } from "@/lib/app/bootstrap";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { useRouter } from "next/navigation";
-import { takePendingTheme } from "@/lib/challenge/pending";
+import { takePendingEntry } from "@/lib/challenge/pending";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
 
@@ -49,10 +49,10 @@ type OnboardingInfo = {
 
 export default function AppFrame({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  // 2026-11-25: 테스트에서 넘어온 챌린지를 로그인 동안 맡아 뒀으면(카카오·네이버 로그인은 첫 화면으로 돌아옴) 갓생러모임으로 이어 준다.
+  // 2026-11-25: 테스트에서 넘어온 갈 곳(챌린지·풍등)을 로그인 동안 맡아 뒀으면(카카오·네이버 로그인은 첫 화면으로 돌아옴) 그 화면으로 이어 준다.
   useEffect(() => {
-    const t = takePendingTheme();
-    if (t && !window.location.pathname.startsWith("/challenge")) router.replace(`/challenge/start/${t}?from=test`);
+    const t = takePendingEntry();
+    if (t && `${window.location.pathname}${window.location.search}` !== t) router.replace(t);
   }, [router]);
   // 2026-09-24: 로그인 후 "자기소개" 온보딩을 반드시 먼저 마치도록 한다 — 안 했으면 이
   // 모달이 화면 전체를 덮어서, 어느 탭으로도 못 빠져나가고 반드시 답해야 한다.

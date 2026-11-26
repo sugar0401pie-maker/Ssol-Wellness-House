@@ -59,10 +59,10 @@ export async function callChallenge(body?: object): Promise<Payload> {
 }
 
 // 시작 화면 미리보기(2026-11-26): 엔진이 고른 계획(me · 셔플 번째) 또는 타로가 준 계획(tarot)
-export async function fetchPlan(kind: "me" | "tarot", shuffle = 0): Promise<{ plan: PlanView | null; hasAnswers?: boolean }> {
+export async function fetchPlan(kind: "me" | "tarot", shuffle = 0, result: string | null = null): Promise<{ plan: PlanView | null; hasAnswers?: boolean }> {
   const token = await getAccessToken();
   if (!token) throw new Error("login");
-  const res = await fetch(`/api/challenge?plan=${kind}${kind === "me" ? `&s=${shuffle}` : ""}`, { headers: authHeaders(token), cache: "no-store" });
+  const res = await fetch(`/api/challenge?plan=${kind}${kind === "me" ? `&s=${shuffle}` : ""}${kind === "tarot" && result ? `&result=${encodeURIComponent(result)}` : ""}`, { headers: authHeaders(token), cache: "no-store" });
   const json = (await res.json().catch(() => ({}))) as { plan?: PlanView | null; hasAnswers?: boolean; message?: string };
   if (!res.ok) throw new Error(json.message ?? "error");
   return { plan: json.plan ?? null, hasAnswers: json.hasAnswers };

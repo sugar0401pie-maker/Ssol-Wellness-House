@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CHALLENGE_THEMES, isThemeKey } from "@/lib/challenge/themes";
+import { safeResultId } from "@/lib/challenge/testEntry";
 import {
   ENGINE_KEY,
   ENGINE_LABEL,
@@ -39,8 +40,9 @@ export default function ChallengeStart({ theme }: { theme: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const fromTest = params.get("from") === "test";
   const shuffle = Math.max(0, Number(params.get("s") ?? 0) || 0);
+  const result = safeResultId(params.get("result")); // 쏠 타로가 보낸 결과번호(2026-11-26)
   const isTheme = isThemeKey(theme);
-  const remoteKey = `${theme}:${shuffle}`;
+  const remoteKey = `${theme}:${shuffle}:${result ?? ""}`;
   const [remote, setRemote] = useState<{
     key: string;
     plan: PlanView | null;
@@ -62,7 +64,7 @@ export default function ChallengeStart({ theme }: { theme: string }) {
   useEffect(() => {
     if (isTheme) return;
     let cancelled = false;
-    fetchPlan(theme === TAROT_KEY ? "tarot" : "me", shuffle)
+    fetchPlan(theme === TAROT_KEY ? "tarot" : "me", shuffle, result)
       .then((r) => {
         if (cancelled) return;
         if (theme === ENGINE_KEY && r.hasAnswers === false)
@@ -77,13 +79,13 @@ export default function ChallengeStart({ theme }: { theme: string }) {
     return () => {
       cancelled = true;
     };
-  }, [isTheme, theme, shuffle, remoteKey, router]);
+  }, [isTheme, theme, shuffle, result, remoteKey, router]);
 
   async function start() {
     setBusy(true);
     setNotice(null);
     try {
-      const d = await callChallenge({ op: "start", theme, shuffle });
+      const d = await callChallenge({ op: "start", theme, shuffle, result });
       if (!d.ok) throw new Error(d.message ?? "error");
       // 화면 상태(setData)는 바꾸지 않는다 — 바꾸면 "이미 시작함 → 첫 화면" 이동이 인증 화면 이동보다 먼저 일어난다.
       notifyChallengeChanged();

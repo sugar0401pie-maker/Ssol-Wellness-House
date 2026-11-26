@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import LoginScreen from "./LoginScreen";
 import AppLoading from "@/components/app/AppLoading";
-import { savePendingTheme, themeFromLocation } from "@/lib/challenge/pending";
+import { entryFromLocation, savePendingEntry } from "@/lib/challenge/pending";
 
 // 2026-09-22: 로그인 없이 쓸 수 있던 익명 로그인 방식을 대체한다. 로그인해야만 앱이 보이고,
 // 한 번 로그인하면(이메일/카카오/네이버) Supabase가 세션을 브라우저에 저장해 다음 방문에
@@ -53,9 +53,10 @@ export default function AuthGate({
   // 2026-10-15: 세션 확인 중에도 빈 화면 대신 안내 화면(AppLoading).
   if (status === "checking") return <AppLoading fullScreen />;
   if (status === "loggedIn") return <>{children}</>;
-  // 2026-11-25: 테스트 결과에서 갓생러모임(/challenge?theme=…)으로 왔는데 로그인 전이면, 그 챌린지를 맡아 두고 로그인하라고 알려 준다.
-  const fromTest = typeof window === "undefined" ? null : themeFromLocation();
-  if (fromTest) savePendingTheme(fromTest);
+  // 2026-11-25: 테스트 결과에서 갓생러모임·풍등으로 왔는데 로그인 전이면, 갈 곳을 맡아 두고 로그인하라고 알려 준다(2026-11-26: 쏠 타로 주소도).
+  const entry = typeof window === "undefined" ? null : entryFromLocation();
+  if (entry) savePendingEntry(entry);
+  const fromTest = entry?.startsWith("/challenge") ? entry : null;
   return (
     <>
       {fromTest && (

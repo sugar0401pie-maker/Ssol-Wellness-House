@@ -140,6 +140,9 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
   // 주소는 첫 그림 때 한 번만 읽는다(점성술 주소는 아래에서 지운다). "pending"이면 만드는 중(말풍선에 점 세 개), null이면 예전 고정 인사.
   const [testSrc] = useState<TestOpeningSource | null>(() => (typeof window === "undefined" ? null : testOpeningSourceFrom(window.location.search)));
   const [testOpening, setTestOpening] = useState<string | null | "pending">(() => (testSrc ? "pending" : null));
+  // 2026-11-26 대표님: 테스트 버튼으로 오지 않아도(홈·하단 메뉴로 들어와도) 여러 테스트 중 가장 최근 것 기준 첫 메시지.
+  // 결과마다 한 번만 만들어 이 기기에 저장해 두고(localStorage) 다시 쓴다. 지난 대화를 열면 쓰지 않는다.
+  const [latestOpening, setLatestOpening] = useState<string | null | "pending">(null);
   const [personaChips] = useState(() => pickRandomSuggestedQuestions(3));
   const [everydayChips] = useState(() => pickRandomSuggestedQuestions(3, EVERYDAY_QUESTION_GROUPS));
   const starter = welcome ? chooseStarterChips(welcome, { persona: personaChips, everyday: everydayChips }) : { chips: [], persona: false };
@@ -222,6 +225,46 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
     };
   }, [testSrc]);
 
+  const latestKey = welcome?.latestTest?.key ?? null;
+  useEffect(() => {
+    const lt = welcome?.latestTest;
+    if (testSrc || !lt || sessionId.current) return;
+    let cancelled = false;
+    const key = `ssol.latestOpening:${lt.key}`;
+    void (async () => {
+      let text: string | null = null;
+      try {
+        text = localStorage.getItem(key);
+      } catch {
+        /* 저장소를 못 쓰면 새로 만든다 */
+      }
+      if (!text) {
+        if (!cancelled) setLatestOpening("pending");
+        try {
+          const token = await getAccessToken();
+          const qs = new URLSearchParams({ from: lt.source.kind, ...(lt.source.resultId ? { result: lt.source.resultId } : {}) });
+          const res = token ? await fetch(`/api/chat/test-opening?${qs}`, { headers: authHeaders(token) }) : null;
+          const json = res?.ok ? ((await res.json()) as { text?: string | null }) : null;
+          text = typeof json?.text === "string" ? json.text : null;
+          if (text) {
+            try {
+              localStorage.setItem(key, text);
+            } catch {
+              /* 무시 */
+            }
+          }
+        } catch {
+          text = null;
+        }
+      }
+      if (!cancelled && !sessionId.current) setLatestOpening(text);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 최근 테스트가 정해졌을 때 한 번(결과가 바뀌면 다시)
+  }, [latestKey, testSrc]);
+
   useEffect(() => {
     let cancelled = false;
     async function checkPersona() {
@@ -232,7 +275,7 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
         const qs = o ? `?from=${ASTRO_OPENING_FROM}${o.resultId ? `&result=${o.resultId}` : ""}` : tarotResultId ? `?tarot=${encodeURIComponent(tarotResultId)}` : "";
         const res = await fetch(`/api/chat/persona-status${qs}`, { headers: authHeaders(token) });
         const json = res.ok ? ((await res.json()) as Partial<WelcomeStatus>) : null;
-        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, typeName: json?.typeName ?? null, hasReport: json?.hasReport === true, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null, tarot: json?.tarot ?? null, insight: json?.insight ?? null });
+        if (!cancelled) setWelcome({ hasPersona: json?.hasPersona === true, fromAstro: json?.fromAstro === true, astroQ1: json?.astroQ1 ?? null, nickname: json?.nickname ?? null, typeName: json?.typeName ?? null, hasReport: json?.hasReport === true, astroGreeting: astroOpening.current ? (json?.astroGreeting ?? null) : null, tarot: json?.tarot ?? null, insight: json?.insight ?? null, latestTest: json?.latestTest ?? null });
       } catch {
         if (!cancelled) setWelcome({ hasPersona: false, fromAstro: false, astroQ1: null, nickname: null }); // 확인하지 못하면 테스트 없이도 답할 수 있는 일상 문구
       }
@@ -449,6 +492,7 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
     astroOpening.current = null;
     setWelcome((w) => (w && w.astroGreeting ? { ...w, astroGreeting: null } : w));
     setTestOpening(null); // 테스트 첫 메시지도 들어온 그 대화에서만
+    setLatestOpening(null);
   }
 
   async function loadSession(id: string) {
@@ -521,6 +565,15 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
     sessionId.current = null;
     saveActiveSessionId(null);
     setChatPath("/chat");
+    // 새 대화도 가장 최근 테스트 기준 첫 메시지로(이 기기에 저장해 둔 글 — 없으면 고정 인사)
+    const lt = welcome?.latestTest;
+    if (lt) {
+      try {
+        setLatestOpening(localStorage.getItem(`ssol.latestOpening:${lt.key}`));
+      } catch {
+        /* 고정 인사 */
+      }
+    }
   }
 
   // 2026-11-24 대표님 결정: "이번 대화를 기억해 둘까요?"를 묻지 않고, 새 대화를 시작할 때 지금 대화를 자동으로 기억한다(약관 제17조 2항 — 이전 대화 이어가기·맞춤 제안).
@@ -604,7 +657,7 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
       </header>
 
       <main className="flex-1 space-y-3 overflow-y-auto px-4 py-4" aria-live="polite">
-        {testOpening === "pending" ? (
+        {testOpening === "pending" || (!testOpening && latestOpening === "pending") ? (
           <div className="flex justify-start" aria-label="쏘웰라가 첫 메시지를 쓰고 있어요">
             <div className="rounded-2xl bg-navy-soft px-4 py-2.5 text-[20px] leading-6 text-navy" aria-hidden="true">
               <span className="ssol-thinking-dot">·</span>
@@ -613,7 +666,7 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
             </div>
           </div>
         ) : (
-          <Bubble role="assistant" content={testOpening ?? (welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING)} />
+          <Bubble role="assistant" content={testOpening ?? (typeof latestOpening === "string" ? latestOpening : welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING)} />
         )}
         {/* 2026-11-25 대표님: 다시 들어온 새 대화 첫 화면에 지난 대화에서 비친 마음을 알려 준다(고민 타파 카드와 같은 문장). 테스트에서 막 넘어온 맞춤 인사가 있으면 그 인사만. */}
         {isEmptyChat && welcome?.insight && !testSrc && !welcome.tarot && !welcome.astroGreeting && <Bubble role="assistant" content={`${boardInsightLeadIn(welcome.nickname)}\n\n${welcome.insight}`} />}

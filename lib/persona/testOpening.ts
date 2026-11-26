@@ -9,6 +9,7 @@ import { loadAstroInsight } from "@/lib/mypage/loadAstroInsight";
 import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 import { TEST_OPENING_SYSTEM_PROMPT } from "./testOpeningPrompt";
 import { cleanOpening, type TestOpeningSource } from "./testOpeningSource";
+import { loadLatestTarotWorry } from "./latestTest";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -31,9 +32,10 @@ async function summaryFor(admin: Admin, userId: string, src: TestOpeningSource):
 }
 
 export async function buildTestOpening(admin: Admin, userId: string, src: TestOpeningSource, nickname: string | null): Promise<string | null> {
-  const s = await summaryFor(admin, userId, src);
+  const [s, worry] = await Promise.all([summaryFor(admin, userId, src), src.kind === "tarot" ? Promise.resolve(null) : loadLatestTarotWorry(admin, userId)]);
   if (!s || !s.text.trim()) return null;
-  const summary = s.text.slice(0, 5000);
+  // 타로가 아닌 테스트 기준이어도, 타로에서 직접 적은 고민이 있으면 함께 넘긴다(대표님 2026-11-26). 타로 결과 요약에는 이미 [고민 원문]이 들어 있다.
+  const summary = (worry ? `${s.text}\n[이 사람이 쏠 타로 하우스에서 직접 적은 고민] ${worry}` : s.text).slice(0, 5000);
   // 결과(특히 직접 적은 고민 글)에 위기·폭력 신호가 있으면 요약 인사를 만들지 않는다 — 고정 인사로 두고, 첫 메시지부터 안전 경로가 판단한다.
   const { rules } = await getSafetyData();
   if (instantHit(findKeywordHits(summary, rules))) return null;

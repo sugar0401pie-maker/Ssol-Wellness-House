@@ -26,3 +26,16 @@ export function cleanOpening(text: string): string | null {
     .trim();
   return t.length >= 30 && t.length <= 1200 ? t : null;
 }
+
+// 여러 테스트를 본 사람은 가장 최근에 본 테스트 기준으로 첫 메시지를 만든다(대표님 2026-11-26).
+// 후보(종류·결과 id·만든 시각) 중 가장 최근 것 → 첫 메시지 출처 + 이 기기에 저장해 둘 이름(결과마다 한 번만 만든다).
+export type LatestCandidate = { kind: "tarot" | "astro" | "quiz"; id: string; at: string };
+export type LatestTest = { source: TestOpeningSource; key: string };
+
+export function pickLatestTest(cands: (LatestCandidate | null | undefined)[]): LatestTest | null {
+  const ok = cands.filter((c): c is LatestCandidate => !!c && !!c.id && !Number.isNaN(Date.parse(c.at)));
+  if (!ok.length) return null;
+  const c = ok.reduce((a, b) => (Date.parse(b.at) > Date.parse(a.at) ? b : a));
+  const source: TestOpeningSource = c.kind === "quiz" ? { kind: "quiz" } : c.kind === "tarot" ? { kind: "tarot", resultId: c.id } : { kind: "astro", resultId: c.id };
+  return { source, key: `${c.kind}:${c.id}` };
+}

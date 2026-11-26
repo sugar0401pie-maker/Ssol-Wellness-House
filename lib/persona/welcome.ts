@@ -45,6 +45,8 @@ export type WelcomeStatus = {
   tarot?: TarotWelcome | null;
   /** 지난 대화에서 비친 마음(가장 최근 대화 기준 한 개, 2026-11-25). 없으면 null. */
   insight?: string | null;
+  /** 가장 최근에 본 테스트(여러 개 본 사람은 그 테스트 기준 첫 메시지, 2026-11-26). 없으면 null. */
+  latestTest?: { source: { kind: "tarot" | "astro" | "quiz"; resultId?: string | null }; key: string } | null;
 };
 
 /** 인사말에 넣을 고민 글 앞부분(줄바꿈은 띄어쓰기로, 길면 max자에서 자르고 …). */

@@ -75,13 +75,21 @@ export type LanternSet = {
 };
 
 const px = (left: number, top: number, width: number): LanternFrame => ({ left: (left / 1080) * 100, top: (top / 2160) * 100, width: (width / 1080) * 100 });
+// 풍등 키우기(대표님 2026-11-26 "풍등이 좀 작아서 1.6배로"): 풍등 아래쪽 가운데를 그대로 두고 위로 키운다(친구들 머리 위 자리 유지). 높이는 너비의 1.5배(그림 2:3).
+const grow = (left: number, top: number, width: number, k: number): LanternFrame => {
+  const cx = left + width / 2;
+  const bottom = top + width * 1.5;
+  const w = width * k;
+  return px(cx - w / 2, bottom - w * 1.5, w);
+};
 
 export const LANTERN_SETS: LanternSet[] = [
   { key: "otter", scenes: [...LANTERN_SCENES], lantern: null, celebrateTextBottom: CELEBRATE_TEXT_BOTTOM },
   {
     key: "penguin",
     scenes: [
-      { n: 1, src: "/lantern/p/scene1.webp", alt: "펭귄과 비버가 풍등을 함께 들고 하늘을 올려다봐요" },
+      // 대표님 2026-11-26: 소원 쓰는 첫 화면도 풍등이 떠오른 장면(scene2)으로
+      { n: 1, src: "/lantern/p/scene2.webp", alt: "펭귄과 비버 머리 위로 풍등이 떠올라 있어요" },
       { n: 2, src: "/lantern/p/scene2.webp", alt: "두 친구가 손을 놓자 풍등이 살짝 떠올라요" },
       { n: 3, src: "/lantern/p/scene3.webp", alt: "풍등이 더 높이 올라가요" },
       { n: 4, src: "/lantern/p/scene4.webp", alt: "풍등이 하늘 멀리 작아져요" },
@@ -89,7 +97,8 @@ export const LANTERN_SETS: LanternSet[] = [
     ],
     lantern: {
       src: "/lantern/p/lantern.webp",
-      frames: { 1: px(290, 921, 500), 2: px(290, 801, 500), 3: px(320, 490, 440), 4: px(420, 150, 240) },
+      // 1·2: 떠오른 자리에서 1.6배, 3·4: 멀어지며 작아 보이게 1.4배·1.2배(제작 측 좌표 기준)
+      frames: { 1: grow(290, 801, 500, 1.6), 2: grow(290, 801, 500, 1.6), 3: grow(320, 490, 440, 1.4), 4: grow(420, 150, 240, 1.2) },
       // 풍등 그림 안 %(제작 측 제안은 가운데 절반 25/23/50/50 — 한글 소원이 너무 좁게 꺾여 종이 안에서 조금 넓힘)
       wishBox: { left: 10, top: 18, width: 80, height: 62 },
     },

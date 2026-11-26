@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import PublicBoardShell from "@/components/board/PublicBoardShell";
 import BoardView from "@/components/board/BoardView";
 import { loadEpisodes, loadGuides, upcomingEpisodes } from "@/lib/board/fetchSite";
-import { BASIS_SUB } from "@/lib/board/data";
 import { SHARE_IMAGE } from "@/lib/seo/paths";
 
 // 고민 타파 공개 게시판(2026-11-25 대표님 요청) — 로그인 없이 볼 수 있고 검색엔진·AI가 읽을 수 있게 서버가 글자로 내려보낸다.
@@ -22,7 +21,6 @@ export default async function PublicBoard() {
     <PublicBoardShell>
       <div className="px-5 pt-5">
         <h1 className="text-[22px] font-bold">고민 타파</h1>
-        <p className="mt-1 text-[13.5px] leading-5 text-night-sub">{BASIS_SUB.none}</p>
         {(guides.stale || episodes.stale) && <p className="mt-1 text-[12px] text-night-yellow">지금은 최신 글을 못 가져왔어요. 조금 뒤에 다시 열어 주세요.</p>}
       </div>
       <BoardView guides={guides.data} episodes={episodes.data} upcoming={upcomingEpisodes()} basis="none" basePath="/board" />

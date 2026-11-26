@@ -1,15 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { layoutCloud } from "./cloud.ts";
+import { CLOUD_H, CLOUD_W, layoutCloud } from "./cloud.ts";
 import { STARTER_EPISODES, STARTER_GUIDES, SCORES, isPublishedOn, scoreOf, type Basis } from "./data.ts";
 
 test("글자 구름: 4가지 기준 모두 겹치지 않고 상자 밖으로 나가지 않는다", () => {
   for (const basis of Object.keys(SCORES) as Basis[]) {
     const items = STARTER_GUIDES.map((g) => ({ key: g.slug, label: `#${g.tag}`, score: scoreOf(basis, g.tag) }));
-    const pos = layoutCloud(items, 88, 66);
+    const pos = layoutCloud(items, CLOUD_W, CLOUD_H);
     const boxes = Object.values(pos);
     assert.equal(boxes.length, 11);
-    for (const b of boxes) assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= 88 && b.y + b.h <= 66, `${basis} 밖으로`);
+    for (const b of boxes) assert.ok(b.f >= 3, `${basis} 글자가 너무 작음 ${b.f}`); // 375px 화면에서 11px 이상
+    for (const b of boxes) assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= CLOUD_W && b.y + b.h <= CLOUD_H, `${basis} 밖으로`);
     for (let i = 0; i < boxes.length; i++)
       for (let j = i + 1; j < boxes.length; j++) {
         const a = boxes[i];

@@ -37,7 +37,11 @@ test("그림 묶음 두 가지(수달·해달 / 펭귄·비버)를 무작위로 
   assert.equal(lanternSetFor(0.99).key, "penguin");
   assert.equal(lanternSetFor(1).key, "penguin");
   const p = LANTERN_SETS[1].lantern!;
-  assert.ok(p.frames[1].top > p.frames[2].top && p.frames[2].top > p.frames[3].top && p.frames[3].top > p.frames[4].top);
+  // 대표님 2026-11-26: 소원 쓰는 첫 화면(1)도 떠오른 자리(2)와 같고, 3·4로 갈수록 위로
+  assert.ok(p.frames[1].top >= p.frames[2].top && p.frames[2].top > p.frames[3].top && p.frames[3].top > p.frames[4].top);
+  // 풍등 1.6배(제작 측 너비 500px → 800px, 그림 폭 1080px 기준), 그림 밖으로 나가지 않음
+  assert.ok(Math.abs(p.frames[1].width - (800 / 1080) * 100) < 0.01);
+  for (const f of Object.values(p.frames)) assert.ok(f.left >= 0 && f.top >= 0 && f.left + f.width <= 100, JSON.stringify(f));
   assert.ok(p.frames[4].width < p.frames[1].width);
   for (const s of LANTERN_SETS) assert.equal(s.scenes.length, 5);
 });

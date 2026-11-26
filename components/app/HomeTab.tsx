@@ -63,7 +63,7 @@ export default function HomeTab() {
           setError(null);
         }
       } catch {
-        if (!cancelled) setError("오늘의 제안을 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+        if (!cancelled) setError("홈 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
       }
     }
     void load();
@@ -104,46 +104,9 @@ export default function HomeTab() {
             홈 데이터를 기다리지 않고 바로 보인다(서버 데이터가 필요 없음). */}
         <SeaFriendCard />
 
-        {/* 2026-10-15 owner 요청: 홈 데이터(캐릭터·오늘의 제안)를 불러오는 동안 빈 칸 대신 안내를 보여준다. */}
-        {!data && !error && (
-          <div role="status" aria-live="polite" className="mt-10 flex flex-col items-center text-center">
-            <p className="text-[14px] leading-6 text-slate-600">
-              <span className="ssol-pulse-text">오늘의 제안을 불러오고 있어요</span>
-            </p>
-            <p className="mt-1 text-[12px] leading-5 text-slate-400">
-              <span className="ssol-pulse-text" style={{ animationDelay: "200ms" }}>
-                잠시만 기다려 주세요.
-              </span>
-            </p>
-            <p className="mt-3 text-[20px] leading-none text-navy" aria-hidden="true">
-              <span className="ssol-thinking-dot" style={{ animationDelay: "0ms" }}>
-                ·
-              </span>
-              <span className="ssol-thinking-dot" style={{ animationDelay: "150ms" }}>
-                ·
-              </span>
-              <span className="ssol-thinking-dot" style={{ animationDelay: "300ms" }}>
-                ·
-              </span>
-            </p>
-          </div>
-        )}
-
         {error && <p className="mt-6 text-[13px] text-red-600">{error}</p>}
 
-        {data?.practice && (
-          <>
-            <p className="mt-6 text-[14px] font-medium text-foreground">오늘 이렇게 해보면 어떨까요?</p>
-            <div className="mt-2 rounded-2xl bg-navy-soft p-4">
-              <p className="text-[16px] font-medium leading-6 text-foreground">{data.practice.title}</p>
-              <p className="mt-1.5 text-[14px] leading-5 text-slate-600">{data.practice.detail}</p>
-            </div>
-          </>
-        )}
-
-        {data && !data.practice && (
-          <p className="mt-6 text-[13px] text-slate-400">오늘의 제안을 준비하지 못했어요. 채팅에서 편하게 이야기해보세요.</p>
-        )}
+        {/* 2026-11-26 대표님: "오늘 이렇게 해보면 어떨까요?"는 고민 타파 제목 아래로 옮김(components/board/DailyPracticeCard.tsx) */}
       </div>
 
       {/* 2026-11-03 owner 요청: 로그인 뒤 화면 하단에도 사업자 정보(통신판매업신고번호 포함). 채팅은 입력창이 고정이라 제외. */}

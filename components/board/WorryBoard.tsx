@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import {
-  BASIS_SUB,
   type Basis,
   type Episode,
   type Guide,
 } from "@/lib/board/data";
 import BoardView from "./BoardView";
 import { LatestInsightCard } from "@/components/app/InsightsSection";
+import DailyPracticeCard from "./DailyPracticeCard";
 
 // 앱 안 고민 타파(요청문 v1.9.4 10장): 맨 위 "쏘웰라가 알게 된 마음"(대표님 2026-11-24: 고민타파에 들어가면 제일 위에) → 제목·부제 →
 // 해시태그 글자 구름(이 사람에게 가까운 고민이 크게, 천천히 떠다님) → 고른 고민 패널(이름표·제목·먼저 한 줄로 3줄·글 읽기) → 고민우체국 연재.
@@ -62,12 +62,9 @@ export default function WorryBoard({
       >
         <div className="px-5 pt-4">
           <h1 className="text-[22px] font-bold">고민 타파</h1>
-          {data && (
-            <p className="mt-1 text-[13.5px] leading-5 text-night-sub">
-              {BASIS_SUB[data.basis]}
-            </p>
-          )}
         </div>
+        {/* 대표님 2026-11-26 순서: 고민 타파 제목 → 오늘 이렇게 해보면 어떨까요?(홈에서 옮김) → (최근 대화 마음) → 고민우체국 → 글자 구름 */}
+        <DailyPracticeCard />
         {/* 2026-11-25 대표님: "고민 타파" 제목 바로 아래에 "{닉네임}님과 최근 나눈 대화를 보면, 이런 마음이 보여요." 카드(최근 대화에서 비친 마음이 있을 때만) */}
         <div className="[&>div]:border-b-0 [&>div]:px-5 [&>div]:pb-0 [&>div]:pt-3 [&_.bg-navy-soft]:bg-night-panel [&_.bg-navy-soft]:text-night-text [&_p]:!text-inherit">
           <LatestInsightCard variant="board" />

@@ -118,17 +118,15 @@ export default function ChallengePage() {
                 <p className="text-[13px] text-night-sub">
                   요즘 나에게 제일 필요한 것
                 </p>
-                <div className="mt-1.5 grid gap-2">
+                {/* 대표님 2026-11-26: 세 개를 타원(알약) 버튼으로 한 줄에 */}
+                <div className="mt-1.5 grid grid-cols-3 gap-2">
                   {CHALLENGE_THEMES.map((th) => (
                     <Link
                       key={th.key}
                       href={challengePaths.start(th.key)}
-                      className="flex min-h-12 items-center justify-between rounded-xl border border-night-border bg-night-panel px-4 text-[15px]"
+                      className="flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-night-border bg-night-panel px-2 text-[14px]"
                     >
                       {th.label}
-                      <span aria-hidden="true" className="text-night-dim">
-                        ›
-                      </span>
                     </Link>
                   ))}
                 </div>

@@ -79,14 +79,14 @@ export default function ChallengeStart({ theme }: { theme: string }) {
               <p className="text-[13px] text-night-sub">
                 요즘 나에게 제일 필요한 것
               </p>
-              <div className="mt-1.5 flex flex-wrap gap-2">
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
                 {CHALLENGE_THEMES.map((th) => (
                   <Link
                     key={th.key}
                     href={challengePaths.start(th.key)}
                     replace
                     aria-current={t.key === th.key ? "page" : undefined}
-                    className={`flex min-h-10 items-center rounded-full border px-3 text-[13.5px] ${t.key === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
+                    className={`flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border px-2 text-[13.5px] ${t.key === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
                   >
                     {th.label}
                   </Link>

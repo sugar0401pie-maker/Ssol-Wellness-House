@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
 import { loadGreetingName } from "@/lib/profile/greetingName";
-import { isLanternOpen, lanternEventKey, lanternPeriod, normalizeWish } from "@/lib/lantern/config";
+import { WISH_MAX, isLanternOpen, lanternEventKey, lanternPeriod, normalizeWish } from "@/lib/lantern/config";
 
 // 풍등 날리기(홈 화면 개편 요청문 v1.9.4 2장, 2026-11-25). 이벤트 기간(새해까지)에 한 번만 날린다(대표님 2026-11-25 — 처음엔 하루 한 번).
 // GET: 이벤트 중인지·이미 날렸는지(날린 시각 — 화면이 "지금 몇 km 상공" 계산에 씀)·내 소원 글(본인에게만)·인사 이름 · POST: 소원 저장(서버 날짜만 믿는다)
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   const body = (await req.json().catch(() => null)) as { wish?: unknown } | null;
   const wish = normalizeWish(body?.wish);
-  if (!wish) return NextResponse.json({ ok: false, reason: "invalid", message: "소원을 40자 안에서 한 줄로 적어 주세요." }, { status: 400 });
+  if (!wish) return NextResponse.json({ ok: false, reason: "invalid", message: `소원을 ${WISH_MAX}자 안에서 적어 주세요.` }, { status: 400 });
   const s = status();
   if (!s.open) return NextResponse.json({ ok: false, reason: "closed", message: "지금은 풍등 날리기 기간이 아니에요." }, { status: 403 });
   const { data, error } = await createAdminClient()
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   const body = (await req.json().catch(() => null)) as { wish?: unknown } | null;
   const wish = normalizeWish(body?.wish);
-  if (!wish) return NextResponse.json({ ok: false, reason: "invalid", message: "소원을 40자 안에서 한 줄로 적어 주세요." }, { status: 400 });
+  if (!wish) return NextResponse.json({ ok: false, reason: "invalid", message: `소원을 ${WISH_MAX}자 안에서 적어 주세요.` }, { status: 400 });
   const s = status();
   if (!s.open) return NextResponse.json({ ok: false, reason: "closed", message: "지금은 풍등 날리기 기간이 아니에요." }, { status: 403 });
   const { data, error } = await createAdminClient()

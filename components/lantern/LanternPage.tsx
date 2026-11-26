@@ -30,6 +30,9 @@ import { KakaoSymbol } from "@/components/auth/SocialLogos";
 
 // 날린 뒤 화면(대표님 2026-11-26): 공유하기(카카오톡 — 내가 쓴 소원 화면 그림, lib/lantern/shareCard.ts) · 소원 다시 보기(/lantern/wish, 고쳐서 다시 날릴 수 있음).
 // 그 그림은 풍등을 날리면 자동으로 앨범(내려받기)에 저장된다.
+// 소원 입력칸 줄 수(대표님 2026-11-26 — 100자, 풍등을 위아래로 채우게): 글이 길어질수록 늘어나고, 가운데 정렬이라 풍등의 넓은 가운데에서 위아래로 퍼진다.
+// 한 줄에 대략 13자(줄바꿈이 띄어쓰기 단위라 여유를 둠), 3~8줄.
+const wishRows = (n: number) => Math.min(8, Math.max(3, Math.ceil(n / 13) + 1));
 const SHARE_FILE = "ssol-lantern-2027.png";
 // 문장 고르기용 난수·지금 시각(이벤트 처리 안에서만 부른다 — 화면을 그리는 중에 부르는 게 아님)
 const rand = () => Math.random();
@@ -349,7 +352,8 @@ export default function LanternPage({
         id="wish"
         value={wish}
         maxLength={WISH_MAX}
-        rows={3}
+        rows={wishRows(count)}
+        spellCheck={false}
         placeholder={"2027년을 맞이하는\n내 다짐과 소원을\n편하게 적어보세요"} // 대표님 2026-11-25 문구·줄바꿈
         onChange={(e) => {
           setWish(e.target.value.replace(/\n/g, ""));
@@ -359,7 +363,7 @@ export default function LanternPage({
           // 한 줄 소원이라 줄바꿈은 막는다(보내기는 버튼으로만 — 한글 조합 중 Enter 오작동 방지)
           if (e.key === "Enter") e.preventDefault();
         }}
-        className="block w-full resize-none break-keep bg-transparent text-center outline-none placeholder:text-[#a3804f]"
+        className="block w-full resize-none break-keep bg-transparent text-center outline-none [scrollbar-width:none] placeholder:text-[#a3804f] [&::-webkit-scrollbar]:hidden"
         style={{
           fontSize: size,
           lineHeight: 1.5,
@@ -463,13 +467,13 @@ export default function LanternPage({
                 }}
               >
                 {writing ? (
-                  wishInput("7.6cqw", "5cqw")
+                  wishInput("5.6cqw", "4.2cqw")
                 ) : (
                   <p
                     className="pointer-events-none break-keep text-center"
                     aria-hidden="true"
                     style={{
-                      fontSize: "7.6cqw",
+                      fontSize: "5.6cqw",
                       lineHeight: 1.5,
                       color: INK,
                       textShadow: "0 0 4cqw rgba(255,236,190,.9)",
@@ -485,7 +489,7 @@ export default function LanternPage({
           )
         ) : writing ? (
           <div className="absolute" style={wishBoxStyle(1)}>
-            {wishInput("5.4cqw", "3.2cqw")}
+            {wishInput("4cqw", "3cqw")}
           </div>
         ) : (
           (phase === "flying" || phase === "done") && (
@@ -494,7 +498,7 @@ export default function LanternPage({
               aria-hidden="true"
               style={{
                 ...wishBoxStyle(scene),
-                fontSize: "5.4cqw",
+                fontSize: "4cqw",
                 lineHeight: 1.5,
                 color: INK,
                 textShadow: "0 0 2cqw rgba(255,236,190,.9)",

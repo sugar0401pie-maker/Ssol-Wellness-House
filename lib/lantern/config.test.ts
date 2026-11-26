@@ -12,7 +12,8 @@ test("이벤트 기간: 기본 11/25~12/31(양끝 포함), 환경 변수로 바�
   assert.deepEqual(lanternPeriod({ SW_LANTERN_START: "2026-11-20", SW_LANTERN_END: "bad" }), { start: "2026-11-20", end: "2026-12-31" });
 });
 
-test("소원 글: 공백 정리, 비었거나 40자를 넘으면 받지 않음(한글·이모지도 한 글자)", () => {
+test("소원 글: 공백 정리, 비었거나 100자를 넘으면 받지 않음(한글·이모지도 한 글자)", () => {
+  assert.equal(WISH_MAX, 100);
   assert.equal(normalizeWish("  올해는\n  건강하게  "), "올해는 건강하게");
   assert.equal(normalizeWish("   "), null);
   assert.equal(normalizeWish(123), null);

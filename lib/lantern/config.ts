@@ -4,7 +4,7 @@
 // 이벤트 기간(요청문 0장 4번 기본값). 서버는 환경 변수 SW_LANTERN_START·SW_LANTERN_END(YYYY-MM-DD, KST)로 바꿀 수 있다.
 export const LANTERN_DEFAULT_START = "2026-11-25"; // 대표님 2026-11-25 "풍등 지금 열리게" — 원래 11-26
 export const LANTERN_DEFAULT_END = "2026-12-31";
-export const WISH_MAX = 40; // 한글 40자(글자 단위)
+export const WISH_MAX = 100; // 글자 단위 — 대표님 2026-11-26: 40자는 적고 풍등이 비어 보여 100자로(DB 제약도 함께, 마이그레이션 20261126000000)
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export function lanternPeriod(env: { SW_LANTERN_START?: string; SW_LANTERN_END?: string } = {}): { start: string; end: string } {
@@ -21,7 +21,7 @@ export const entryRedirectKey = (todayKey: string): string => `ssol.lanternEntry
 
 export const lanternEventKey = (p: { start: string }): string => `lantern-${p.start}`;
 
-// 소원 글: 앞뒤 공백을 빼고 줄바꿈·여러 칸 띄움은 한 칸으로. 비었거나 40자를 넘으면 null.
+// 소원 글: 앞뒤 공백을 빼고 줄바꿈·여러 칸 띄움은 한 칸으로. 비었거나 WISH_MAX(100자)를 넘으면 null.
 export function normalizeWish(input: unknown): string | null {
   if (typeof input !== "string") return null;
   const s = input.replace(/\s+/g, " ").trim();
@@ -41,10 +41,11 @@ export const LANTERN_SCENES = [
 // 글자 자리(%, 풍등 몸통 가운데) — 원본 장면 1: 풍등 x168~924·y400~1284, 장면 2: x192~904·y312~1116, 장면 3: x224~760·y152~928.
 // 장면 1~4 원본은 가장자리에 흰 테두리가 있어 x16~1064·y32~2128을 잘라 1080×2160으로 되돌렸다(public/lantern) — 아래 값은 자른 뒤 기준.
 // 장면 3에서는 풍등을 따라 옮겨 가며 흐려진다(장면 4부터는 보이지 않음).
+// 대표님 2026-11-26: 100자로 늘리면서 글자 자리를 풍등 안에서 넓힘(46 → 58%, 장면 2·3도 같은 비율) — 위아래는 줄 수(rows)로 늘린다.
 export const WISH_BOX = {
-  1: { cx: 50.6, cy: 38.7, w: 46 }, // w = 글자 상자 폭(그림 폭의 %)
-  2: { cx: 50.7, cy: 32.6, w: 42 },
-  3: { cx: 45.5, cy: 24.8, w: 32 },
+  1: { cx: 50.6, cy: 38.7, w: 58 }, // w = 글자 상자 폭(그림 폭의 %)
+  2: { cx: 50.7, cy: 32.6, w: 53 },
+  3: { cx: 45.5, cy: 24.8, w: 40 },
 } as const;
 // 장면 시간(ms): 2 → 3 → 4, 그다음 끝 화면(장면 5).
 export const SCENE_MS = { 2: 1500, 3: 1500, 4: 5000 } as const;
@@ -100,7 +101,8 @@ export const LANTERN_SETS: LanternSet[] = [
       // 1·2: 떠오른 자리에서 1.6배, 3·4: 멀어지며 작아 보이게 1.4배·1.2배(제작 측 좌표 기준)
       frames: { 1: grow(290, 801, 500, 1.6), 2: grow(290, 801, 500, 1.6), 3: grow(320, 490, 440, 1.4), 4: grow(420, 150, 240, 1.2) },
       // 풍등 그림 안 %(제작 측 제안은 가운데 절반 25/23/50/50 — 한글 소원이 너무 좁게 꺾여 종이 안에서 조금 넓힘)
-      wishBox: { left: 10, top: 18, width: 80, height: 62 },
+      // 대표님 2026-11-26: 100자 — 위아래·양옆으로 넓힘(풍등 몸통 안, 글자는 가운데 정렬이라 몸통이 넓은 가운데에 모인다)
+      wishBox: { left: 8, top: 12, width: 84, height: 74 },
     },
     celebrateTextBottom: 46,
   },

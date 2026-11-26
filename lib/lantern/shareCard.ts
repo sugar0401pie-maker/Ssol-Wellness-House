@@ -19,7 +19,7 @@ function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, 
 // 가운데(cx, cy)에 맞춰 여러 줄 글자를 쓴다(풍등 안 글자처럼 은은한 빛).
 function wishText(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, maxW: number, font: number, family: string) {
   ctx.font = `400 ${font}px ${family}`;
-  const lines = wrapLines((t) => ctx.measureText(t).width, text, maxW, 4);
+  const lines = wrapLines((t) => ctx.measureText(t).width, text, maxW, 9); // 100자
   const lh = font * 1.5;
   ctx.save();
   ctx.fillStyle = INK;
@@ -52,10 +52,10 @@ export async function drawWishCard(set: LanternSet, wish: string, family: string
     const by = ly + (b.top / 100) * lh;
     const bw = (b.width / 100) * lw;
     const bh = (b.height / 100) * lh;
-    wishText(ctx, wish, bx + bw / 2, by + bh / 2, bw, lw * 0.076, family); // 화면: 풍등 폭의 7.6%
+    wishText(ctx, wish, bx + bw / 2, by + bh / 2, bw, lw * 0.056, family); // 화면: 풍등 폭의 5.6%
   } else {
     const b = WISH_BOX[1];
-    wishText(ctx, wish, (b.cx / 100) * c.width, (b.cy / 100) * c.height, (b.w / 100) * c.width, c.width * 0.054, family); // 화면: 그림 폭의 5.4%
+    wishText(ctx, wish, (b.cx / 100) * c.width, (b.cy / 100) * c.height, (b.w / 100) * c.width, c.width * 0.04, family); // 화면: 그림 폭의 4%
   }
   return c;
 }

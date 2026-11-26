@@ -36,13 +36,10 @@ export default function ChallengeBanner({ getToken = getAccessToken }: { getToke
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 열 때 한 번
   }, []);
   if (!copy) return null;
-  // 2026-11-25 대표님: 배너를 손글씨 그림("쏠 작심삼일 챌린지")으로 교체. 챌린지 상태(오늘은 N일차 등)는 그림 왼쪽 아래에 작게 얹는다.
+  // 2026-11-25 대표님: 배너를 손글씨 그림("쏠 작심삼일 챌린지")으로 교체. 2026-11-26 대표님: 그림 왼쪽 아래에 얹던 상태 글자는 그림과 겹쳐 보여 뺌(상태는 화면 읽기용 이름에만).
   return (
     <Link href={href} aria-label={`쏠 작심삼일 챌린지. ${copy.title}. ${copy.desc}`} className="ssol-banner relative mb-4 block overflow-hidden rounded-2xl shadow-[0_6px_18px_rgba(0,0,0,.35)]">
       <Image src="/challenge/banner.webp" alt="" aria-hidden="true" width={1200} height={400} unoptimized priority className="h-auto w-full" />
-      <span className="absolute bottom-[7%] left-[5%] max-w-[46%] rounded-full bg-[rgba(8,20,42,.72)] px-2.5 py-1 text-[11.5px] font-bold leading-4 text-night-yellow" aria-hidden="true">
-        {copy.title}
-      </span>
     </Link>
   );
 }

@@ -13,6 +13,7 @@ import {
   phaseOf,
   type QuestionDef,
   type BranchDef,
+  pruneRetiredRanked,
 } from "@/lib/onboarding/schema";
 import { toggleRank, rankOf, toRankedAnswers } from "@/lib/onboarding/rankSelect";
 
@@ -69,7 +70,7 @@ export default function OnboardingFlow({ nickname, title, mode, onDone, onClose,
         const data = (await res.json()) as { answers: Record<string, unknown>; resumeStep?: number };
         if (cancelled) return;
         const { other_answers, ...rest } = data.answers as { other_answers?: Record<string, string> };
-        setAnswers(rest);
+        setAnswers(pruneRetiredRanked(rest)); // 보관으로 빠진 보기(CSO 묶음 v2.40)는 화면에 없으니 순위에서 뺀다
         setOtherTexts(other_answers ?? {});
         if (mode === "gate" && typeof data.resumeStep === "number") setStepIndex(data.resumeStep);
       } catch {

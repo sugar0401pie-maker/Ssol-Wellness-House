@@ -87,6 +87,12 @@ async function personOf(admin: Admin, userId: string, states: States, tasks: Tas
   return PS.withTaskTheory(PS.personFromOnboarding(answers, base), tasks) as Person;
 }
 
+// 고민 하나와 상관없는 곳(오늘의 제안 · 작심삼일)에서 쓰는 사람 정보 — 과제와 같은 기준(온보딩 동의 + 끝낸 사람만 답을 씀).
+export async function personFor(admin: Admin, userId: string): Promise<Person> {
+  const [states, tasks, concerns] = await Promise.all([loadStates(admin, userId), userTasks(admin, userId), concernRows(admin, userId)]);
+  return personOf(admin, userId, states, tasks, concerns, null);
+}
+
 // 한 고민의 과제 계산 재료(질문에 답할 때마다 장부가 바뀌므로 매번 새로 만든다).
 async function buildCtx(admin: Admin, userId: string, chatId: string, pend: Pending) {
   const [engine, cardData, states, tasks, concerns, asked, { data: sess }] = await Promise.all([
@@ -107,7 +113,7 @@ async function buildCtx(admin: Admin, userId: string, chatId: string, pend: Pend
   if (pend.cond) conditionToCandidates(tc, pend.cond as never, engine.caseData as never); // 여건 질문 답(또는 엔진 판단)을 후보에 반영
   CS.applyCardPath(cs, pend.path, tc.roots, { confirmed: pend.reason === "confirmed", rootStates: states as never, person: person as never });
   PS.fillCoping(cs, person);
-  return { engine, cardData, states, tasks, concerns, asked, person, cs, tc, rejected };
+  return { engine, cardData, states, tasks, concerns, asked, person, cs, tc, rejected, intentId: worry?.intent_id ?? null };
 }
 type Ctx = Awaited<ReturnType<typeof buildCtx>>;
 
@@ -160,11 +166,11 @@ async function nextAsk(admin: Admin, userId: string, chatId: string, ctx: Ctx, p
 
 // 질문이 끝나면 연습 두 개(엔진 pickTasks · 사람 점수 · 계획). 제목이 없는(검수 표에 없는) 실천은 뺀다.
 async function pickPlanned(admin: Admin, userId: string, chatId: string, ctx: Ctx, pend: Pending): Promise<{ planned: PlannedTask[]; roots: string[]; actions: string[] }> {
-  const { engine, cs, tc, person } = ctx;
+  const { engine, cs, tc, person, intentId } = ctx;
   const words = PS.wordsFrom(await recentUserTexts(admin, userId, chatId));
   const picked = CS.pickTasks(cs, tc.candidates, {
     fallback: tc.fallback, route: tc.route ?? pend.route ?? undefined, conditionRoot: tc.conditionRoot ?? undefined, relRoots: tc.relRoots, hasChild: person.hasChild,
-    personal: PS.scorer(cs, person), formatOf: PS.sizeOf,
+    personal: PS.scorer(cs, person, intentId as never), formatOf: PS.sizeOf, // v2.40(엔진 v3.39 · 규칙 PARTNER-ML-1126): 배우자와의 고민(ML-)이면 배우자가 있다고 봄
     causeRoots: (tc.cause_roots ?? []).map((x: { root_id: string }) => x.root_id), // v2.32: 같은 단계 과제가 모자랄 때 갈래 뿌리 다음으로 원인 뿌리 실천을 먼저
   });
   const planned = (PS.withPlans(picked, cs, tc.roots, words) as PlannedTask[])

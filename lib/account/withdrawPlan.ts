@@ -14,6 +14,7 @@ export const WITHDRAW_DELETE_TABLES = [
   "challenge_checkins", // 2026-11-25: 작심삼일 챌린지 저장(메모)
   "challenges",
   "challenge_rewards",
+  "daily_suggestions", // 2026-11-26: 오늘의 제안 기록
 ] as const;
 
 // 남기는 표(지우지 않음 — 시험이 이 목록이 위 목록과 겹치지 않는지 본다).

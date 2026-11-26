@@ -149,8 +149,8 @@ export const QUESTIONS: readonly QuestionDef[] = [
       ["work_family_balance", "일과 가정의 균형을 이루는 것"],
       ["happy_family", "행복한 가정을 꾸리는 것"],
       ["find_love", "일생일대의 사랑을 찾는 것"],
+      ["closer_partner", "연인·배우자와 더 가까워지는 것"], // CSO 묶음 v2.40(DB v5.36): 새 보기 · "가족들과 즐거운 시간을 보내는 것"(family_time)은 보관으로 빠짐
       ["friendships", "친구들과 좋은 관계를 유지하는 것"],
-      ["family_time", "가족들과 즐거운 시간을 보내는 것"],
       ["financial_stability", "경제적으로 안정된 삶을 사는 것"],
       ["physical_mental_health", "몸과 마음의 건강을 유지하는 것"],
       ["learning_growth", "새로운 것을 배우고 성장하는 것"],
@@ -174,9 +174,10 @@ export const QUESTIONS: readonly QuestionDef[] = [
       ["group_sports", "사람들과 함께 활동적인 운동하기"],
       ["yoga_pilates", "필라테스나 요가 같은 정적인 운동하기"],
       ["reading_cafe", "혼자 책을 읽거나 카페에서 시간 보내기"],
-      ["creative", "요리·사진·그림 같은 창작 활동하기"],
+      ["creative", "창작 활동하기(요리, 사진 찍기, 그림 그리기, 글쓰기, 악기 연주 등)"], // CSO 묶음 v2.40(DB v5.36) 문구
       ["culture", "음악·공연·영화 등 문화생활 즐기기"],
       ["learning", "새로운 것을 배우거나 클래스 참여하기"],
+      ["travel_nature", "여행 가거나 자연에서 시간 보내기"], // CSO 묶음 v2.40(DB v5.36): 운영으로
       ["no_hobby_yet", "아직 좋아하는 취미를 찾지 못했어요"],
       [OTHER_CODE, "기타 (직접 입력)"],
     ],
@@ -298,4 +299,20 @@ export function allOnboardingAnswersBlank(answers: Record<string, unknown> | und
   const restBlank = Object.values(rest).every(isBlankAnswerValue);
   const otherBlank = !other_answers || Object.keys(other_answers).length === 0;
   return restBlank && otherBlank;
+}
+
+// 보관으로 빠진 보기(예: values_ranked의 family_time — CSO 묶음 v2.40)를 이미 고른 사람의 순위 답에서 그 보기를 빼고 순위를 다시 매긴다.
+// 화면에 없는 보기가 순위 자리(최대 3개)를 몰래 차지하지 않게, 수정 화면을 열 때만 쓴다(저장된 답은 그 사람이 다시 저장할 때 바뀜).
+export function pruneRetiredRanked(answers: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...answers };
+  for (const q of QUESTIONS) {
+    if (q.type !== "ranked" || !Array.isArray(out[q.id])) continue;
+    const keys = new Set(q.options.map(([code]) => code));
+    const kept = (out[q.id] as { key?: unknown; rank?: unknown }[])
+      .filter((x) => x && typeof x.key === "string" && keys.has(x.key) && typeof x.rank === "number")
+      .sort((a, b) => (a.rank as number) - (b.rank as number))
+      .map((x, i) => ({ ...x, rank: i + 1 }));
+    out[q.id] = kept;
+  }
+  return out;
 }

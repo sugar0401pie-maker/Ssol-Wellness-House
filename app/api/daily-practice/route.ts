@@ -11,6 +11,7 @@ import { loadQuizPersona } from "@/lib/mypage/loadQuizPersona";
 import { pickBySeed } from "@/lib/mypage/dessertTypeMap";
 import { loadOnboardingPrefs } from "@/lib/onboarding/loadOnboardingPrefs";
 import { loadGreetingName } from "@/lib/profile/greetingName";
+import { engineDailySuggestion, rememberFallback } from "@/lib/daily/engineDaily";
 
 // 홈 탭 전용: 인사말에 쓸 표시 이름 + 오늘의 실천방법 제안 하나를 준다. 채팅과 무관한 조회라
 // 하루 대화 횟수 제한과도 무관하고, AI를 호출하지 않아 비용이 들지 않는다.
@@ -57,7 +58,19 @@ export async function GET(req: NextRequest) {
   // 있어서, 파트너·육아 전제 제안은 자동으로 걸러지고 일반 제안만 남는다. 명절 "관계" 편향은
   // 개인화 동의를 한 사용자에게는 지금 적용되지 않는다 — 그 경우 Q4~Q7 취향 점수가 우선한다.
   const { prefs: onboardingPrefs, hasConsentedData } = onboarding;
-  const practice = await timer.time(
+  // 2026-11-26(CSO 묶음 v2.40 · 규칙 DAILY-01): 「오늘 이렇게 해보면 어떨까요?」는 고민 타파 카드만 쓰므로(?practice=1), 홈은 이 계산을 건너뛴다(홈 로딩이 느려지지 않게).
+  // 카드는 엔진 dailySuggestion이 먼저 고르고, 엔진이 못 고르거나 실패하면 예전 방식(아래 getDailyPractice)으로 — 카드가 비지 않게.
+  const wantPractice = req.nextUrl.searchParams.get("practice") === "1";
+  let practice: { id: string | null; title: string; detail: string | null; source?: string } | null = null;
+  if (wantPractice) {
+    try {
+      const e = await timer.time("engine", engineDailySuggestion(admin, userId, dateKey, { hasCrisisHistory: crisis }));
+      if (e) practice = { id: e.practiceId, title: e.title, detail: e.detail, source: e.source };
+    } catch (err) {
+      console.error("오늘의 제안(엔진) 실패:", (err as Error).message);
+    }
+  }
+  const legacy = !wantPractice || practice ? null : await timer.time(
     "practice",
     getDailyPractice(
       userId,
@@ -71,6 +84,10 @@ export async function GET(req: NextRequest) {
       { hasCrisisHistory: crisis },
     ),
   );
+  if (legacy) {
+    practice = { id: legacy.id, title: legacy.title, detail: legacy.detail, source: "fallback" };
+    await rememberFallback(admin, userId, dateKey, legacy).catch(() => undefined);
+  }
 
   const character = persona
     ? { code: persona.dessertCode, name: persona.name, tagline: persona.tagline, hasResult: true as const }

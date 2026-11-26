@@ -3,10 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { resultLine } from "@/lib/challenge/state";
+import { rewardGrantedLine } from "@/lib/challenge/reward";
 import { EVENT_ACCOUNT } from "./CardScreen";
 
 // 결과 화면 "오늘 챌린지를 완료했어요~!!"(요청문 13-9장, 대표님 2026-11-25: 결과 화면에도 그림). 하단 메뉴를 가리는 전체 화면.
-export default function ResultScreen({ n, art }: { n: number; art: string }) {
+export default function ResultScreen({ n, art, reward }: { n: number; art: string; reward?: { granted: boolean; expiresAt: string | null } | null }) {
   return (
     <div className="ssol-sky fixed inset-0 z-[60] overflow-y-auto text-night-text">
       <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 px-8 py-10 text-center">
@@ -40,6 +41,11 @@ export default function ResultScreen({ n, art }: { n: number; art: string }) {
           오늘 챌린지를 완료했어요~!!
         </h1>
         <p className="text-[16px] text-night-yellow">{resultLine(n)}</p>
+        {reward?.granted && (
+          <p className="break-keep rounded-2xl bg-night-panel px-4 py-3 text-[14.5px] leading-snug text-night-text">
+            {rewardGrantedLine(reward.expiresAt)}
+          </p>
+        )}
         <p className="break-keep text-[12.5px] leading-5 text-night-dim">
           스토리에 {EVENT_ACCOUNT} 계정을 태그하고 공개 계정으로 올리면 추첨
           대상이에요. 올렸는지는 운영에서 확인해요.

@@ -6,14 +6,18 @@ import { todayKeyKST } from "@/lib/safety/dailyLimit";
 import { CHALLENGE_DAYS, METHODS, deriveView, keepInHistory, normalizeMemo, startDayFor, type Challenge, type Checkin, type Method } from "@/lib/challenge/state";
 import { DEFAULT_THEME, isThemeKey, themeOf } from "@/lib/challenge/themes";
 import { isLanternOpen, lanternPeriod } from "@/lib/lantern/config";
+import { loadAccessStatus } from "@/lib/billing/loadAccess";
+import { REWARD_DAYS, rewardMinStart } from "@/lib/challenge/reward";
 
 // 작심삼일 챌린지(갓생러모임, 요청문 v1.9.4 3·9·13장). 날짜는 서버의 한국 날짜만 믿는다(기기 시계 무시).
 // GET: 지금 챌린지·기록·리워드를 받았는지 · POST {op}: start(시작) · checkin(오늘 저장 — 메모·행동·방식, 사진은 서버에 안 올림) · restart(또심삼일·다시 시작 → 기록으로).
-// 리워드: 처음 3번을 채운 순간 challenge_rewards에 계정당 한 줄(기본 키) — 내용은 정해지기 전이라 기록만 남긴다(13-8장).
+// 리워드: 처음 3번을 채운 순간 challenge_rewards에 계정당 한 줄(기본 키) → 쏘웰라 7일권 지급(2026-11-26, grantReward).
+// 오늘 전에 이미 3번을 채운 계정도 챌린지 화면을 열 때(GET) 아직 안 받았으면 같은 함수로 받는다.
 export const runtime = "nodejs";
 
 type Admin = ReturnType<typeof createAdminClient>;
 type Row = { id: string; seq: number; theme: string; started_day: string; status: Challenge["status"]; ended_day: string | null; end_reason: string | null; closed_at: string | null };
+type RwRow = { user_id: string; granted_at: string | null; entitlement_id: string | null };
 type CkRow = { challenge_id: string; n: number; day_kst: string; method: Method; memo: string | null; action: string };
 
 const toChallenge = (r: Row, cks: CkRow[]): Challenge => ({
@@ -25,7 +29,7 @@ async function loadState(admin: Admin, userId: string, today: string) {
   const [chs, cks, rw] = await Promise.all([
     admin.from("challenges").select("id,seq,theme,started_day,status,ended_day,end_reason,closed_at").eq("user_id", userId).order("seq", { ascending: false }).limit(20),
     admin.from("challenge_checkins").select("challenge_id,n,day_kst,method,memo,action").eq("user_id", userId).order("day_kst", { ascending: false }).limit(80),
-    admin.from("challenge_rewards").select("user_id").eq("user_id", userId).maybeSingle(),
+    admin.from("challenge_rewards").select("user_id,granted_at,entitlement_id").eq("user_id", userId).maybeSingle(),
   ]);
   if (chs.error || cks.error) throw new Error(chs.error?.code ?? cks.error?.code ?? "load");
   const rows = (chs.data ?? []) as Row[];
@@ -33,11 +37,41 @@ async function loadState(admin: Admin, userId: string, today: string) {
   const openRow = rows.find((r) => !r.closed_at) ?? null;
   const current = openRow ? toChallenge(openRow, ckRows) : null;
   const history = rows.filter((r) => r.closed_at).map((r) => toChallenge(r, ckRows)).filter(keepInHistory);
-  const rewarded = !rw.error && !!rw.data;
+  if (rw.error) console.error("챌린지 리워드 조회 실패:", rw.error.code);
+  const rwRow = (rw.data ?? null) as RwRow | null;
+  const rewarded = !rw.error && !!rwRow;
+  const reward = rwRow ? await rewardStatus(admin, userId, rwRow) : null;
   const checkedInToday = ckRows.some((c) => c.day_kst === today);
   // 이벤트 기간(풍등과 같은 기간 — 요청문 0장 4번): 홈 배너 ②는 이 기간에만 보인다. 챌린지 자체는 기간과 상관없이 할 수 있다.
   const eventOpen = isLanternOpen(today, lanternPeriod(process.env as { SW_LANTERN_START?: string; SW_LANTERN_END?: string }));
-  return { today, current, history, rewarded, checkedInToday, eventOpen, view: deriveView(current, today, rewarded) };
+  return { today, current, history, rewarded, reward, checkedInToday, eventOpen, view: deriveView(current, today, rewarded) };
+}
+
+// 7일권 상태 — 이미 받았으면 그 만료일, 아직 안 받았으면 지금 지급한다(DB 함수가 계정당 한 번만 — 동시에 와도 한 번).
+// 지급이 실패해도 챌린지 화면은 그대로 열린다(다음에 열 때 다시 시도). 받은 것처럼 보이게 하지는 않는다(granted: false).
+async function rewardStatus(admin: Admin, userId: string, row: RwRow): Promise<{ granted: boolean; expiresAt: string | null }> {
+  if (row.granted_at) {
+    if (!row.entitlement_id) return { granted: true, expiresAt: null };
+    const { data } = await admin.from("chat_entitlements").select("expires_at").eq("id", row.entitlement_id).maybeSingle();
+    return { granted: true, expiresAt: (data?.expires_at as string | null | undefined) ?? null };
+  }
+  return grantReward(admin, userId);
+}
+
+async function grantReward(admin: Admin, userId: string): Promise<{ granted: boolean; expiresAt: string | null }> {
+  try {
+    const access = await loadAccessStatus(admin, userId);
+    const { data, error } = await admin.rpc("grant_challenge_reward", { p_user: userId, p_min_start: rewardMinStart(access), p_days: REWARD_DAYS });
+    if (error) {
+      console.error("챌린지 리워드(7일권) 지급 실패:", error.code);
+      return { granted: false, expiresAt: null };
+    }
+    const r = (Array.isArray(data) ? data[0] : data) as { granted: boolean; expires_at: string | null } | null;
+    return { granted: !!r?.expires_at, expiresAt: r?.expires_at ?? null };
+  } catch (e) {
+    console.error("챌린지 리워드(7일권) 지급 실패:", (e as Error).message);
+    return { granted: false, expiresAt: null };
+  }
 }
 
 async function auth(req: NextRequest, fast: boolean) {

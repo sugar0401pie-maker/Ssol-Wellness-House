@@ -50,7 +50,7 @@ export default function ChallengeDayCard({
     );
   }
   if (step === "done")
-    return <ResultScreen n={n} art={seaArtFor(`${c.id}:${n}:result`)} />;
+    return <ResultScreen n={n} art={seaArtFor(`${c.id}:${n}:result`)} reward={n >= 3 ? data.reward : null} />;
   return (
     <CardScreen
       title={`갓생살기 ${n}일차 달성!`}

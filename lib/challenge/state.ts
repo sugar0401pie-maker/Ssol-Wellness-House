@@ -1,6 +1,7 @@
 // 작심삼일 챌린지 상태와 화면 문구 — 순수 함수(요청문 v1.9.4 3·9·13장). 서버(app/api/challenge)와 화면이 같이 쓴다.
 // 규칙: N번째 저장 = N일차 · 하루 한 번(KST, 서버 날짜) · 연속 아니고 시작 후 7일 안에 누적 3번 · 3번이면 완료(다시 하기 = 또심삼일, 횟수 제한 없음).
-// 리워드는 계정당 1번(내용은 미정 — 지급 기록만 남긴다). 실패·벌칙 표현은 쓰지 않는다. 클라이언트도 쓰므로 "server-only"를 넣지 않는다.
+// 리워드는 계정당 1번 — 쏘웰라 7일권(2026-11-26, lib/challenge/reward.ts). 실패·벌칙 표현은 쓰지 않는다. 클라이언트도 쓰므로 "server-only"를 넣지 않는다.
+import { REWARD_PROMISE } from "./reward.ts";
 
 export const CHALLENGE_DAYS = 3;
 export const WINDOW_DAYS = 7; // 시작일 포함 7일(시작일 + 6일)
@@ -43,7 +44,7 @@ export function deriveView(c: Challenge | null, today: string, rewarded: boolean
   if (!c) {
     return {
       kind: "pre", n: 1, stamped: 0, todayLine: "", dayIndex: null,
-      msg: rewarded ? "시작하면 그날이 1일차예요." : "시작하면 그날이 1일차예요.\n챌린지 종료 이후에 깜짝 리워드가 있어요!" /* 대표님 2026-11-25: 두 문장 줄바꿈 */,
+      msg: rewarded ? "시작하면 그날이 1일차예요." : `시작하면 그날이 1일차예요.\n${REWARD_PROMISE}` /* 대표님 2026-11-25: 두 문장 줄바꿈 · 2026-11-26: 리워드 = 쏘웰라 7일권 */,
       button: { label: "챌린지 시작", enabled: true, op: "start" },
     };
   }

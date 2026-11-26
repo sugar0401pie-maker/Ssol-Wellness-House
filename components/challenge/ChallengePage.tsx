@@ -10,6 +10,7 @@ import {
   themeOf,
 } from "@/lib/challenge/themes";
 import { dayDiff, shortDate } from "@/lib/challenge/state";
+import { rewardGrantedLine } from "@/lib/challenge/reward";
 import TodayCard from "./TodayCard";
 import {
   BottomBar,
@@ -152,6 +153,12 @@ export default function ChallengePage() {
                 fileName={`ssol-challenge-day${lastCk.n}.png`}
                 shareText={lastCk.memo ?? ""}
               />
+            )}
+
+            {v.kind === "complete" && data?.reward?.granted && (
+              <p className="mx-1 mt-3 break-keep rounded-2xl bg-night-panel px-4 py-3 text-[14.5px] leading-snug">
+                {rewardGrantedLine(data.reward.expiresAt)}
+              </p>
             )}
 
             {v.kind === "complete" && c && (

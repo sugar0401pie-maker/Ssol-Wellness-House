@@ -23,6 +23,7 @@ export type Payload = {
   current: Challenge | null;
   history: Challenge[];
   rewarded: boolean;
+  reward?: { granted: boolean; expiresAt: string | null } | null; // 쏘웰라 7일권(3일 완료 리워드)
   view: View;
   message?: string;
   n?: number;

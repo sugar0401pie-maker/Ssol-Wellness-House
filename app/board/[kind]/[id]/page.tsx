@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PublicBoardShell from "@/components/board/PublicBoardShell";
 import ReaderView from "@/components/board/ReaderView";
 import TagResults from "@/components/board/TagResults";
+import { episodeUrl } from "@/lib/board/data";
 import { articleFor, loadEpisodes, loadGuides } from "@/lib/board/fetchSite";
 
 // 고민 타파 공개 게시판의 글 읽기(/board/guide/<slug> · /board/post/<회차>) — 앱 안 읽기 화면과 같은 구성(ReaderView).
@@ -31,7 +32,9 @@ export async function generateMetadata({ params }: { params: Promise<{ kind: str
   if (!f) return { title: "고민 타파 | 쏠 웰니스 하우스" };
   const title = f.guide?.title ?? `고민우체국 ${f.episode?.n}화 — ${f.episode?.title}`;
   const description = f.guide ? f.guide.lines.join(" · ") : (f.episode?.summary ?? "");
-  return { title: `${title} | 쏠 웰니스 하우스`, description, alternates: { canonical: `/board/${kind}/${id}` } };
+  // 고민우체국 글의 검색 원본은 공개 사이트(www/postoffice/<회차>) — 같은 글이 두 곳에 있어 한 곳만 원본으로(대표님 2026-11-26)
+  const canonical = f.episode ? episodeUrl(f.episode.n) : `/board/${kind}/${id}`;
+  return { title: `${title} | 쏠 웰니스 하우스`, description, alternates: { canonical } };
 }
 
 export default async function PublicRead({ params }: { params: Promise<{ kind: string; id: string }> }) {

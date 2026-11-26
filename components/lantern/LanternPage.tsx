@@ -23,6 +23,14 @@ import {
   pickAltitudeLine,
   renderAltitudeLine,
 } from "@/lib/lantern/altitude";
+import { drawLanternCard } from "@/lib/lantern/shareCard";
+import { canvasToBlob, notoFamily } from "@/lib/challenge/card";
+import { downloadBlob, shareToKakao } from "@/lib/challenge/share";
+import { KakaoSymbol } from "@/components/auth/SocialLogos";
+
+// 날린 뒤 화면의 공유·저장(대표님 2026-11-26): 축하 장면 + 지금 높이 한 줄을 그림으로(lib/lantern/shareCard.ts). 소원 글은 넣지 않는다.
+const SHARE_FILE = "ssol-lantern-2027.png";
+const SHARE_URL = "https://app.ssolwellnesshouse.com/lantern";
 
 // 풍등 날리기 화면(2026-11-25, 요청문 v1.9.4 2장·14-2장).
 // 장면 1(풍등 안에 소원 쓰기) → 날리기 → 장면 2(1.5초) → 3(1.5초) → 4(5초) → 장면 5(박수) + "풍등이 잘 날아갔어요!" + 홈으로.
@@ -108,6 +116,8 @@ export default function LanternPage({
   const [flownAt, setFlownAt] = useState<string | null>(null);
   const [lineRand, setLineRand] = useState(0);
   const [now, setNow] = useState(0);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
   const flight = useRef({ animDone: false, saved: null as SaveResult | null });
 
@@ -272,6 +282,36 @@ export default function LanternPage({
           return renderAltitudeLine(pickAltitudeLine(km, lineRand), km, name);
         })()
       : "";
+
+  async function makeShareCard(): Promise<Blob> {
+    const celebrate = (art?.scenes ?? []).find((x) => x.n === 5)?.src ?? "/lantern/celebrate.webp";
+    const c = await drawLanternCard({ artUrl: celebrate, line: altitudeText, textTopPct: art?.celebrateTextBottom ?? CELEBRATE_TEXT_BOTTOM }, notoFamily());
+    return canvasToBlob(c);
+  }
+  async function shareCard() {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareNote(null);
+    try {
+      await shareToKakao(await makeShareCard(), SHARE_FILE, { title: LANTERN_DONE_TEXT, description: altitudeText, url: SHARE_URL });
+    } catch {
+      setShareNote("지금은 공유하지 못했어요. 잠시 후 다시 해 주세요.");
+    } finally {
+      setShareBusy(false);
+    }
+  }
+  async function saveCard() {
+    if (shareBusy) return;
+    setShareBusy(true);
+    setShareNote(null);
+    try {
+      setShareNote(downloadBlob(await makeShareCard(), SHARE_FILE) ? "앨범에 저장했어요." : "저장하지 못했어요. 잠시 후 다시 해 주세요.");
+    } catch {
+      setShareNote("저장하지 못했어요. 잠시 후 다시 해 주세요.");
+    } finally {
+      setShareBusy(false);
+    }
+  }
 
   // 풍등 안 소원 입력칸(두 그림 묶음이 같이 쓴다) — size·small은 글자 크기(풍등 폭 또는 화면 폭 기준)
   const wishInput = (size: string, small: string) => (
@@ -484,8 +524,6 @@ export default function LanternPage({
         {(phase === "done" || phase === "already") && (
           <div
             className="absolute break-keep text-center text-night-text"
-            role="status"
-            aria-live="polite"
             style={{
               left: "9%",
               right: "9%",
@@ -498,7 +536,7 @@ export default function LanternPage({
             {phase === "done" && (
               <span className="sr-only">{LANTERN_DONE_TEXT}</span>
             )}
-            <p style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>
+            <p role="status" aria-live="polite" style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>
               {altitudeText}
             </p>
             {phase === "already" && (
@@ -513,6 +551,33 @@ export default function LanternPage({
                 {LANTERN_ALREADY_SUB}
               </p>
             )}
+            {/* 공유·저장(대표님 2026-11-26) — 친구들 그림을 가리지 않게 높이 글자 바로 아래, 같은 상자 안 */}
+            <div className="grid grid-cols-2" style={{ gap: "2.4cqw", marginTop: "3cqw" }}>
+              <button
+                type="button"
+                onClick={() => void shareCard()}
+                disabled={shareBusy || !altitudeText}
+                className="flex items-center justify-center rounded-full font-medium disabled:opacity-55"
+                style={{ fontSize: "4.2cqw", padding: "3cqw 0", gap: "1.6cqw", background: "#FEE500", color: "#191919" }}
+              >
+                <KakaoSymbol className="h-[4.6cqw] w-[4.6cqw]" />
+                공유하기
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveCard()}
+                disabled={shareBusy || !altitudeText}
+                className="rounded-full font-medium disabled:opacity-55"
+                style={{ fontSize: "4.2cqw", padding: "3cqw 0", background: "rgba(8,20,42,.72)", color: "var(--night-text)", border: "1px solid var(--night-border)" }}
+              >
+                저장하기
+              </button>
+              {shareNote && (
+                <p className="col-span-2 text-center text-night-text" role="status" style={{ fontSize: "3.3cqw" }}>
+                  {shareNote}
+                </p>
+              )}
+            </div>
           </div>
         )}
         {phase === "closed" && (

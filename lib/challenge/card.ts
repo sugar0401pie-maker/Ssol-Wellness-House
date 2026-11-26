@@ -20,7 +20,7 @@ export function notoFamily(): string {
 }
 export const cardArt = (day: 1 | 2 | 3 | "all") => `/challenge/card${day === "all" ? "-all" : day}.webp`;
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.onload = () => resolve(img);
@@ -30,7 +30,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 // 글꼴이 다 불러진 뒤에 그린다(안 그러면 다른 글꼴로 찍힘). 실패해도 그리기는 이어 간다.
-async function ensureFont(family: string, text: string) {
+export async function ensureFont(family: string, text: string) {
   try {
     await Promise.all([document.fonts.load(`700 60px ${family}`, text || "가"), document.fonts.load(`400 60px ${family}`, text || "가")]);
   } catch {

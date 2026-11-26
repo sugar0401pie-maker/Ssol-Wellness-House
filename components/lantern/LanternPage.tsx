@@ -583,7 +583,7 @@ export default function LanternPage({
             {phase === "done" && (
               <span className="sr-only">{LANTERN_DONE_TEXT}</span>
             )}
-            <p role="status" aria-live="polite" style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>
+            <p role="status" aria-live="polite" className="whitespace-pre-line" style={{ fontSize: "4.2cqw", lineHeight: 1.55 }}>
               {altitudeText}
             </p>
             {phase === "already" && (

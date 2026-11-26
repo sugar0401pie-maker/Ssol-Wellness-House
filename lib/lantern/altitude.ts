@@ -34,7 +34,7 @@ export const ALTITUDE_LINES: Line[] = [
   { min: MOON_KM, max: Infinity, text: "{who} 풍등은 지금 달에게 인사하고 {km} 너머로 올라가고 있어요." },
   // 어느 높이에서나
   { min: 0, max: Infinity, text: "{who} 풍등은 지금도 {km} 상공을 향해 조용히 올라가고 있어요." },
-  { min: 0, max: Infinity, text: "{who} 풍등은 소원을 품은 채 {km} 상공을 지나는 중이에요. 아직 올라가고 있어요." },
+  { min: 0, max: Infinity, text: "{who} 풍등은 소원을 품은 채 {km} 상공을 지나는 중이에요.\n아직 올라가고 있어요." }, // 대표님 2026-11-26: 두 번째 문장은 줄을 바꿔서
 ];
 
 export function pickAltitudeLine(km: number, rand: number): Line {

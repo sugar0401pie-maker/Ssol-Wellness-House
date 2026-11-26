@@ -32,3 +32,9 @@ test("이름이 있으면 '○○님의', 없으면 '당신의' — 자리표시
   assert.equal(t, "당신의 풍등은 지금 성층권을 지나 60km 상공에 가고 있어요.");
   for (const l of ALTITUDE_LINES) assert.ok(!/[{}]/.test(renderAltitudeLine(l, 1000, "가")));
 });
+
+test("두 문장짜리 높이 문장은 두 번째 문장에서 줄을 바꾼다(대표님 2026-11-26)", () => {
+  const two = ALTITUDE_LINES.filter((l) => l.text.includes("아직 올라가고 있어요"));
+  assert.equal(two.length, 1);
+  assert.equal(renderAltitudeLine(two[0], 937, "과곽이"), "과곽이님의 풍등은 소원을 품은 채 937km 상공을 지나는 중이에요.\n아직 올라가고 있어요.");
+});

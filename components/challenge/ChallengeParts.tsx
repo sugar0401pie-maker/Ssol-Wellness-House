@@ -38,10 +38,10 @@ export function ChallengeShell({
   );
 }
 
-export function ChallengeHero({ small }: { small?: boolean }) {
+export function ChallengeHero() {
   return (
     <>
-      {/* 대표님 2026-11-25: 그림 안에 달이 있어 배경 달은 숨기고(ChallengeShell) 그림을 화면 폭만큼 키움 */}
+      {/* 대표님 2026-11-25: 그림 안에 달이 있어 배경 달은 숨기고(ChallengeShell) 그림을 화면 폭만큼 키움 — 2026-11-26: 시작 화면에서도 같은 크기(작게 보이는 판을 없앰) */}
       {/* 대표님 2026-11-25: 제목 자리에 손글씨 그림("쏠 작심삼일 챌린지" 글자가 그림 안 — 제목은 화면 읽기용으로만) */}
       <h1 className="sr-only">쏠 작심삼일 챌린지</h1>
       <Image
@@ -52,7 +52,7 @@ export function ChallengeHero({ small }: { small?: boolean }) {
         height={800}
         priority
         unoptimized
-        className={`mx-auto h-auto rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,.35)] ${small ? "w-[64%]" : "w-full"}`}
+        className="mx-auto h-auto w-full rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,.35)]"
       />
     </>
   );

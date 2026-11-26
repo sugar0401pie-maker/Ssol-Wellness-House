@@ -63,7 +63,7 @@ export default function ChallengeStart({ theme }: { theme: string }) {
   return (
     <ChallengeShell back={{ href: challengePaths.hub, label: "갓생러모임" }}>
       <div className="relative px-5 pb-4 pt-2 text-center">
-        <ChallengeHero small />
+        <ChallengeHero />
         {!v && <Loading error={error} />}
         {v?.kind === "pre" && (
           <>

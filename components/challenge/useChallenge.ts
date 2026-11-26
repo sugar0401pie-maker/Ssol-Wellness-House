@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getAccessToken } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/supabase/authHeaders";
 import { seaArtFor } from "@/lib/challenge/seaArt";
+import type { PlanView } from "@/lib/challenge/planView";
 import { drawDayCard, notoFamily } from "@/lib/challenge/card";
 import { loadPhoto } from "@/lib/challenge/photos";
 import {
@@ -24,6 +25,7 @@ export type Payload = {
   history: Challenge[];
   rewarded: boolean;
   reward?: { granted: boolean; expiresAt: string | null } | null; // 쏘웰라 7일권(3일 완료 리워드)
+  suggest?: "tarot" | "me" | "questions" | null; // 시작 전 첫 화면에서 먼저 보여 줄 길(2026-11-26)
   view: View;
   message?: string;
   n?: number;
@@ -54,6 +56,16 @@ export async function callChallenge(body?: object): Promise<Payload> {
   const json = (await res.json().catch(() => ({}))) as Payload;
   if (!res.ok && !json.view) throw new Error(json.message ?? "error");
   return json;
+}
+
+// 시작 화면 미리보기(2026-11-26): 엔진이 고른 계획(me · 셔플 번째) 또는 타로가 준 계획(tarot)
+export async function fetchPlan(kind: "me" | "tarot", shuffle = 0): Promise<{ plan: PlanView | null; hasAnswers?: boolean }> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("login");
+  const res = await fetch(`/api/challenge?plan=${kind}${kind === "me" ? `&s=${shuffle}` : ""}`, { headers: authHeaders(token), cache: "no-store" });
+  const json = (await res.json().catch(() => ({}))) as { plan?: PlanView | null; hasAnswers?: boolean; message?: string };
+  if (!res.ok) throw new Error(json.message ?? "error");
+  return { plan: json.plan ?? null, hasAnswers: json.hasAnswers };
 }
 
 export function useChallenge() {
@@ -122,6 +134,7 @@ export function clearFreshCard() {
 export const challengePaths = {
   hub: "/challenge",
   start: (theme: string) => `/challenge/start/${theme}`,
+  questions: (n: number) => `/challenge/questions/${n}`, // 2026-11-26: 나에게 맞는 챌린지 찾기 질문 3개
   day: (n: number) => `/challenge/day/${n}`,
   card: (n: number) => `/challenge/day/${n}/card`,
   done: (n: number) => `/challenge/day/${n}/done`,

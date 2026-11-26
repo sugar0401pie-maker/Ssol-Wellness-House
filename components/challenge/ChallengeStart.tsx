@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CHALLENGE_THEMES, proofLine, themeOf } from "@/lib/challenge/themes";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CHALLENGE_THEMES, isThemeKey } from "@/lib/challenge/themes";
+import { ENGINE_KEY, ENGINE_LABEL, TAROT_KEY, nextThemeKey, themePlan, type PlanView } from "@/lib/challenge/planView";
 import {
   BottomBar,
   ChallengeHero,
@@ -14,51 +15,75 @@ import {
 import {
   callChallenge,
   challengePaths,
+  fetchPlan,
   notifyChallengeChanged,
   useChallenge,
 } from "./useChallenge";
 
-// 챌린지 시작 화면(/challenge/start/<마음>) — 마음을 바꾸면 주소도 바뀐다(대표님 2026-11-25 "화면 바꾸면 무조건 링크 나눠").
+// 챌린지 시작 화면(/challenge/start/<키>) — 마음을 바꾸면 주소도 바뀐다(대표님 2026-11-25 "화면 바꾸면 무조건 링크 나눠").
+// 키: 세 가지 마음(worry · delay · energy) · me(질문 3개 답으로 엔진이 고른 챌린지, ?s=셔플 번째) · tarot(타로가 준 챌린지 그대로).
+// 2026-11-26 대표님: 안 맞으면 셔플 — 세 가지 마음은 순서대로 다음 마음, me는 엔진이 다른 활동으로 다시 고름. 타로 챌린지는 그대로(위 세 가지로 바꿀 수는 있음).
 // 테스트 결과 화면에서 오면 주소 끝에 ?from=test가 붙어 한 줄로 알려 준다. 이미 시작한 챌린지가 있으면 첫 화면으로 돌려보낸다.
 export default function ChallengeStart({ theme }: { theme: string }) {
   const router = useRouter();
+  const params = useSearchParams();
   const { data, error } = useChallenge();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [fromTest] = useState<boolean>(() => {
-    try {
-      return (
-        typeof window !== "undefined" &&
-        new URLSearchParams(window.location.search).get("from") === "test"
-      );
-    } catch {
-      return false;
-    }
-  });
-  const t = themeOf(theme);
+  const fromTest = params.get("from") === "test";
+  const shuffle = Math.max(0, Number(params.get("s") ?? 0) || 0);
+  const isTheme = isThemeKey(theme);
+  const remoteKey = `${theme}:${shuffle}`;
+  const [remote, setRemote] = useState<{ key: string; plan: PlanView | null } | null>(null);
+  const plan: PlanView | null = isTheme ? themePlan(theme) : remote?.key === remoteKey ? remote.plan : null;
+  const loadingPlan = !isTheme && remote?.key !== remoteKey;
   const v = data?.view;
 
   useEffect(() => {
     if (v && v.kind !== "pre") router.replace(challengePaths.hub);
   }, [v, router]);
 
+  // 엔진·타로 계획은 서버에서 받아 온다(질문 3개 답이 없으면 질문으로, 타로 계획이 없으면 첫 화면으로).
+  useEffect(() => {
+    if (isTheme) return;
+    let cancelled = false;
+    fetchPlan(theme === TAROT_KEY ? "tarot" : "me", shuffle)
+      .then((r) => {
+        if (cancelled) return;
+        if (theme === ENGINE_KEY && r.hasAnswers === false) return router.replace(challengePaths.questions(1));
+        if (theme === TAROT_KEY && !r.plan) return router.replace(challengePaths.hub);
+        setRemote({ key: remoteKey, plan: r.plan });
+      })
+      .catch(() => {
+        if (!cancelled) setRemote({ key: remoteKey, plan: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isTheme, theme, shuffle, remoteKey, router]);
+
   async function start() {
     setBusy(true);
     setNotice(null);
     try {
-      const d = await callChallenge({ op: "start", theme: t.key });
+      const d = await callChallenge({ op: "start", theme, shuffle });
+      if (!d.ok) throw new Error(d.message ?? "error");
       // 화면 상태(setData)는 바꾸지 않는다 — 바꾸면 "이미 시작함 → 첫 화면" 이동이 인증 화면 이동보다 먼저 일어난다.
       notifyChallengeChanged();
-      router.push(
-        d.view.kind === "todo"
-          ? challengePaths.day(d.view.n)
-          : challengePaths.hub,
-      );
-    } catch {
-      setNotice("지금은 저장하지 못했어요. 잠시 후 다시 해 주세요.");
+      router.push(d.view.kind === "todo" ? challengePaths.day(d.view.n) : challengePaths.hub);
+    } catch (e) {
+      const m = (e as Error).message;
+      setNotice(m && m !== "error" ? m : "지금은 저장하지 못했어요. 잠시 후 다시 해 주세요.");
       setBusy(false);
     }
   }
+
+  // 셔플: 세 가지 마음은 다음 마음으로, 엔진 챌린지는 셔플 번째를 하나 올려 다시 고름(타로 챌린지는 셔플 없음)
+  const shuffleHref = isTheme
+    ? challengePaths.start(nextThemeKey(theme))
+    : theme === ENGINE_KEY
+      ? `${challengePaths.start(ENGINE_KEY)}?s=${shuffle + 1}`
+      : null;
 
   return (
     <ChallengeShell back={{ href: challengePaths.hub, label: "갓생러모임" }}>
@@ -85,39 +110,78 @@ export default function ChallengeStart({ theme }: { theme: string }) {
                     key={th.key}
                     href={challengePaths.start(th.key)}
                     replace
-                    aria-current={t.key === th.key ? "page" : undefined}
-                    className={`flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border px-2 text-[13.5px] ${t.key === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
+                    aria-current={theme === th.key ? "page" : undefined}
+                    className={`flex min-h-10 items-center justify-center whitespace-nowrap rounded-full border px-2 text-[13.5px] ${theme === th.key ? "border-night-amber bg-night-amber text-night-on-amber" : "border-night-border text-night-text"}`}
                   >
                     {th.label}
                   </Link>
                 ))}
               </div>
-              <div className="mt-3 grid gap-2">
-                {t.days.map((d, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl bg-night-panel px-3 py-2.5 text-[13.5px] leading-snug text-night-soft"
-                  >
-                    <b className="mr-2 font-normal text-night-amber">
-                      {i + 1}일차
-                    </b>
-                    {d.action}
-                    <span className="mt-0.5 block text-[12.5px] text-night-sub">
-                      {proofLine(t.key, i)}
-                    </span>
-                  </div>
-                ))}
-                {/* 대표님 2026-11-25: 이름표(1주일·1달)와 글을 이름표 칸·글 칸으로 나눔 */}
-                <div className="rounded-xl bg-night-panel px-3 py-2.5 text-[12.5px] leading-5 text-night-sub">
-                  <p className="text-night-soft">3일 해 보고 마음에 들면</p>
-                  <dl className="mt-1.5 grid grid-cols-[3.2em_minmax(0,1fr)] gap-x-2 gap-y-1">
-                    <dt className="text-night-amber">1주일</dt>
-                    <dd className="break-keep">{t.week}</dd>
-                    <dt className="text-night-amber">1달</dt>
-                    <dd className="break-keep">{t.month}</dd>
-                  </dl>
+
+              {!isTheme && (
+                <p className="mt-4 text-[13px] text-night-amber">
+                  {theme === TAROT_KEY
+                    ? "타로에서 받은 챌린지"
+                    : plan && plan.label !== ENGINE_LABEL
+                      ? `${ENGINE_LABEL} · ${plan.label}`
+                      : ENGINE_LABEL}
+                </p>
+              )}
+              {loadingPlan && <Loading error={null} />}
+              {!loadingPlan && !plan && (
+                <p className="mt-3 rounded-xl bg-night-panel px-3 py-2.5 text-[13.5px] text-night-soft">
+                  지금은 나에게 맞는 챌린지를 만들지 못했어요. 위 세 가지 중에서 골라 주세요.
+                </p>
+              )}
+              {plan && (
+                <div className="mt-3 grid gap-2">
+                  {plan.days.map((d, i) => (
+                    <div
+                      key={i}
+                      className="rounded-xl bg-night-panel px-3 py-2.5 text-[13.5px] leading-snug text-night-soft"
+                    >
+                      <b className="mr-2 font-normal text-night-amber">
+                        {i + 1}일차
+                      </b>
+                      {d.action}
+                      {d.proof && (
+                        <span className="mt-0.5 block text-[12.5px] text-night-sub">
+                          {d.proof}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {/* 대표님 2026-11-25: 이름표(1주일·1달)와 글을 이름표 칸·글 칸으로 나눔 */}
+                  {(plan.week || plan.month) && (
+                    <div className="rounded-xl bg-night-panel px-3 py-2.5 text-[12.5px] leading-5 text-night-sub">
+                      <p className="text-night-soft">3일 해 보고 마음에 들면</p>
+                      <dl className="mt-1.5 grid grid-cols-[3.2em_minmax(0,1fr)] gap-x-2 gap-y-1">
+                        {plan.week && (
+                          <>
+                            <dt className="text-night-amber">1주일</dt>
+                            <dd className="break-keep">{plan.week}</dd>
+                          </>
+                        )}
+                        {plan.month && (
+                          <>
+                            <dt className="text-night-amber">1달</dt>
+                            <dd className="break-keep">{plan.month}</dd>
+                          </>
+                        )}
+                      </dl>
+                    </div>
+                  )}
+                  {shuffleHref && (
+                    <Link
+                      href={shuffleHref}
+                      replace
+                      className="mx-auto mt-1 flex min-h-10 items-center gap-1.5 rounded-full border border-night-border px-4 text-[13.5px] text-night-soft"
+                    >
+                      <span aria-hidden="true">↻</span> 다른 챌린지 보기
+                    </Link>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
             {notice && (
               <p className="mt-3 text-[13.5px] text-night-yellow" role="alert">
@@ -127,7 +191,7 @@ export default function ChallengeStart({ theme }: { theme: string }) {
           </>
         )}
       </div>
-      {v?.kind === "pre" && (
+      {v?.kind === "pre" && plan && (
         <BottomBar>
           <button
             type="button"

@@ -4,7 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAccessCode } from "@/lib/security/accessCode";
 import { todayKeyKST } from "@/lib/safety/dailyLimit";
 import { CHALLENGE_DAYS, METHODS, deriveView, keepInHistory, normalizeMemo, startDayFor, type Challenge, type Checkin, type Method } from "@/lib/challenge/state";
-import { DEFAULT_THEME, isThemeKey, themeOf } from "@/lib/challenge/themes";
+import { DEFAULT_THEME, isThemeKey } from "@/lib/challenge/themes";
+import { ENGINE_KEY, TAROT_KEY, planOf, themePlan, type PlanView } from "@/lib/challenge/planView";
+import { engineChallenge, tarotChallenge } from "@/lib/challenge/enginePlan";
 import { isLanternOpen, lanternPeriod } from "@/lib/lantern/config";
 import { loadAccessStatus } from "@/lib/billing/loadAccess";
 import { REWARD_DAYS, rewardMinStart } from "@/lib/challenge/reward";
@@ -16,18 +18,18 @@ import { REWARD_DAYS, rewardMinStart } from "@/lib/challenge/reward";
 export const runtime = "nodejs";
 
 type Admin = ReturnType<typeof createAdminClient>;
-type Row = { id: string; seq: number; theme: string; started_day: string; status: Challenge["status"]; ended_day: string | null; end_reason: string | null; closed_at: string | null };
+type Row = { id: string; seq: number; theme: string; started_day: string; status: Challenge["status"]; ended_day: string | null; end_reason: string | null; closed_at: string | null; source: string | null; plan: unknown };
 type RwRow = { user_id: string; granted_at: string | null; entitlement_id: string | null };
 type CkRow = { challenge_id: string; n: number; day_kst: string; method: Method; memo: string | null; action: string };
 
 const toChallenge = (r: Row, cks: CkRow[]): Challenge => ({
-  id: r.id, seq: r.seq, theme: r.theme, startedDay: r.started_day, status: r.status, endedDay: r.ended_day, endReason: r.end_reason,
+  id: r.id, seq: r.seq, theme: r.theme, source: r.source ?? "theme", plan: r.plan ?? null, startedDay: r.started_day, status: r.status, endedDay: r.ended_day, endReason: r.end_reason,
   checkins: cks.filter((c) => c.challenge_id === r.id).sort((a, b) => a.n - b.n).map((c): Checkin => ({ n: c.n, day: c.day_kst, method: c.method, memo: c.memo, action: c.action })),
 });
 
 async function loadState(admin: Admin, userId: string, today: string) {
   const [chs, cks, rw] = await Promise.all([
-    admin.from("challenges").select("id,seq,theme,started_day,status,ended_day,end_reason,closed_at").eq("user_id", userId).order("seq", { ascending: false }).limit(20),
+    admin.from("challenges").select("id,seq,theme,started_day,status,ended_day,end_reason,closed_at,source,plan").eq("user_id", userId).order("seq", { ascending: false }).limit(20),
     admin.from("challenge_checkins").select("challenge_id,n,day_kst,method,memo,action").eq("user_id", userId).order("day_kst", { ascending: false }).limit(80),
     admin.from("challenge_rewards").select("user_id,granted_at,entitlement_id").eq("user_id", userId).maybeSingle(),
   ]);
@@ -84,12 +86,32 @@ async function auth(req: NextRequest, fast: boolean) {
 
 const fail = (message: string, status = 500) => NextResponse.json({ ok: false, message }, { status });
 
+async function suggestFor(admin: Admin, userId: string): Promise<"tarot" | "me" | "questions"> {
+  const [tarot, { data: ob }] = await Promise.all([
+    tarotChallenge(admin, userId).catch(() => null),
+    admin.from("user_onboarding").select("values_ranked,hobbies_ranked,weekends_ranked").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (tarot) return "tarot";
+  const has = (v: unknown) => Array.isArray(v) && v.length > 0;
+  return ob && (has(ob.values_ranked) || has(ob.hobbies_ranked) || has(ob.weekends_ranked)) ? "me" : "questions";
+}
+
 export async function GET(req: NextRequest) {
   const a = await auth(req, true);
   if ("error" in a) return a.error;
+  const admin = createAdminClient();
+  const q = req.nextUrl.searchParams;
   try {
-    const s = await loadState(createAdminClient(), a.userId, todayKeyKST());
-    return NextResponse.json({ ok: true, ...s });
+    // 시작 화면 미리보기(2026-11-26): ?plan=me&s=셔플번째 → 엔진이 고른 계획 · ?plan=tarot → 타로가 준 계획
+    if (q.get("plan") === ENGINE_KEY) {
+      const { plan, hasAnswers } = await engineChallenge(admin, a.userId, Number(q.get("s") ?? 0) || 0);
+      return NextResponse.json({ ok: true, plan, hasAnswers });
+    }
+    if (q.get("plan") === TAROT_KEY) return NextResponse.json({ ok: true, plan: await tarotChallenge(admin, a.userId) });
+    const s = await loadState(admin, a.userId, todayKeyKST());
+    // 시작 전이면 첫 화면에 어떤 길을 먼저 보여 줄지: 타로 계획이 있으면 tarot · 질문 3개 답이 있으면 me · 없으면 질문 3개 권유
+    const suggest = s.view.kind === "pre" ? await suggestFor(admin, a.userId) : null;
+    return NextResponse.json({ ok: true, ...s, suggest });
   } catch (e) {
     console.error("챌린지 불러오기 실패:", (e as Error).message);
     return fail("챌린지를 불러오지 못했어요. 잠시 후 다시 열어 주세요.");
@@ -99,7 +121,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const a = await auth(req, false);
   if ("error" in a) return a.error;
-  const body = (await req.json().catch(() => null)) as { op?: string; theme?: unknown; method?: unknown; memo?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { op?: string; theme?: unknown; shuffle?: unknown; method?: unknown; memo?: unknown } | null;
   const admin = createAdminClient();
   const today = todayKeyKST();
   try {
@@ -109,8 +131,21 @@ export async function POST(req: NextRequest) {
       if (s.current) return NextResponse.json({ ok: true, ...s }); // 이미 있으면 그대로(두 번 눌러도 하나)
       const top = await admin.from("challenges").select("seq").eq("user_id", a.userId).order("seq", { ascending: false }).limit(1);
       const seq = (((top.data ?? [])[0] as { seq?: number } | undefined)?.seq ?? 0) + 1;
-      const theme = isThemeKey(body.theme) ? body.theme : DEFAULT_THEME;
-      const { error } = await admin.from("challenges").insert({ user_id: a.userId, seq, theme, started_day: startDayFor(today, s.checkedInToday) });
+      // 계획은 서버가 다시 만든다(화면이 보낸 글을 믿지 않음) — 엔진·타로 계획은 시작할 때의 글을 plan에 그대로 남긴다.
+      let plan: PlanView;
+      if (body.theme === ENGINE_KEY) {
+        const r = await engineChallenge(admin, a.userId, Number(body.shuffle ?? 0) || 0);
+        if (!r.plan) return fail("나에게 맞는 챌린지를 만들지 못했어요. 아래 세 가지 중에서 골라 주세요.", 409);
+        plan = r.plan;
+      } else if (body.theme === TAROT_KEY) {
+        const t = await tarotChallenge(admin, a.userId);
+        if (!t) return fail("타로에서 받은 챌린지를 찾지 못했어요. 아래 세 가지 중에서 골라 주세요.", 409);
+        plan = t;
+      } else plan = themePlan(isThemeKey(body.theme) ? body.theme : DEFAULT_THEME);
+      const { error } = await admin.from("challenges").insert({
+        user_id: a.userId, seq, theme: plan.key, started_day: startDayFor(today, s.checkedInToday),
+        source: plan.source, plan: plan.source === "theme" ? null : plan, family_id: plan.familyId ?? null,
+      });
       if (error && error.code !== "23505") throw new Error(error.code);
       return NextResponse.json({ ok: true, ...(await loadState(admin, a.userId, today)) });
     }
@@ -124,7 +159,7 @@ export async function POST(req: NextRequest) {
       const memo = normalizeMemo(body.memo);
       if (!memo) return fail("오늘 한 걸 한 줄로 적어 주세요.", 400);
       const n = s.view.n;
-      const action = themeOf(c.theme).days[n - 1].action;
+      const action = planOf(c).days[n - 1].action; // 시작할 때 남긴 계획(엔진·타로) 또는 세 가지 마음
       const ins = await admin.from("challenge_checkins").insert({ challenge_id: c.id, user_id: a.userId, n, day_kst: today, method, memo, action });
       if (ins.error) {
         if (ins.error.code === "23505") return NextResponse.json({ ok: false, reason: "not_today", message: "오늘 인증 끝! 내일 또 만나요~", ...(await loadState(admin, a.userId, today)) }, { status: 409 });

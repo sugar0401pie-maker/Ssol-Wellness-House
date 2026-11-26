@@ -93,6 +93,16 @@ export async function personFor(admin: Admin, userId: string): Promise<Person> {
   return personOf(admin, userId, states, tasks, concerns, null);
 }
 
+// 작심삼일(2026-11-26 대표님): 챌린지 화면에서 받은 질문 3개(가장 중요한 것 · 취미 · 행복한 주말)만으로도 엔진이 활동을 고르게 한다.
+// 온보딩을 끝내고 개인화에 동의한 사람은 위와 같은 사람 정보(답 전부), 아니면 그 세 답만 — 챌린지를 고르려고 직접 답한 것이라 그 용도로만 쓴다.
+export async function personForChallenge(admin: Admin, userId: string): Promise<{ person: Person; hasAnswers: boolean }> {
+  const { data: ob } = await admin.from("user_onboarding").select("*").eq("user_id", userId).maybeSingle();
+  const three = ob ? mapOnboardingAnswers({ values_ranked: ob.values_ranked, hobbies_ranked: ob.hobbies_ranked, weekends_ranked: ob.weekends_ranked, updated_at: ob.updated_at }) : {};
+  const hasAnswers = Object.keys(three).length > 0;
+  if (onboardingEligible(ob)) return { person: await personFor(admin, userId), hasAnswers };
+  return { person: PS.personFromOnboarding(three, {}) as Person, hasAnswers };
+}
+
 // 한 고민의 과제 계산 재료(질문에 답할 때마다 장부가 바뀌므로 매번 새로 만든다).
 async function buildCtx(admin: Admin, userId: string, chatId: string, pend: Pending) {
   const [engine, cardData, states, tasks, concerns, asked, { data: sess }] = await Promise.all([

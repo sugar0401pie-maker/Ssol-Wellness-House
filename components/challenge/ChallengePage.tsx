@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  CHALLENGE_THEMES,
-  isThemeKey,
-  proofLine,
-  themeOf,
-} from "@/lib/challenge/themes";
+import { CHALLENGE_THEMES, isThemeKey } from "@/lib/challenge/themes";
+import { isStartKey, planOf } from "@/lib/challenge/planView";
 import { dayDiff, shortDate } from "@/lib/challenge/state";
 import { rewardGrantedLine } from "@/lib/challenge/reward";
 import TodayCard from "./TodayCard";
@@ -66,7 +62,7 @@ export default function ChallengePage() {
       if (d.view.kind === "pre")
         router.push(
           challengePaths.start(
-            isThemeKey(prev) ? prev : CHALLENGE_THEMES[0].key,
+            isStartKey(prev) ? prev : CHALLENGE_THEMES[0].key,
           ),
         );
     } catch {
@@ -78,8 +74,8 @@ export default function ChallengePage() {
 
   const v = data?.view;
   const c = data?.current ?? null;
-  const t = themeOf(c?.theme);
-  const day = v?.dayIndex != null ? t.days[v.dayIndex] : null;
+  const plan = planOf(c); // 시작할 때 남긴 계획(엔진·타로) 또는 세 가지 마음
+  const day = v?.dayIndex != null ? plan.days[v.dayIndex] : null;
   const lastCk = c?.checkins[c.checkins.length - 1];
 
   return (
@@ -113,6 +109,17 @@ export default function ChallengePage() {
             )}
 
             {/* 시작 전: 마음 고르기 — 고르면 그 마음의 시작 화면(3일 계획)으로 */}
+            {/* 2026-11-26 대표님: 테스트(타로)에서 받은 챌린지 → 그대로 · 질문 3개 답이 있으면 엔진이 사람마다 · 없으면 질문 3개 권유(건너뛰면 아래 세 가지) */}
+            {v.kind === "pre" && data?.suggest && (
+              <Link
+                href={data.suggest === "questions" ? challengePaths.questions(1) : challengePaths.start(data.suggest)}
+                className="mt-4 flex min-h-12 items-center justify-between rounded-2xl border border-night-amber bg-night-panel px-4 text-left text-[15px] text-night-text"
+              >
+                {data.suggest === "tarot" ? "타로에서 받은 챌린지 보기" : data.suggest === "me" ? "나에게 맞춘 챌린지 보기" : "질문 3개로 나에게 맞는 챌린지 찾기"}
+                <span aria-hidden="true" className="text-night-amber">›</span>
+              </Link>
+            )}
+
             {v.kind === "pre" && (
               <div className="mt-4 text-left">
                 <p className="text-[13px] text-night-sub">
@@ -137,9 +144,9 @@ export default function ChallengePage() {
               <div className="mt-4 rounded-2xl bg-night-panel p-4 text-left">
                 <p className="text-[16px] text-night-amber">오늘의 행동</p>
                 <p className="mt-1 text-[18px] leading-snug">{day.action}</p>
-                <p className="mt-1 text-[13px] text-night-sub">
-                  {proofLine(t.key, v.dayIndex ?? 0)}
-                </p>
+                {day.proof && (
+                  <p className="mt-1 text-[13px] text-night-sub">{day.proof}</p>
+                )}
               </div>
             )}
 

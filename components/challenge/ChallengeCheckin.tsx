@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { proofLine, themeOf } from "@/lib/challenge/themes";
+import { planOf } from "@/lib/challenge/planView";
 import { MEMO_MAX, type Method } from "@/lib/challenge/state";
 import { CROP_DEFAULT, cropRect, type Crop } from "@/lib/challenge/crop";
 import { savePhoto } from "@/lib/challenge/photos";
@@ -96,9 +96,8 @@ export default function ChallengeCheckin({ n }: { n: number }) {
     }
   }
 
-  const t = themeOf(c?.theme);
   const day =
-    v?.kind === "todo" && v.dayIndex != null ? t.days[v.dayIndex] : null;
+    v?.kind === "todo" && v.dayIndex != null ? planOf(c).days[v.dayIndex] : null; // 시작할 때 남긴 계획(엔진·타로) 또는 세 가지 마음
   const canSave = v?.kind === "todo" && !busy && memo.trim().length > 0;
 
   return (
@@ -114,9 +113,9 @@ export default function ChallengeCheckin({ n }: { n: number }) {
             <div className="mt-4 rounded-2xl bg-night-panel p-4 text-left">
               <p className="text-[16px] text-night-amber">오늘의 행동</p>
               <p className="mt-1 text-[18px] leading-snug">{day.action}</p>
-              <p className="mt-1 text-[13px] text-night-sub">
-                {proofLine(t.key, v.dayIndex ?? 0)}
-              </p>
+              {day.proof && (
+                <p className="mt-1 text-[13px] text-night-sub">{day.proof}</p>
+              )}
 
               <div className="mt-4">
                 {img ? (

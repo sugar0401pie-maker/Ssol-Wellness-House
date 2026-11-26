@@ -10,7 +10,7 @@ export type Method = "photo" | "memo" | "check";
 export const METHODS: Method[] = ["photo", "memo", "check"];
 
 export type Checkin = { n: number; day: string; method: Method; memo: string | null; action: string };
-export type Challenge = { id: string; seq: number; theme: string; startedDay: string; status: "active" | "done" | "expired"; endedDay: string | null; endReason: string | null; checkins: Checkin[] };
+export type Challenge = { id: string; seq: number; theme: string; source?: string; plan?: unknown; startedDay: string; status: "active" | "done" | "expired"; endedDay: string | null; endReason: string | null; checkins: Checkin[] };
 
 // "YYYY-MM-DD"(KST 날짜 문자열) 계산 — 시간대와 상관없게 UTC 자정으로만 다룬다.
 const ms = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));

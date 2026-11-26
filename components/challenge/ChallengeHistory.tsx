@@ -1,6 +1,6 @@
 "use client";
 
-import { themeOf } from "@/lib/challenge/themes";
+import { planOf } from "@/lib/challenge/planView";
 import { shortDate } from "@/lib/challenge/state";
 import { ChallengeShell, HistoryRows, Loading } from "./ChallengeParts";
 import { challengePaths, useChallenge } from "./useChallenge";
@@ -32,7 +32,7 @@ export default function ChallengeHistory() {
               {data.history.map((h) => (
                 <div key={h.id}>
                   <p className="mb-1.5 mt-4 text-[12.5px] text-night-amber">
-                    지난 챌린지 · {themeOf(h.theme).label} (
+                    지난 챌린지 · {planOf(h).label} (
                     {shortDate(h.checkins[0]?.day ?? h.startedDay)} ~{" "}
                     {shortDate(
                       h.endedDay ??

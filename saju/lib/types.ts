@@ -31,4 +31,8 @@ export type StoredResult = {
   timeNote: string;
   // 쏘웰라로 넘기는 작심삼일 다섯 칸(lib/challenge.ts). Supabase로 옮길 때 report.challenge에 그대로 넣는다.
   challenge: import("./challenge").HandoffChallenge | null;
+  // 진행 중인 카카오페이 결제(준비 → 승인 사이). 로컬 파일 저장소에서만 여기 들어가고, Supabase에서는 칸으로 둔다.
+  pending?: PendingPayment | null;
 };
+
+export type PendingPayment = { orderId: string; tid: string; amount: number };

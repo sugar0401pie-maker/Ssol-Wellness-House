@@ -5,23 +5,15 @@ import { isResultId } from "@/lib/store";
 
 export const metadata = { robots: { index: false } };
 
-// /checkout/{id}/fail?code=…&message=…&page=쪽 — 토스 결제창에서 취소·실패했을 때 돌아오는 곳(결제는 되지 않음).
-export default async function CheckoutFail({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ message?: string; page?: string }>;
-}) {
-  const { id } = await params;
+// /checkout/{id}/fail/{쪽} — 카카오페이 결제창에서 취소하거나 실패했을 때 돌아오는 곳(결제는 되지 않음).
+export default async function KakaoPayFail({ params }: { params: Promise<{ id: string; page: string }> }) {
+  const { id, page: pageStr } = await params;
   if (!isResultId(id)) notFound();
-  const sp = await searchParams;
-  const page = Math.min(14, Math.max(4, Number(sp.page) || 4));
+  const page = Math.min(14, Math.max(4, Number(pageStr) || 4));
   const ck = uiCopy().checkout;
   return (
     <div className="pg">
       <h2>{ck.fail}</h2>
-      {sp.message && <p className="sub">{String(sp.message).slice(0, 200)}</p>}
       <Link className="btn" href={`/checkout/${id}?page=${page}`} style={{ textAlign: "center", textDecoration: "none" }}>
         {ck.fail_button}
       </Link>

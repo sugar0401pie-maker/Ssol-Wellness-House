@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { StoredResult } from "./types";
+import type { PendingPayment, StoredResult } from "./types";
 import { slugOf, testName } from "./tests";
 
 // 결과 저장소.
@@ -14,6 +14,7 @@ import { slugOf, testName } from "./tests";
 // 쏘웰라가 테스트 결과 번호를 UUID 모양만 받으므로(메인 저장소 lib/challenge/testEntry.ts) UUID로 맞춘다.
 // Supabase 호출은 data와 error를 함께 확인한다(error를 버리면 '결과 없음'처럼 보이는 사고가 메인 앱에서 두 번 있었음).
 
+// paymentKey = 카카오페이 승인 번호(aid). 환불·조회 때 쓴다.
 export type PaymentInfo = { orderId: string; paymentKey: string; amount: number };
 
 export function newResultId(): string {
@@ -109,7 +110,7 @@ export async function getResult(id: string): Promise<StoredResult | null> {
   return JSON.parse(readFileSync(f, "utf8")) as StoredResult;
 }
 
-/** 결제 완료 기록. 토스 승인 확인이 끝난 뒤에만 부른다(이미 결제된 결과는 그대로 둠). */
+/** 결제 완료 기록. 카카오페이 승인 확인이 끝난 뒤에만 부른다(이미 결제된 결과는 그대로 둠). */
 export async function markPaid(id: string, pay: PaymentInfo | null = null): Promise<StoredResult | null> {
   const db = supabase();
   if (db) {
@@ -135,6 +136,37 @@ export async function markPaid(id: string, pay: PaymentInfo | null = null): Prom
     if (f) writeFileSync(f, JSON.stringify(r));
   }
   return r;
+}
+
+/** 카카오페이 결제 준비가 끝나면 거래 번호(tid)·주문 번호·금액을 적어 둔다(승인 때 그대로인지 확인). 새로 준비하면 덮어쓴다. */
+export async function setPending(id: string, p: PendingPayment): Promise<void> {
+  const db = supabase();
+  if (db) {
+    const { error } = await db
+      .from("saju_results")
+      .update({ order_id: p.orderId, kakaopay_tid: p.tid, pending_amount: p.amount })
+      .eq("id", id)
+      .is("paid_at", null);
+    if (error) throw new Error(`saju_results 결제 준비 기록 실패: ${error.message}`);
+    return;
+  }
+  const r = await getResult(id);
+  const f = fileOf(id);
+  if (!r || !f) throw new Error("not found");
+  r.pending = p;
+  writeFileSync(f, JSON.stringify(r));
+}
+
+export async function getPending(id: string): Promise<PendingPayment | null> {
+  if (!isResultId(id)) return null;
+  const db = supabase();
+  if (db) {
+    const { data, error } = await db.from("saju_results").select("order_id,kakaopay_tid,pending_amount").eq("id", id).maybeSingle();
+    if (error) throw new Error(`saju_results 결제 준비 읽기 실패: ${error.message}`);
+    const d = data as { order_id: string | null; kakaopay_tid: string | null; pending_amount: number | null } | null;
+    return d?.order_id && d.kakaopay_tid && typeof d.pending_amount === "number" ? { orderId: d.order_id, tid: d.kakaopay_tid, amount: d.pending_amount } : null;
+  }
+  return (await getResult(id))?.pending ?? null;
 }
 
 /** 첫 화면 참여자 수(4종 합산). 300명 미만이면 화면에서 숨긴다(ui_copy.intro.participants_rule). 실패하면 0(숨김). */

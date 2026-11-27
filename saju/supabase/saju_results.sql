@@ -11,9 +11,11 @@ create table if not exists public.saju_results (
   worry_text text not null default '',
   report jsonb not null,                            -- 엔진 결과 전체 + challenge(쏘웰라로 넘기는 다섯 칸)
   safety_level text not null default 'none' check (safety_level in ('none','watch','urgent')),
-  paid_at timestamptz,                              -- 토스 승인 확인 뒤에만 서버가 채운다
-  order_id text unique,                             -- 토스 주문 번호(결제 한 번에 하나)
-  payment_key text,                                 -- 토스 결제 키(환불·조회용)
+  paid_at timestamptz,                              -- 카카오페이 승인 확인 뒤에만 서버가 채운다
+  order_id text unique,                             -- 주문 번호(결제 시도마다 새로)
+  payment_key text,                                 -- 카카오페이 승인 번호(aid, 환불·조회용)
+  kakaopay_tid text,                                -- 카카오페이 거래 번호(결제 준비 때 받음)
+  pending_amount integer,                           -- 준비할 때 정한 금액(원)
   paid_amount integer,                              -- 실제 승인된 금액(원)
   created_at timestamptz not null default now()
 );

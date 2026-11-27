@@ -45,21 +45,22 @@ npm run test:engine                     # 엔진 원본 테스트 일부
 ## 결제 · 공유 · 저장 (환경 변수 이름은 `.env.example`)
 
 - **결과 저장**: `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`가 있으면 Supabase `saju_results`, 없으면 로컬 파일(개발용, Vercel에서는 막힘).
-- **토스 결제**: `NEXT_PUBLIC_TOSS_CLIENT_KEY` + `TOSS_SECRET_KEY`(결제창 = API 개별 연동 키)가 있으면 토스 결제창.
-  돌아오는 곳 `/checkout/{id}/success`에서 서버가 주문 번호·금액을 확인하고 토스 승인 API가 `DONE`을 줄 때만 결제 완료로 기록.
-  취소·실패는 `/checkout/{id}/fail`. 키가 없으면 로컬에서만 개발용 가짜 결제.
+- **카카오페이 결제**: `KAKAOPAY_CID` + `KAKAOPAY_SECRET_KEY`(쏘웰라와 같은 이름)가 있으면 카카오페이 단건 결제.
+  서버가 결제를 준비(거래 번호·금액 저장) → 카카오페이 화면 → `/checkout/{id}/success/{쪽}`에서 서버가 승인을 요청하고
+  같은 주문·사용자·거래·금액일 때만 결제 완료로 기록. 취소·실패는 `/checkout/{id}/fail/{쪽}`. 키가 없으면 로컬에서만 개발용 가짜 결제.
 - **카카오톡 공유**: `NEXT_PUBLIC_KAKAO_JS_KEY`가 있으면 `/share/{id}`의 노란 버튼이 카카오톡 공유, 없으면 기기 공유 창·링크 복사.
 
 ## 배포 순서
 
-1. **SQL 실행** — Supabase 대시보드 → SQL Editor에서 `supabase/saju_results.sql`을 한 번 실행.
-2. **엔진 비공개 저장소** — `engine/` 내용(맨 위에 `02_데이터`, `03_코드`)을 비공개 GitHub 저장소에 올리고 판 태그(예: `v1.16.0`)를 단다.
+1. **SQL 실행** — Supabase 대시보드 → SQL Editor에서 `supabase/saju_results.sql`을 한 번 실행
+   (이미 실행했다면 `supabase/saju_results_kakaopay.sql`만 추가로 실행).
+2. **엔진 비공개 저장소**(`sugar0401pie-maker/2027saju`) — `engine/` 내용(맨 위에 `02_데이터`, `03_코드`)을 비공개 GitHub 저장소에 올리고 판 태그(예: `v1.16.0`)를 단다.
    GitHub → Settings → Developer settings → Fine-grained tokens에서 **그 저장소만, Contents: Read-only** 토큰을 만든다.
    Vercel 환경 변수 `ENGINE_REPO` · `ENGINE_REF` · `ENGINE_GITHUB_TOKEN` → 빌드 전에 `scripts/fetch-engine.mjs`가 받아 온다.
    새 설계 패키지가 오면 엔진 저장소에 올리고 새 태그 → `ENGINE_REF`만 바꿔 다시 배포.
 3. **Vercel 새 프로젝트** — 같은 GitHub 저장소, Root Directory = `saju`, 환경 변수 넣기(`.env.example`).
 4. **도메인** — Vercel에 `saju.ssolwellnesshouse.com` 추가 → Cloudflare에 CNAME.
-5. **토스** — 테스트 키로 결제·취소를 한 번씩 해 본 뒤 운영 키로 바꾸기.
+5. **카카오페이** — 시험 CID(`TC0ONETIME`)와 개발용 Secret key로 결제·취소를 한 번씩 해 본 뒤 운영 값으로 바꾸기.
 6. **카카오** — Kakao Developers → 플랫폼 → Web에 `https://saju.ssolwellnesshouse.com` 등록.
 7. **로그인 연결**(아직) — 쏘웰라와 같은 Supabase 계정, 쿠키 도메인 `.ssolwellnesshouse.com`. 연결되면 결과에 `user_id`를 채워 쏘웰라가 챌린지를 읽을 수 있게 한다.
 8. **위기 화면 문구 상담사 승인**(ui_copy.safety.to_check — 승인 없이 나가면 출시 차단 항목).

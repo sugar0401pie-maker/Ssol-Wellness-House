@@ -7,11 +7,12 @@ import { TEST_PAGES } from "../about/testPages.ts";
 // 사업자 표시("대표 김준석")와 개인정보 보호책임자는 법정 표시라 SiteFooter·/legal에 남는다 — 여기서는 소개 글만 본다.
 const TEAM_NAMES = /김준석|곽혜진|오세민|오유주/;
 
-test("홈 검색 제목·설명은 대표님이 2026-11-21에 정한 문구 그대로(og는 이번에 안 바꿈)", () => {
+test("홈 검색 제목·설명은 대표님이 2026-11-21에 정한 문구 그대로, 링크 미리보기 제목도 같게(2026-11-27)", () => {
   assert.equal(SITE_TITLE, "쏘웰라 AI | 심리상담 전문가가 설계한 나만의 비밀친구, 가입하면 3일 무료");
   assert.match(SITE_DESCRIPTION, /^이유 없이 지칠 때, 전남친과 재회하고 싶을 때, 무턱대고 회사 그만두고 싶을 때에도 언제든지/);
   assert.match(SITE_DESCRIPTION, /가입하면 3일 무료\.$/);
-  assert.equal(OG_TITLE, "내 손안의 상담사, 쏘웰라 AI | 가입하면 3일 무료");
+  assert.equal(OG_TITLE, SITE_TITLE);
+  assert.doesNotMatch(OG_TITLE, /내 손안의 상담사/);
 });
 
 test("소개 글(쏘웰라 /about · 테스트 소개 · 크롤러용 홈 소개)에 팀원 이름이 없다 — 직함과 자격만", () => {

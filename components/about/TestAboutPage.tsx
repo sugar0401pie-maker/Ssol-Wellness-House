@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
-import { SHARE_IMAGE } from "@/lib/seo/paths";
+import { SHARE_IMAGES } from "@/lib/seo/paths";
 import { TAROT_BUTTON, TAROT_URL, testPageJsonLd, type Block, type TestPage } from "@/lib/about/testPages";
 import MoreLinks from "./MoreLinks";
 import { ButtonLink, FaqItem, H2, P, Table } from "./ui";
@@ -10,6 +10,8 @@ import { ButtonLink, FaqItem, H2, P, Table } from "./ui";
 // 로그인 없이 보이고, 본문·FAQ가 서버에서 처음부터 글자로 내려가며(자바스크립트 불필요), canonical은 각 테스트 사이트의 원본 /about이다.
 // 그래서 이 주소들은 sitemap.xml에 넣지 않고(canonical 주소만 올린다), robots로도 막지 않는다. 대신 쏘웰라 /about과 서로 링크로 이어 크롤러가 찾게 한다.
 export function testAboutMetadata(page: TestPage): Metadata {
+  // 쏠 타로 소개는 "함께 타로 살펴보기" 배너, 나머지는 기본 배너(2026-11-27 대표님)
+  const SHARE_IMAGE = page.slug === "tarot" ? SHARE_IMAGES.tarot : SHARE_IMAGES.friends;
   return {
     title: page.title,
     description: page.description,

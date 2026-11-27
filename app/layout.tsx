@@ -22,7 +22,8 @@ const gowunBatang = Gowun_Batang({
 // 2026-11-24 대표님 요청: 구글 광고(전환 측정)용 Google Tag Manager 컨테이너. 보내 주신 코드는 dataLayer만 만들고 GTM 시작 신호(gtm.js)가 없어
 // "모든 페이지" 같은 기본 트리거가 안 걸릴 수 있어, 구글이 안내하는 표준 GTM 코드로 넣는다(화면이 그려진 뒤 불러와 첫 로딩을 늦추지 않음).
 // 채팅 내용은 주소에 들어가지 않는다 — GTM에 페이지 글자를 읽는 태그를 추가하지 말 것(대화 내용이 밖으로 나갈 수 있음).
-const GTM_ID = "GTM-T4G8FRKC";
+// 2026-11-27 대표님 요청: 태그매니저 컨테이너 하나 더(GTM-5VS2Z5TX). 받은 코드는 gtm.js만 불러 시작 신호(gtm.start)가 없어서, 위와 같은 표준 코드로 같이 넣는다.
+const GTM_IDS = ["GTM-T4G8FRKC", "GTM-5VS2Z5TX"] as const;
 // 2026-11-24 대표님 요청: 구글 광고 태그(gtag.js). 결제 전환(purchase)은 결제 완료 화면이 보낸다(lib/ads/googleAds.ts).
 
 // 검색 결과·링크 미리보기 제목과 설명은 lib/seo/siteCopy.ts 한 곳에서 관리한다(홈 구조화 데이터도 같은 설명을 쓴다).
@@ -68,17 +69,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </p>
         </noscript>
         {/* Google Tag Manager — 자바스크립트가 꺼진 환경용 */}
-        <noscript>
-          <iframe src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
-        </noscript>
+        {GTM_IDS.map((id) => (
+          <noscript key={id}>
+            <iframe src={`https://www.googletagmanager.com/ns.html?id=${id}`} height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
+          </noscript>
+        ))}
         {children}
         <Script id="google-ads-gtag" src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} strategy="afterInteractive" />
         <Script id="google-ads-config" strategy="afterInteractive">
           {`window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){dataLayer.push(arguments);};gtag('js',new Date());gtag('config','${GOOGLE_ADS_ID}');`}
         </Script>
-        <Script id="gtm" strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`}
-        </Script>
+        {GTM_IDS.map((id) => (
+          <Script key={id} id={`gtm-${id}`} strategy="afterInteractive">
+            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${id}');`}
+          </Script>
+        ))}
       </body>
     </html>
   );

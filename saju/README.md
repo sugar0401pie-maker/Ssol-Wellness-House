@@ -27,8 +27,8 @@ npm run test:engine                     # 엔진 원본 테스트 일부
 ## 엔진(`engine/`)
 
 - 설계 패키지의 `02_데이터` + `03_코드`를 **그대로** 옮긴 것. 고치지 말고, 새 판이 오면 폴더째 바꿉니다.
-- **git에 올리지 않습니다**(저장소가 공개라서 — 문장 DB·고민 판별기·안전 낱말 원본 보호, `engine_kit/`와 같은 원칙).
-  배포 때 엔진을 어떻게 넣을지는 정해야 합니다(아래 '배포 전 할 일').
+- **이 저장소(공개)에는 올리지 않습니다** — 문장 DB·고민 판별기·안전 낱말 원본 보호(`engine_kit/`와 같은 원칙).
+  배포 때는 비공개 엔진 저장소에서 빌드 전에 받아 옵니다(아래 '배포 순서' 2번).
 - 화면 문구는 `engine/02_데이터/ui_copy.json`, 가격은 `pricing.json`에서만 읽습니다.
 
 ## 쏘웰라로 넘기는 작심삼일 챌린지
@@ -53,7 +53,10 @@ npm run test:engine                     # 엔진 원본 테스트 일부
 ## 배포 순서
 
 1. **SQL 실행** — Supabase 대시보드 → SQL Editor에서 `supabase/saju_results.sql`을 한 번 실행.
-2. **엔진 넣는 방법 정하기** — `engine/`은 공개 저장소에 없어서 이대로는 Vercel 빌드가 실패합니다(비공개 저장소·비공개 패키지 등).
+2. **엔진 비공개 저장소** — `engine/` 내용(맨 위에 `02_데이터`, `03_코드`)을 비공개 GitHub 저장소에 올리고 판 태그(예: `v1.16.0`)를 단다.
+   GitHub → Settings → Developer settings → Fine-grained tokens에서 **그 저장소만, Contents: Read-only** 토큰을 만든다.
+   Vercel 환경 변수 `ENGINE_REPO` · `ENGINE_REF` · `ENGINE_GITHUB_TOKEN` → 빌드 전에 `scripts/fetch-engine.mjs`가 받아 온다.
+   새 설계 패키지가 오면 엔진 저장소에 올리고 새 태그 → `ENGINE_REF`만 바꿔 다시 배포.
 3. **Vercel 새 프로젝트** — 같은 GitHub 저장소, Root Directory = `saju`, 환경 변수 넣기(`.env.example`).
 4. **도메인** — Vercel에 `saju.ssolwellnesshouse.com` 추가 → Cloudflare에 CNAME.
 5. **토스** — 테스트 키로 결제·취소를 한 번씩 해 본 뒤 운영 키로 바꾸기.

@@ -1,0 +1,170 @@
+{
+ "general": [
+  {
+   "file": "saju-feed-general-1116-coral-attic-almanac.webp",
+   "source": "2026-11-16/outputs/saju-astro-campaign/saju/feed/01-coral-attic-almanac.png"
+  },
+  {
+   "file": "saju-feed-general-1116-coral-attic-almanac-saju-astro-h.webp",
+   "source": "2026-11-16/outputs/saju-astro-hero-v3/artwork/saju/feed/01-coral-attic-almanac.png"
+  },
+  {
+   "file": "saju-feed-general-1116-coral-attic-almanac-saju-astro-n.webp",
+   "source": "2026-11-16/outputs/saju-astro-natural-v4/artwork/saju/feed/01-coral-attic-almanac.png"
+  },
+  {
+   "file": "saju-feed-general-1116-coral-attic-almanac-saju-astro-s.webp",
+   "source": "2026-11-16/outputs/saju-astro-sheep-original-v5/artwork/saju/feed/01-coral-attic-almanac.png"
+  },
+  {
+   "file": "saju-feed-general-1117-coral-courtyard-scroll.webp",
+   "source": "2026-11-17/outputs/saju-astro-alternate-characters/artwork/saju/feed/01-coral-courtyard-scroll.png"
+  },
+  {
+   "file": "saju-feed-general-1118-coral-lagoon-year-book.webp",
+   "source": "2026-11-18/outputs/saju-astro-new-scenes-02/artwork/saju/feed/01-coral-lagoon-year-book.png"
+  },
+  {
+   "file": "saju-feed-general-1122-coral-season-amphitheatre.webp",
+   "source": "2026-11-22/outputs/divination-campaigns/character-review-v2/artwork/saju/feed/01-coral-season-amphitheatre.png"
+  },
+  {
+   "file": "saju-feed-general-1124-coral-pigment-season-studio.webp",
+   "source": "2026-11-24/outputs/divination-campaigns/pm/artwork/saju/feed/01-coral-pigment-season-studio.png"
+  },
+  {
+   "file": "saju-feed-general-1125-coral-tide-gauge-season-markers.webp",
+   "source": "2026-11-25/outputs/divination-campaigns/am/artwork/saju/feed/01-coral-tide-gauge-season-markers.png"
+  },
+  {
+   "file": "saju-feed-general-1126-coral-water-marbling-season-folio.webp",
+   "source": "2026-11-26/outputs/divination-campaigns/pm/artwork/saju/feed/01-coral-water-marbling-season-folio.png"
+  }
+ ],
+ "love": [
+  {
+   "file": "saju-feed-love-1116-pink-tulip-tea-room.webp",
+   "source": "2026-11-16/outputs/saju-astro-campaign/saju/feed/02-pink-tulip-tea-room.png"
+  },
+  {
+   "file": "saju-feed-love-1116-pink-tulip-tea-room-saju-astro-h.webp",
+   "source": "2026-11-16/outputs/saju-astro-hero-v3/artwork/saju/feed/02-pink-tulip-tea-room.png"
+  },
+  {
+   "file": "saju-feed-love-1116-pink-tulip-tea-room-saju-astro-n.webp",
+   "source": "2026-11-16/outputs/saju-astro-natural-v4/artwork/saju/feed/02-pink-tulip-tea-room.png"
+  },
+  {
+   "file": "saju-feed-love-1116-pink-tulip-tea-room-saju-astro-s.webp",
+   "source": "2026-11-16/outputs/saju-astro-sheep-original-v5/artwork/saju/feed/02-pink-tulip-tea-room.png"
+  },
+  {
+   "file": "saju-feed-love-1117-pink-willow-heart.webp",
+   "source": "2026-11-17/outputs/saju-astro-alternate-characters/artwork/saju/feed/02-pink-willow-heart.png"
+  },
+  {
+   "file": "saju-feed-love-1118-pink-sandbar-heart-links.webp",
+   "source": "2026-11-18/outputs/saju-astro-new-scenes-02/artwork/saju/feed/02-pink-sandbar-heart-links.png"
+  },
+  {
+   "file": "saju-feed-love-1122-pink-crystal-choice-room.webp",
+   "source": "2026-11-22/outputs/divination-campaigns/character-review-v2/artwork/saju/feed/02-pink-crystal-choice-room.png"
+  },
+  {
+   "file": "saju-feed-love-1124-pink-listening-tube-alcove.webp",
+   "source": "2026-11-24/outputs/divination-campaigns/pm/artwork/saju/feed/02-pink-listening-tube-alcove.png"
+  },
+  {
+   "file": "saju-feed-love-1125-pink-fragrance-blending-alcove.webp",
+   "source": "2026-11-25/outputs/divination-campaigns/am/artwork/saju/feed/02-pink-fragrance-blending-alcove.png"
+  },
+  {
+   "file": "saju-feed-love-1126-pink-shell-bead-terrace-connection.webp",
+   "source": "2026-11-26/outputs/divination-campaigns/pm/artwork/saju/feed/02-pink-shell-bead-terrace-connection.png"
+  }
+ ],
+ "money": [
+  {
+   "file": "saju-feed-money-1116-tidal-pier-coin-planning.webp",
+   "source": "2026-11-16/outputs/saju-astro-campaign/saju/feed/03-tidal-pier-coin-planning.png"
+  },
+  {
+   "file": "saju-feed-money-1116-tidal-pier-coin-planning-saju-astro-h.webp",
+   "source": "2026-11-16/outputs/saju-astro-hero-v3/artwork/saju/feed/03-tidal-pier-coin-planning.png"
+  },
+  {
+   "file": "saju-feed-money-1116-tidal-pier-coin-planning-saju-astro-n.webp",
+   "source": "2026-11-16/outputs/saju-astro-natural-v4/artwork/saju/feed/03-tidal-pier-coin-planning.png"
+  },
+  {
+   "file": "saju-feed-money-1116-tidal-pier-coin-planning-saju-astro-s.webp",
+   "source": "2026-11-16/outputs/saju-astro-sheep-original-v5/artwork/saju/feed/03-tidal-pier-coin-planning.png"
+  },
+  {
+   "file": "saju-feed-money-1117-sage-spring-coin-sort.webp",
+   "source": "2026-11-17/outputs/saju-astro-alternate-characters/artwork/saju/feed/03-sage-spring-coin-sort.png"
+  },
+  {
+   "file": "saju-feed-money-1118-sage-lotus-savings.webp",
+   "source": "2026-11-18/outputs/saju-astro-new-scenes-02/artwork/saju/feed/03-sage-lotus-savings.png"
+  },
+  {
+   "file": "saju-feed-money-1122-sage-canal-vault-calendar.webp",
+   "source": "2026-11-22/outputs/divination-campaigns/character-review-v2/artwork/saju/feed/03-sage-canal-vault-calendar.png"
+  },
+  {
+   "file": "saju-feed-money-1124-sage-rain-cistern-budget.webp",
+   "source": "2026-11-24/outputs/divination-campaigns/pm/artwork/saju/feed/03-sage-rain-cistern-budget.png"
+  },
+  {
+   "file": "saju-feed-money-1125-sage-paper-reclamation-vat.webp",
+   "source": "2026-11-25/outputs/divination-campaigns/am/artwork/saju/feed/03-sage-paper-reclamation-vat.png"
+  },
+  {
+   "file": "saju-feed-money-1126-sage-herb-barter-counting-stall.webp",
+   "source": "2026-11-26/outputs/divination-campaigns/pm/artwork/saju/feed/03-sage-herb-barter-counting-stall.png"
+  }
+ ],
+ "career": [
+  {
+   "file": "saju-feed-career-1116-blue-ravine-footbridge.webp",
+   "source": "2026-11-16/outputs/saju-astro-campaign/saju/feed/04-blue-ravine-footbridge.png"
+  },
+  {
+   "file": "saju-feed-career-1116-blue-ravine-footbridge-saju-astro-h.webp",
+   "source": "2026-11-16/outputs/saju-astro-hero-v3/artwork/saju/feed/04-blue-ravine-footbridge.png"
+  },
+  {
+   "file": "saju-feed-career-1116-blue-ravine-footbridge-saju-astro-n.webp",
+   "source": "2026-11-16/outputs/saju-astro-natural-v4/artwork/saju/feed/04-blue-ravine-footbridge.png"
+  },
+  {
+   "file": "saju-feed-career-1116-blue-ravine-footbridge-saju-astro-s.webp",
+   "source": "2026-11-16/outputs/saju-astro-sheep-original-v5/artwork/saju/feed/04-blue-ravine-footbridge.png"
+  },
+  {
+   "file": "saju-feed-career-1117-blue-canal-cart.webp",
+   "source": "2026-11-17/outputs/saju-astro-alternate-characters/artwork/saju/feed/04-blue-canal-cart.png"
+  },
+  {
+   "file": "saju-feed-career-1118-sky-lighthouse-arrival.webp",
+   "source": "2026-11-18/outputs/saju-astro-new-scenes-02/artwork/saju/feed/04-sky-lighthouse-arrival.png"
+  },
+  {
+   "file": "saju-feed-career-1122-sky-wisteria-lift-platform.webp",
+   "source": "2026-11-22/outputs/divination-campaigns/character-review-v2/artwork/saju/feed/04-sky-wisteria-lift-platform.png"
+  },
+  {
+   "file": "saju-feed-career-1124-sky-pottery-kiln-first-tile.webp",
+   "source": "2026-11-24/outputs/divination-campaigns/pm/artwork/saju/feed/04-sky-pottery-kiln-first-tile.png"
+  },
+  {
+   "file": "saju-feed-career-1125-sky-cargo-hoist-first-folio.webp",
+   "source": "2026-11-25/outputs/divination-campaigns/am/artwork/saju/feed/04-sky-cargo-hoist-first-folio.png"
+  },
+  {
+   "file": "saju-feed-career-1126-sky-boundary-survey-first-site.webp",
+   "source": "2026-11-26/outputs/divination-campaigns/pm/artwork/saju/feed/04-sky-boundary-survey-first-site.png"
+  }
+ ]
+}

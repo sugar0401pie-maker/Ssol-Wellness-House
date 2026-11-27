@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "lib/cards/vendor/**",
     // CSO 엔진 시험 묶음(git 제외 폴더 — 원본 시험 코드 그대로)
     "engine_kit/**",
+    // 사주 앱(saju.ssolwellnesshouse.com)은 따로 배포하는 별도 Next 앱 — 자기 eslint 설정을 쓴다
+    "saju/**",
   ]),
 ]);
 

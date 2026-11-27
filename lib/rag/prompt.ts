@@ -4,6 +4,7 @@ import type { RouteId } from "../safety/types.ts";
 import type { TheoryGuide, TheoryStage, VoiceCard } from "../theory/types.ts";
 import { selectReportSections, splitReportInsight } from "./reportSelect.ts";
 import type { TraumaStage } from "../safety/traumaStage.ts";
+import { FAREWELL_SPARKLE_RULE } from "../chat/sparkle.ts";
 import { GENERAL_LAYER_ROUTES, SOLVE_FROM_TURN, isLayer5Signal, isSolveNowRequest, layerHandoffBlock, layerPacingBlock } from "./layers.ts";
 
 type SectionLike = { section_name: string; prompt_text: string; priority: string };
@@ -452,6 +453,11 @@ export function buildSystemPrompt(params: {
   parts.push(
     "위 내용을 필요한 만큼만 활용해 Reflect(사용자 경험 반영) → Connect(관련 지식을 필요한 만큼만 연결) → Clarify(핵심 구분) → Ask(한 번에 질문 하나만) 순서로 답하세요. 한국어로, 300~500자 내외로 간결하게 답하세요.",
   );
+
+  // 2026-11-27 대표님: 말투가 딱딱하다는 이야기 — 마무리 인사에 별가루 하나. 마음이 무거운 대화(임상 경로·안전 지침·트라우마 단계)에는 넣지 않는다.
+  if ((params.route === "wellness" || params.route === "life_decision" || params.route === "service_info") && !params.safetyGuidance && !params.traumaStage) {
+    parts.push(FAREWELL_SPARKLE_RULE);
+  }
 
   parts.push(
     "형식: **볼드**나 * 목록 같은 마크다운 기호를 쓰지 말고 일반 텍스트로만 답하세요. 강조하고 싶으면 문장으로 표현하세요. 내용이 3줄을 넘거나 다른 주제·단계로 넘어갈 때는 빈 줄로 문단을 나눠서 모바일 화면에서 읽기 쉽게 하세요.",

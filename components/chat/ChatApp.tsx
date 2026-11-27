@@ -10,6 +10,7 @@ import { EVERYDAY_QUESTION_GROUPS, SUGGESTED_QUESTION_GROUPS, pickRandomSuggeste
 import { ASTRO_Q1_CHIPS, DEFAULT_GREETING, chooseStarterChips, welcomeGreeting, type WelcomeStatus } from "@/lib/persona/welcome";
 import { ASTRO_OPENING_FROM, astroOpeningFromSearch, type AstroOpening } from "@/lib/persona/astroGreeting";
 import { boardInsightLeadIn } from "@/components/app/InsightsSection";
+import { pickSparkle, withSparkle } from "@/lib/chat/sparkle";
 import { testOpeningKey, testOpeningSourceFrom, type TestOpeningSource } from "@/lib/persona/testOpeningSource";
 import TrialPaywallOverlay from "./TrialPaywallOverlay";
 import { allOnboardingAnswersBlank } from "@/lib/onboarding/schema";
@@ -666,7 +667,11 @@ export default function ChatApp({ initialSessionId, openHistoryOnMount }: { init
             </div>
           </div>
         ) : (
-          <Bubble role="assistant" content={testOpening ?? (typeof latestOpening === "string" ? latestOpening : welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING)} />
+          // 2026-11-27 대표님: 말투가 딱딱하다는 이야기 — 처음 인사에 별가루 하나(lib/chat/sparkle.ts)
+          (() => {
+            const greet = testOpening ?? (typeof latestOpening === "string" ? latestOpening : welcome ? welcomeGreeting(welcome) : DEFAULT_GREETING);
+            return <Bubble role="assistant" content={withSparkle(greet, pickSparkle(greet))} />;
+          })()
         )}
         {/* 2026-11-25 대표님: 다시 들어온 새 대화 첫 화면에 지난 대화에서 비친 마음을 알려 준다(고민 타파 카드와 같은 문장). 테스트에서 막 넘어온 맞춤 인사가 있으면 그 인사만. */}
         {isEmptyChat && welcome?.insight && !testSrc && !welcome.tarot && !welcome.astroGreeting && <Bubble role="assistant" content={`${boardInsightLeadIn(welcome.nickname)}\n\n${welcome.insight}`} />}

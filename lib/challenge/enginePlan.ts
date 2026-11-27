@@ -6,10 +6,10 @@ import * as CH from "@/lib/interp/vendor/challenge.mjs";
 import { loadTaskEngine } from "@/lib/tasks/data";
 import { loadCardData } from "@/lib/cards/session";
 import { personForChallenge } from "@/lib/tasks/server";
-import { enginePlanView, tarotPlanView, type PlanView } from "./planView";
+import { enginePlanView, practiceIdsOf, tarotPlanView, type PlanView } from "./planView";
 import { tarotPlanFrom } from "./tarotPlan";
 
-// 작심삼일 계획을 엔진(ssol_challenge v0.4 · CSO 묶음 v2.40)과 타로 결과에서 만든다 — 2026-11-26 대표님:
+// 작심삼일 계획을 엔진(ssol_challenge v0.8 · CSO 묶음 v2.44)과 타로 결과에서 만든다 — 2026-11-26 대표님:
 //  - 테스트(타로)에서 다섯 칸을 받은 사람은 그 챌린지 그대로(tarotChallenge)
 //  - 그냥 온 사람은 질문 3개 답으로 엔진이 사람마다(engineChallenge) · 안 맞으면 셔플(shuffle = 몇 번째로 다시 골랐는지)
 //    셔플은 앞에서 나온 활동 가족을 빼고 다시 고른다(엔진 pickFamily의 excludeFamilies). 다 돌면 처음부터.
@@ -37,8 +37,26 @@ async function latestWorry(admin: Admin, userId: string) {
   return w?.intent_id ? { intentId: w.intent_id, branchId: w.branch_id ?? null } : null;
 }
 
+// CSO v2.41(규칙 CH-07): 엔진에 「최근 대화에서 나간 과제(recent)」와 「이미 한 과제(done)」를 넘기면 1·3일차에서 뺀다.
+// recent = 최근 14일 대화에서 제안된 과제 · done = 대화에서 골랐던 과제 + 지난 챌린지에서 받은 과제. 읽기 실패는 빈 목록(빼는 것만 못 할 뿐).
+const RECENT_DAYS = 14;
+async function pastPractices(admin: Admin, userId: string): Promise<{ recent: string[]; done: string[] }> {
+  const since = new Date(Date.now() - RECENT_DAYS * 24 * 3600 * 1000).toISOString();
+  const [offered, picked, past] = await Promise.all([
+    admin.from("sw_user_tasks").select("offered").eq("user_id", userId).gte("at", since).order("at", { ascending: false }).limit(50),
+    admin.from("sw_user_tasks").select("practice_id").eq("user_id", userId).not("practice_id", "is", null).order("at", { ascending: false }).limit(100),
+    admin.from("challenges").select("plan").eq("user_id", userId).not("plan", "is", null).order("created_at", { ascending: false }).limit(20),
+  ]);
+  for (const r of [offered, picked, past]) if (r.error) console.error("작심삼일 지난 과제 읽기 실패:", r.error.message);
+  const recent = new Set<string>();
+  for (const row of offered.data ?? []) for (const id of Array.isArray(row.offered) ? row.offered : []) if (typeof id === "string") recent.add(id);
+  const done = new Set<string>((picked.data ?? []).map((r) => r.practice_id).filter((x): x is string => typeof x === "string"));
+  for (const id of practiceIdsOf((past.data ?? []).map((r) => r.plan))) done.add(id);
+  return { recent: [...recent], done: [...done] };
+}
+
 export async function engineChallenge(admin: Admin, userId: string, shuffle = 0): Promise<{ plan: PlanView | null; hasAnswers: boolean }> {
-  const [, cardData, { person, hasAnswers }, worry] = await Promise.all([loadTaskEngine(admin), loadCardData(admin), personForChallenge(admin, userId), latestWorry(admin, userId)]);
+  const [, cardData, { person, hasAnswers }, worry, { recent, done }] = await Promise.all([loadTaskEngine(admin), loadCardData(admin), personForChallenge(admin, userId), latestWorry(admin, userId), pastPractices(admin, userId)]);
   if (!hasAnswers) return { plan: null, hasAnswers };
   const options = cardData.options as never;
   const values = ((person as { prefs?: { values?: string[] } }).prefs?.values ?? []) as string[];
@@ -56,8 +74,8 @@ export async function engineChallenge(admin: Admin, userId: string, shuffle = 0)
   let raw: Record<string, unknown> | null = null;
   for (let i = 0; i <= n; i++) {
     const cands = tc.candidates.filter((c) => !usedDay1.includes(c.practice_id));
-    let r = CH.challengePlan({ tc: { ...tc, candidates: cands }, cs, personal, person, formatOf: PS.sizeOf, intentId, excludeFamilies } as never) as Record<string, unknown> & { family_id?: string | null; day1?: { practice_id?: string } | null };
-    if (!r.family_id && excludeFamilies.length) { excludeFamilies.length = 0; usedDay1.length = 0; r = CH.challengePlan({ tc, cs, personal, person, formatOf: PS.sizeOf, intentId, excludeFamilies } as never) as typeof r; } // 다 돌았으면 처음부터
+    let r = CH.challengePlan({ tc: { ...tc, candidates: cands }, cs, personal, person, formatOf: PS.sizeOf, intentId, excludeFamilies, recent, done } as never) as Record<string, unknown> & { family_id?: string | null; day1?: { practice_id?: string } | null };
+    if (!r.family_id && excludeFamilies.length) { excludeFamilies.length = 0; usedDay1.length = 0; r = CH.challengePlan({ tc, cs, personal, person, formatOf: PS.sizeOf, intentId, excludeFamilies, recent, done } as never) as typeof r; } // 다 돌았으면 처음부터
     if (r.family_id) excludeFamilies.push(r.family_id);
     if (r.day1?.practice_id) usedDay1.push(r.day1.practice_id);
     raw = r;

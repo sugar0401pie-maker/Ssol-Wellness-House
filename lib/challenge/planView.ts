@@ -5,7 +5,9 @@ import { CHALLENGE_THEMES, isThemeKey, proofLine, themeOf } from "./themes.ts";
 import type { TarotChallengePlan } from "./tarotPlan.ts";
 
 export type PlanSource = "theme" | "engine" | "tarot";
-export type PlanDay = { action: string; proof: string | null };
+// ask: 그날 과제 앞에 보여 줄 한 줄 질문(엔진 3일차 「어제 해 본 ○○, 어땠어요?」 — CSO v2.41 규칙 CH-07) · practiceId: 엔진 과제 코드
+// (다음 챌린지에서 「이미 한 과제」로 빼려고 남김). 둘 다 없어도 되는 값이라 예전에 저장한 계획도 그대로 읽힌다.
+export type PlanDay = { action: string; proof: string | null; ask?: string | null; practiceId?: string | null };
 export type PlanView = {
   source: PlanSource;
   key: string; // 세 가지 마음이면 그 키, 엔진이면 "me", 타로면 "tarot" (challenges.theme에 그대로)
@@ -47,22 +49,35 @@ export function tarotPlanView(p: TarotChallengePlan): PlanView {
 }
 
 // 엔진 challengePlan 결과 → 화면 계획. 3일 중 하나라도 글이 없으면 null(그때는 세 가지 마음으로).
-type EngineSlot = { title?: string | null; description?: string | null; steps?: unknown } | null | undefined;
+// 3일차는 두 가지로 온다(CSO v2.41~v2.44 · ssol_challenge v0.5~v0.8): kind 'task' = 새 과제(제목 · 설명 + check_in 한 줄 질문),
+// kind 'review' = 예전처럼 돌아보기(steps). 둘 다 받는다.
+type EngineSlot = { title?: string | null; description?: string | null; steps?: unknown; practice_id?: string | null; kind?: string | null; check_in?: string | null } | null | undefined;
 type EngineRaw = { family_id?: string | null; category?: string | null; day1?: EngineSlot; day2?: EngineSlot; day3?: EngineSlot; week?: EngineSlot; month?: EngineSlot } | null | undefined;
 export function enginePlanView(raw: EngineRaw): PlanView | null {
   if (!raw) return null;
   const a1 = clean(raw.day1?.title), a2 = clean(raw.day2?.title), a3 = clean(raw.day3?.title);
   if (!a1 || !a2 || !a3) return null;
-  const steps = Array.isArray(raw.day3?.steps) ? (raw.day3!.steps as unknown[]).map(clean).filter((x): x is string => !!x) : [];
+  const d3 = raw.day3!;
+  const steps = Array.isArray(d3.steps) ? (d3.steps as unknown[]).map(clean).filter((x): x is string => !!x) : [];
+  const day3: PlanDay = d3.kind === "task"
+    ? { action: a3, proof: clean(d3.description), ask: clean(d3.check_in), practiceId: clean(d3.practice_id) }
+    : { action: a3, proof: steps.length ? steps.join(" · ") : clean(d3.description) };
   return {
     source: "engine", key: ENGINE_KEY, label: clean(raw.category) ?? ENGINE_LABEL,
     days: [
-      { action: a1, proof: clean(raw.day1?.description) },
-      { action: a2, proof: clean(raw.day2?.description) },
-      { action: a3, proof: steps.length ? steps.join(" · ") : clean(raw.day3?.description) },
+      { action: a1, proof: clean(raw.day1?.description), practiceId: clean(raw.day1?.practice_id) },
+      { action: a2, proof: clean(raw.day2?.description), practiceId: clean(raw.day2?.practice_id) },
+      day3,
     ],
     week: clean(raw.week?.title), month: clean(raw.month?.title), familyId: raw.family_id ?? null,
   };
+}
+
+// 이미 한 챌린지들의 계획에서 엔진 과제 코드만(다음 계획에서 다시 안 나오게 — challengePlan의 done)
+export function practiceIdsOf(plans: unknown[]): string[] {
+  const out = new Set<string>();
+  for (const p of plans) if (isPlanView(p)) for (const d of p.days) if (typeof d.practiceId === "string" && d.practiceId) out.add(d.practiceId);
+  return [...out];
 }
 
 // 저장된 챌린지 → 계획(시작할 때 남긴 plan이 있으면 그것, 없으면 예전처럼 세 가지 마음)

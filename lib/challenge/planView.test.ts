@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enginePlanView, isStartKey, nextThemeKey, planOf, tarotPlanView, themePlan } from "./planView.ts";
+import { enginePlanView, isStartKey, nextThemeKey, planOf, practiceIdsOf, tarotPlanView, themePlan } from "./planView.ts";
 import { tarotPlanFrom } from "./tarotPlan.ts";
 
 test("세 가지 마음 계획은 예전 글 그대로", () => {
@@ -33,6 +33,17 @@ test("엔진 계획: 3일 글이 다 있어야, 3일차는 돌아보기 단계�
   assert.equal(p.month, null);
   assert.equal(enginePlanView({ ...raw, day2: null }), null);
   assert.equal(enginePlanView(null), null);
+});
+
+test("엔진 계획: 3일차 새 과제는 한 줄 질문과 과제 코드를 같이(CSO v2.41~)", () => {
+  const p = enginePlanView({
+    day1: { title: "적기", description: "d1", practice_id: "RP-001" },
+    day2: { title: "공원 산책", practice_id: "OUT-PARK-L2" },
+    day3: { kind: "task", title: "한 사람에게 말하기", description: "가볍게 한 문장", practice_id: "THF-011", check_in: "어제 해 본 「공원 산책」, 어땠어요?" },
+  })!;
+  assert.deepEqual(p.days[2], { action: "한 사람에게 말하기", proof: "가볍게 한 문장", ask: "어제 해 본 「공원 산책」, 어땠어요?", practiceId: "THF-011" });
+  assert.equal(p.days[0].practiceId, "RP-001");
+  assert.deepEqual(practiceIdsOf([p, null, { days: [] }]), ["RP-001", "OUT-PARK-L2", "THF-011"]);
 });
 
 test("타로 다섯 칸 → 계획", () => {

@@ -145,6 +145,8 @@ export default function ChallengePage() {
 
             {v.kind === "todo" && day && (
               <div className="mt-4 rounded-2xl bg-night-panel p-4 text-left">
+                {/* CSO v2.41: 엔진 3일차 새 과제는 앞에 한 줄 질문(「어제 해 본 ○○, 어땠어요?」)을 붙여 돌아보기를 대신한다 */}
+                {day.ask && <p className="mb-3 text-[15px] leading-snug text-night-soft">{day.ask}</p>}
                 <p className="text-[16px] text-night-amber">오늘의 행동</p>
                 <p className="mt-1 text-[18px] leading-snug">{day.action}</p>
                 {day.proof && (

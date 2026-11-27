@@ -6,6 +6,12 @@
       "runtimeExecutable": "/usr/local/bin/npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3100"],
       "port": 3100
+    },
+    {
+      "name": "ssol-saju",
+      "runtimeExecutable": "/usr/local/bin/npm",
+      "runtimeArgs": ["--prefix", "saju", "run", "dev"],
+      "port": 3200
     }
   ]
 }

@@ -1,0 +1,11 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+# 개발용 결과 저장소(로컬 파일) — 생년월일·고민 글이 들어 있으므로 절대 올리지 않는다
+.data/
+# 사주 엔진 원본(문장 DB·고민 판별기·안전 낱말) — 저장소가 공개(Public)라 올리지 않는다(지식 원본은 저장소 밖 원칙, engine_kit/와 같음)
+/engine/

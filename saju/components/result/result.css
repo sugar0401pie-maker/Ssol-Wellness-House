@@ -1,0 +1,60 @@
+/* 결과 화면 전용 보탬 — 시안의 <button>을 링크(<a>)로 그릴 때 필요한 것과 쪽 넘기기 줄만. 나머지는 app/globals.css(시안 CSS). */
+a.btn,
+a.ccta {
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.sharebar a {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 13px;
+  color: var(--navy);
+  text-align: center;
+  text-decoration: none;
+}
+.sharebar a.kakao {
+  background: #fee500;
+  border-color: #fee500;
+  color: #191919;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.rnav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 4px;
+}
+.rnav a {
+  display: block;
+  padding: 11px 0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+.rnav-prev {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--navy);
+}
+.rnav-next {
+  background: var(--navy);
+  color: #fcefd4;
+}
+.rnav-n {
+  font-size: 12px;
+  color: var(--sub);
+}
+.paybox .rv li {
+  text-align: left;
+}

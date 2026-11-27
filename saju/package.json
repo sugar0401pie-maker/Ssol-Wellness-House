@@ -12,6 +12,7 @@
     "test:engine": "cd engine/03_코드 && node test_core.mjs && node test_safety.mjs && node test_saju.mjs && node test_worry.mjs && node test_v1160.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "lunar-javascript": "^1.7.0",
     "manseryeok": "2.0.0",
     "next": "16.3.5",

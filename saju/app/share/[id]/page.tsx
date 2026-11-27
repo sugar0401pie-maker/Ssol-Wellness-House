@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { uiCopy, fill } from "@/lib/engine";
 import { getResult, isResultId } from "@/lib/store";
-import { testName } from "@/lib/tests";
+import { testName, BANNER_FILE } from "@/lib/tests";
 import type { StoredResult } from "@/lib/types";
 import ShareActions from "@/components/common/ShareActions";
 
@@ -47,7 +47,15 @@ export default async function SharePage({ params }: P) {
         {c.share.kakao_button}
       </Link>
       <div className="mt">
-        <ShareActions url={`${site}/share/${r.id}`} title={s ? fill(c.share.kakao_title, { sal: s.name }) : ""} label={c.share.button} note={c.share.sheet_note} />
+        <ShareActions
+          url={`${site}/share/${r.id}`}
+          title={s ? fill(c.share.kakao_title, { sal: s.name }) : c.tests[testName(r.slug)].title}
+          description={c.share.kakao_desc}
+          imageUrl={`${site}${BANNER_FILE[r.slug]}`}
+          buttonTitle={c.share.kakao_button}
+          label={c.share.button}
+          note={c.share.sheet_note}
+        />
       </div>
     </div>
   );

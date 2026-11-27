@@ -1,4 +1,4 @@
--- 사주 결과 저장 테이블(초안 — 아직 실행하지 않음). 배포 전에 lib/store.ts를 이 테이블로 바꾼다.
+-- 사주 결과 저장 테이블. Supabase 대시보드 → SQL Editor에서 한 번 실행한다(lib/store.ts가 이 테이블을 쓴다).
 -- 쏘웰라(app.ssolwellnesshouse.com)와 같은 Supabase 프로젝트에 만든다. 쏘웰라가 tarot_sessions를 읽듯
 -- 로그인한 사용자의 최근 사주 결과에서 report->'challenge'(작심삼일 다섯 칸)를 읽어 챌린지를 시작한다.
 -- 공유 프로젝트 규칙: 새 테이블은 service_role 권한이 자동으로 붙지 않으므로 GRANT를 꼭 적는다. ssol_* 객체는 건드리지 않는다.
@@ -12,6 +12,9 @@ create table if not exists public.saju_results (
   report jsonb not null,                            -- 엔진 결과 전체 + challenge(쏘웰라로 넘기는 다섯 칸)
   safety_level text not null default 'none' check (safety_level in ('none','watch','urgent')),
   paid_at timestamptz,                              -- 토스 승인 확인 뒤에만 서버가 채운다
+  order_id text unique,                             -- 토스 주문 번호(결제 한 번에 하나)
+  payment_key text,                                 -- 토스 결제 키(환불·조회용)
+  paid_amount integer,                              -- 실제 승인된 금액(원)
   created_at timestamptz not null default now()
 );
 

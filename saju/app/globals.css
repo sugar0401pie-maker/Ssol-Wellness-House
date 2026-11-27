@@ -57,3 +57,5 @@ textarea.inp{min-height:130px;resize:vertical;line-height:1.6}
 
 /* 피드 그림: <img width/height> 속성이 정사각 비율을 덮어쓰지 않게 */
 .feed{height:auto}
+/* 공유 화면의 카카오톡 공유 버튼(노란색 — ui_copy.share.button_style) */
+.btn.kakao{background:#FEE500;color:#191919;display:flex;align-items:center;justify-content:center;gap:7px}

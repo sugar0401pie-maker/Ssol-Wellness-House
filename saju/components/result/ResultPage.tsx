@@ -7,7 +7,7 @@ import { fill } from "@/lib/text";
 import { FEED_GROUP, testName, type TestName } from "@/lib/tests";
 import { keyAt, pickFeed, isDecisionAnswer, seededShuffle, hashString } from "@/lib/resultView";
 import { PageHead, PageNav, FeedImage, ShareBar, Foot } from "./parts";
-import { PayBox, BlurTeaser, CardBack } from "./Locked";
+import { PayBox, BlurTeaser } from "./Locked";
 import { P1, P2, P3, P3b, P3c, P7, SalPage, P5, P8, P8b, P9, P10, type Ctx } from "./pages";
 import { Md } from "./Md";
 
@@ -70,8 +70,9 @@ export default async function ResultPage({ id, n, opened }: { id: string; n: num
     const decision = isDecisionAnswer(r.page?.route?.answer);
     const reviewsSrc: string[] = (ui.reviews?.saju ?? []).length >= 5 ? ui.reviews.saju : (ui.reviews?.fallback_from_tarot ?? []);
     const reviews = seededShuffle(reviewsSrc, hashString(`${id}:${n}`));
-    const isKey = key === "p4"; // 대표 살 쪽(ui_copy.key_page)
-    const rawSample = ui.blur?.samples?.[key];
+    // 대표 살 쪽(p4)도 다른 유료 쪽과 같은 모양(예고 + 흐림 + 결제 상자) — 카드 뒷면·뒤집기는 쓰지 않는다(대표님 2026-11-27).
+    // p4에는 흐림 예시가 따로 없어 같은 살 카드 형식인 sal2 예시를 빌려 쓴다(가상 예시).
+    const rawSample = ui.blur?.samples?.[key] ?? (key === "p4" ? ui.blur?.samples?.sal2 : undefined);
     const sample: string =
       typeof rawSample === "string" ? rawSample : typeof rawSample?.[test] === "string" ? rawSample[test] : key === "p10" ? (ui.cta_chat?.body ?? "") : "";
     const teaser: string = def.teaser_by_test?.[test] ?? def.teaser ?? "";
@@ -81,7 +82,7 @@ export default async function ResultPage({ id, n, opened }: { id: string; n: num
     const nLine: string = firstPaid && typeof r.page?.retro?.teaser === "string" ? r.page.retro.teaser : "";
     body = (
       <>
-        {isKey ? <CardBack title={ui.key_page?.title ?? ""} cta={ui.key_page?.cta ?? ""} /> : <BlurTeaser teaser={teaser} sample={sample} />}
+        <BlurTeaser teaser={teaser} sample={sample} />
         {nLine && (
           <div className="box">
             <b>{nLine}</b> {p3def.teaser_note ?? ""}
@@ -96,7 +97,7 @@ export default async function ResultPage({ id, n, opened }: { id: string; n: num
           title={fill(decision ? pw.title_decision : pw.title, { nickname: nick })}
           lead={fill(pw.price_lead ?? "", { price })}
           reviews={reviews}
-          button={isKey ? (pw.button_key_page ?? "") : fill(pw.button ?? "", { price })}
+          button={fill(pw.button ?? "", { price })}
           href={`/checkout/${id}?page=${n}`}
         />
       </>

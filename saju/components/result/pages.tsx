@@ -529,12 +529,7 @@ export function SalPage({ c, rank }: { c: Ctx; rank: 0 | 1 | 2 }) {
   const easyOf = (name: string) => str(c.page.sals?.[name]?.easy);
   return (
     <>
-      {keyPage && c.opened && card && (
-        <div className="bigsal flip">
-          <span>{card.name}</span>
-          <small>{easyOf(card.name)}</small>
-        </div>
-      )}
+      {/* 결제 뒤에는 카드를 뒤집는 연출 없이 바로 보고서 내용을 보여 준다(대표님 2026-11-27) */}
       {keyPage && (
         <>
           <h3>{str(c.ui.pages?.find((p: any) => p.key === "p4")?.rep_title)}</h3>

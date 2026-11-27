@@ -47,13 +47,3 @@ export function BlurTeaser({ teaser, sample }: { teaser: string; sample: string 
     </>
   );
 }
-
-/** 대표 살 쪽(key page) 결제 전: 카드 뒷면. */
-export function CardBack({ title, cta }: { title: string; cta: string }) {
-  return (
-    <div className="bigsal back">
-      <span>{title}</span>
-      <small>{cta}</small>
-    </div>
-  );
-}

@@ -8,7 +8,9 @@ export const MAIN_SITE_ABOUT_URL = "https://www.ssolwellnesshouse.com/about.html
 // 2026-11-27 대표님: 쏘웰라 밖에 공유할 때 손글씨 배너("프로 갓생러들의 비밀, 쏘웰라 AI", 1200×628 다섯 장)가 뜨게 — 화면에 맞는 장면을 고름
 // (기본 = 친구들과 풍등 기념사진 · 풍등 = 물가의 풍등 · 사운드 배스 = 숲속 사운드배스 · 갓생러모임 = 새싹을 함께 돌보기 · 쏠 타로 소개 = 함께 타로 살펴보기).
 const BANNER_ALT = "프로 갓생러들의 비밀, 쏘웰라 AI";
-const banner = (name: string) => ({ url: `/og/${name}.jpg`, width: 1200, height: 628, alt: BANNER_ALT });
+// 2026-11-27 대표님 교체본(v6: 글씨 크기를 맞춘 확장형). 파일 이름은 그대로라 미리보기 앱이 예전 그림을 계속 쓰지 않게 주소에 판 번호를 붙인다.
+const BANNER_VERSION = 2;
+const banner = (name: string) => ({ url: `/og/${name}.jpg?v=${BANNER_VERSION}`, width: 1200, height: 628, alt: BANNER_ALT });
 export const SHARE_IMAGES = {
   friends: banner("friends"),
   lantern: banner("lantern"),
